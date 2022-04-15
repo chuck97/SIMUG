@@ -31,35 +31,74 @@ bool dynvar_test()
 
 bool meshvar_test()
 {
-    MeshDataVar var1("test variable", "m", mesh::meshDim::scalar);
+    MeshDataVar var("test variable", "m", mesh::meshDim::scalar);
     
-    cout << var1 << endl;
-    var1.SetName("new variable");
-    cout << var1 << endl;
-    var1.SetUnit("s");
-    cout << var1 << endl;
-    var1.SetDim(mesh::meshDim::tensor);
-    cout << var1 << endl;
-    if ( var1.GetType() != varType::varMeshData or
-         var1.GetName() != "new variable" or
-         var1.GetUnit() != "s" or
-         var1.GetDim()  != mesh::meshDim::tensor)
+    cout << var << endl;
+    var.SetName("new variable");
+    cout << var << endl;
+    var.SetUnit("s");
+    cout << var << endl;
+    var.SetDim(mesh::meshDim::tensor);
+    cout << var << endl;
+
+    if ( var.GetType() != varType::varMeshData or
+         var.GetName() != "new variable" or
+         var.GetUnit() != "s" or
+         var.GetDim()  != mesh::meshDim::tensor)
     {
         return false;
     }
     return true;
 }
-/*
-bool modvar_test()
+
+bool meshinfo_test()
 {
-    for (SIMUG::model::var item: SIMUG::model::vars)
+    MeshInfoVar var("mesh information", mesh::surfType::plane, mesh::gridType::Agrid);
+    
+    cout << var << endl;
+    var.SetName("another mesh info");
+    cout << var << endl;
+    var.SetSurfType(mesh::surfType::basin);
+    cout << var << endl;
+    var.SetGridType(mesh::gridType::Cgrid);
+    cout << var << endl;
+
+    if ( var.GetType() != varType::varMeshInfo or
+         var.GetName() != "another mesh info" or
+         var.GetSurfType() != mesh::surfType::basin or
+         var.GetGridType()  != mesh::gridType::Cgrid)
     {
-        std::cout << SIMUG::model::name[item] << ", ";
+        return false;
     }
-    std::cout << std::endl;
     return true;
 }
 
+bool modvar_test()
+{
+    ModelVar<float> varf("float variable", "m s-1", 1e-5);
+    std::cout << varf << std::endl;
+    ModelVar<float> vari("int variable", "", 30);
+    std::cout << vari << std::endl;
+    ModelVar<std::string> vars("string variable", "", "meshes/mesh.txt");
+    std::cout << vars << std::endl;
+    vars.SetName("another string var");
+    std::cout << vars << std::endl;
+    vars.SetUnit("mesh path");
+    std::cout << vars << std::endl;
+    vars.SetValue("meshes/another_mesh.txt");
+    std::cout << vars << std::endl;
+
+    if ( vars.GetType() != varType::varModel or
+         vars.GetName() != "another string var" or
+         vars.GetUnit() != "mesh path" or
+         vars.GetValue()  != "meshes/another_mesh.txt")
+    {
+        return false;
+    }
+    return true;
+}
+
+/*
 bool physvar_test()
 {
     for (SIMUG::phys::var item: SIMUG::phys::vars)
@@ -86,40 +125,22 @@ int main(int argc, char *argv[])
 #if defined (USE_MPI)
     MPI_Init()
 #endif
-    /*
-    if (advvar_test())
-        std::cout << "Advvar test: OK!\n";
-    else
-        SIMUG_ERR("Advvar test: FAILED!\n");
-
-    if (dynvar_test())
-        std::cout << "Dynvar test: OK!\n";
-    else
-        SIMUG_ERR("Dynvar test: FAILED!\n");
-    */
 
     if (meshvar_test())
-        std::cout << "Meshvar test: OK!\n";
+        std::cout << "MeshDataVar test: OK!\n";
     else
-        SIMUG_ERR("Meshvar test: FAILED!\n");
+        SIMUG_ERR("MeshDataVar test: FAILED!\n");
 
-/*
+    if (meshinfo_test())
+        std::cout << "MeshInfoVar test: OK!\n";
+    else
+        SIMUG_ERR("MeshInfoVar test: FAILED!\n");
+
     if (modvar_test())
-        std::cout << "Modvar test: OK!\n";
+        std::cout << "ModelVar test: OK!\n";
     else
-        SIMUG_ERR("Modvar test: FAILED!\n");
-    
-    if (physvar_test())
-        std::cout << "Physvar test: OK!\n";
-    else
-        SIMUG_ERR("Physvar test: FAILED!\n");
+        SIMUG_ERR("ModelVar test: FAILED!\n");
 
-    if (confvar_test())
-        std::cout << "Confvar test: OK!\n";
-    else
-        SIMUG_ERR("Confvar test: FAILED!\n");
-
-*/
     return 0;
 
 #if defined (USE_MPI)

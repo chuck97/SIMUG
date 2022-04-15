@@ -3,8 +3,12 @@ cmake_minimum_required (VERSION 3.17.0)
 project(SIMUG_v1)
 
 # C/C++ compilers
-#set(CMAKE_CXX_COMPILER mpiicpc)
-#set(CMAKE_C_COMPILER mpiicc)
+enable_language (CXX C)
+#set(CMAKE_CXX_COMPILER icpc)
+#set(CMAKE_C_COMPILER icc)
+
+# default build type is debug
+set(CMAKE_BUILD_TYPE Debug)
 
 # set C++ standart
 if(NOT "${CMAKE_CXX_STANDARD}")

@@ -28,7 +28,7 @@ namespace SIMUG::mesh
     }; 
 
     // mesh variable notation -> mesh variable name
-    static std::map<meshVar, std::string> meshVarName =
+    static const std::map<meshVar, std::string> meshVarName =
     {
         {mi,  "ice mass"               },
         {hi,  "ice thickness"          },
@@ -44,7 +44,7 @@ namespace SIMUG::mesh
     };
 
     // mesh variable name -> mesh variable name
-    static std::map<std::string, meshVar> meshVarNotation =
+    static const std::map<std::string, meshVar> meshVarNotation =
     {
         { "ice mass"               , mi  },
         { "ice thickness"          , hi  },
@@ -60,7 +60,7 @@ namespace SIMUG::mesh
     };
 
     // variable dimension notation -> variable dimension name
-    static std::map<meshDim, std::string> meshDimName =
+    static const std::map<meshDim, std::string> meshDimName =
     {
         {scalar,  "scalar" },
         {vector,  "vector" },
@@ -68,7 +68,7 @@ namespace SIMUG::mesh
     };
 
     // variable dimension name -> variable dimension notation
-    static std::map<std::string, meshDim> meshDimNotation =
+    static const std::map<std::string, meshDim> meshDimNotation =
     {
         {"scalar", scalar },
         {"vector", vector },
