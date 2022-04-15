@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "filesystem": "cpp",
+        "iosfwd": "cpp"
+    },
+    "git.ignoreLimitWarning": true
+}

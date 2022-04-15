@@ -1,0 +1,9 @@
+#pragma once
+#include "advvar.hpp"
+#include "confvar.hpp"
+#include "coordvar.hpp"
+#include "dynvar.hpp"
+#include "meshvar.hpp"
+#include "modvar.hpp"
+#include "physvar.hpp"
+#include "forcvar.hpp"

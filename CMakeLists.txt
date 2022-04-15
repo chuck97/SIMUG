@@ -1,0 +1,32 @@
+cmake_minimum_required (VERSION 3.17.0)
+
+project(SIMUG_v1)
+
+# C/C++ compilers
+#set(CMAKE_CXX_COMPILER mpiicpc)
+#set(CMAKE_C_COMPILER mpiicc)
+
+# set C++ standart
+if(NOT "${CMAKE_CXX_STANDARD}")
+  set(CMAKE_CXX_STANDARD 20)
+endif()
+
+# options
+option(USE_MPI "Compile with MPI support" OFF)
+option(USE_PARTITIONER "Compile with partitioner" OFF)
+option(USE_SOLVER "Compile with solver" OFF)
+option(USE_FP64 "Use 64-bit floating-point types (usually on)" ON)
+option(COMPILE_TESTS "Compile tests" ON)
+
+# Add subdirectories
+add_subdirectory(variables)
+#add_subdirectory(tools)
+#add_subdirectory(configuration)
+#add_subdirectory(mesh)
+
+if(COMPILE_TESTS)
+    enable_testing()
+    add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
+    add_subdirectory(tests)
+endif(COMPILE_TESTS)
+
