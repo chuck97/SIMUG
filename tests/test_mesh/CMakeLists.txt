@@ -12,6 +12,7 @@ add_definitions(${INMOST_DEFINITIONS})
 add_executable(${PROJECT_NAME} 
     src/main.cpp 
     src/test_data.cpp
+    src/test_mesh_load.cpp
     )
 
 # link with internal libraries
@@ -19,6 +20,7 @@ target_link_libraries(${PROJECT_NAME}
     sub::variables
 #    sub::configuration
     sub::mesh
+    sub::tools
 )
 
 # link with external libraries

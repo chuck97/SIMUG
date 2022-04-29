@@ -12,6 +12,7 @@ add_definitions(${INMOST_DEFINITIONS})
 # Make library from sources
 add_library(mesh STATIC 
   src/data.cpp
+  src/mesh.cpp
   )
 
 # link with external libraries
@@ -20,6 +21,7 @@ target_link_libraries(mesh PUBLIC ${INMOST_LIBRARIES})
 # link with internal libraries
 target_link_libraries(mesh PRIVATE 
   sub::variables
+  sub::tools
 )
 
 # make internal alias

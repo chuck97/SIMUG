@@ -24,7 +24,7 @@ void GridData::GridCreateData(const meshVar& pNot, const meshDim& pDim,
         case tensor:
             tag = ice_mesh->CreateTag(meshVarName.at(pNot), InmostDataType, GridElem, GridSparse, 4);
     }
-    ProgData_[pNot] = tag;
+    prog_data[pNot] = tag;
 };
 
 // Create temporal data on mesh (scalar, vector or tensor)
@@ -47,7 +47,7 @@ void GridData::GridCreateData(const std::string& tVar, const meshDim& tDim,
         case tensor:
             tag = ice_mesh->CreateTag(tVar, InmostDataType, GridElem, GridSparse, 4);
     }
-    TempData_[tVar] = tag;
+    temp_data[tVar] = tag;
 };
 
 void GridData::GridCreateData(const std::string& tVar, const int& vSize,
@@ -56,5 +56,5 @@ void GridData::GridCreateData(const std::string& tVar, const int& vSize,
                               const unsigned char& GridSparse)
 {
     INMOST::Tag tag = ice_mesh->CreateTag(tVar, InmostDataType, GridElem, GridSparse, vSize);
-    TempData_[tVar] = tag;
+    temp_data[tVar] = tag;
 };

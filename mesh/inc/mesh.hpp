@@ -3,10 +3,20 @@
 #include <iostream>
 #include <fstream>
 #include <map>
+#include <memory>
+#include <filesystem>
 #include "inmost.h"
 
 #include "defines.hpp"
 #include "data.hpp"
+#include "timer.hpp"
+#include "logger.hpp"
+#include "mesh_info.hpp"
+
+#ifdef USE_MPI
+#include "mpi.h"
+#endif
+
 //#include "modvar.hpp"
 //#include "coordvar.hpp"
 //#include "basis.hpp"
@@ -15,99 +25,100 @@
 
 namespace SIMUG::mesh
 {
+    // id interval for set of elements on processor   
     struct IdInterval
     {
         int id_min;
         int id_max;
     };
 
-
+    // general mesh information on processor
     struct MeshInfo
     {
+        surfType surface_type;
+        gridType grid_type;
+
         int num_nodes;
+        int num_edges;
+        int num_trians;
+
+        int num_bnd_nodes;
         int num_bnd_edges;
-        int num_elems;
-
-        int num_nodes_bnd;
-
-        int num_nodes_not_bnd;
+        int num_bnd_trians;
 
         IdInterval id_interval_nodes;
         IdInterval id_interval_edges;
-        IdInterval id_interval_elems;
+        IdInterval id_interval_trians;
 
         IdInterval id_interval_nodes_no_bnd;
+        IdInterval id_interval_edges_no_bnd;
+        IdInterval id_interval_trians_no_bnd;
     };
 
-    template<typename RT>
-    struct MeshData
-    {
-        std::map<var, INMOST::Tag> data;
-        int id;
-    };
-
-    template<typename RT>
-    struct NodeData : public MeshData<RT>
-    {
-        std::map<NodeCoordsNotation, INMOST::Tag> coords;
-        int id_no_bnd;
-    };
-
-    template<typename RT>
-    struct EdgeData : public MeshData<RT>
-    {
-        RT size;
-    };
-
-    template<typename RT>
-    struct ElemData : public MeshData<RT>
-    {
-        RT size;
-        RT area;
-    };
-
-    template<typename RT>
     class IceMesh
     {
+        typedef std::map<int, std::unique_ptr<GridData>> LayersDataMap;
+
     public:
-        IceMesh(const MeshConfig& mesh_config_,
-                const ModelConfig& model_config_,
-                std::ostream& os_);  
-        ~IceMesh();                                                            
-        INMOST::Mesh* GetMesh();
-        NodeData& GetNodeData();
-        EdgeData& GetEdgeData();
-        ElemData& GetElemData();
-        MeshInfo& GetMeshInfo();
 
-        ElemBasisData& GetBasisData();
+        // construct manually with number of ice layers
+        IceMesh(const std::string& path_to_file_,
+                const surfType& surf_type_,
+                const gridType& grid_type_,
+                const int& n_ice_layers_);
 
-        void SavePVTU(const std::string& filename) const;    
+        // construct manually with 1 ice layer
+        IceMesh(const std::string& path_to_file_,
+                const surfType& surf_type_,
+                const gridType& grid_type_);
+
+        // construct with mesh config class and number of ice layers (to do)
+        //IceMesh(const MeshConfig& mesh_config_);
+
+        // Get INMOST::Mesh pointer
+        inline INMOST::Mesh* GetMesh()
+        {return ice_mesh.get();};
+
+        // Get map <layer number -> pointer to GridData> (could be (bnd)node, (bnd)edge, (bnd)trian)
+        inline LayersDataMap& GetData(const gridElemType& gdtype)
+        {return grid_data[gdtype];};
+
+        // const version of GetData()
+        inline const LayersDataMap& GetData(const gridElemType& gdtype) const
+        {return grid_data.at(gdtype);};
+
+        // Get mesh information (number of elements and local processor ids) 
+        inline MeshInfo& GetInfo()
+        {return mesh_info;}; 
+
+        // const version of GetInfo()
+        inline const MeshInfo& GetInfo() const
+        {return mesh_info;};
+
+        // get number of ice layers (always const)
+        inline int GetNumLayers() const
+        {return num_ice_layers;};
+    
+        // save mesh with data to a file
+        void SaveVTU(const std::string& filename) const;
+
+        // Destructor that frees up the grid data
+        //~IceMesh();   
 
     private:
 
         void Partition();
+        void SetBoundaryElements(bool display);
         void AssignVariables();
         void AssignCoords();
-        void SetBoundaryNodes(bool display);
         void AssignIntervals();
         void ComputeMeshInfo();
         void AssembleBasisData(bool display);
 
-
-        INMOST::Mesh* ice_mesh;
-        
+    private:
+        std::shared_ptr<INMOST::Mesh> ice_mesh;
+        std::map<gridElemType, LayersDataMap> grid_data;
         MeshInfo mesh_info;
-        
-        MeshConfig mesh_config;
-        ModelConfig model_config;
-        
-        NodeData<RT> node_data;
-        EdgeData<RT> edge_data;
-        ElemData<RT> elem_data;
-
-        ElemBasisData<RT> basis_data;
-
-        std::ostream os;
+        int num_ice_layers;
     };
 }

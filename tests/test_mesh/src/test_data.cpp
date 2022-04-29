@@ -80,38 +80,38 @@ bool test_data()
     EdgeData edge_data(ice_mesh);
     TriangleData triangle_data(ice_mesh);
 
-    node_data.CreateData(meshVar::mi, meshDim::scalar, INMOST::DATA_REAL);
-    node_data.CreateData("test variable", meshDim::vector, INMOST::DATA_INTEGER);
-    node_data.CreateData("test variable2", 5, INMOST::DATA_INTEGER);
-    node_data.CreateData("test variable3", 10, INMOST::DATA_INTEGER);
-    node_data.CreateData("test variable4", 15, INMOST::DATA_INTEGER);
-    node_data.CreateData("test variable5", 15, INMOST::DATA_INTEGER);
-    ice_mesh->DeleteTag(node_data.GetData("test variable"), INMOST::NODE);
-    node_data.DeleteData("test variable3");
-    node_data.DeleteData((std::vector<string>){"test variable4", "test variable5"});
-    node_data.DeleteData((std::vector<meshVar>){meshVar::mi});
+    node_data.Create(meshVar::mi, meshDim::scalar, INMOST::DATA_REAL);
+    node_data.Create("test variable", meshDim::vector, INMOST::DATA_INTEGER);
+    node_data.Create("test variable2", 5, INMOST::DATA_INTEGER);
+    node_data.Create("test variable3", 10, INMOST::DATA_INTEGER);
+    node_data.Create("test variable4", 15, INMOST::DATA_INTEGER);
+    node_data.Create("test variable5", 15, INMOST::DATA_INTEGER);
+    ice_mesh->DeleteTag(node_data.Get("test variable"), INMOST::NODE);
+    node_data.Delete("test variable3");
+    node_data.Delete((std::vector<string>){"test variable4", "test variable5"});
+    node_data.Delete((std::vector<meshVar>){meshVar::mi});
 
-    edge_data.CreateData(meshVar::mi, meshDim::scalar, INMOST::DATA_REAL);
-    edge_data.CreateData("test variable", meshDim::vector, INMOST::DATA_INTEGER);
-    edge_data.CreateData("test variable2", 5, INMOST::DATA_INTEGER);
-    edge_data.CreateData("test variable3", 10, INMOST::DATA_INTEGER);
-    edge_data.CreateData("test variable4", 15, INMOST::DATA_INTEGER);
-    edge_data.CreateData("test variable5", 15, INMOST::DATA_INTEGER);
-    ice_mesh->DeleteTag(edge_data.GetData("test variable"), INMOST::NODE);
-    edge_data.DeleteData("test variable3");
-    edge_data.DeleteData((std::vector<string>){"test variable4", "test variable5"});
-    edge_data.DeleteData((std::vector<meshVar>){meshVar::mi});
+    edge_data.Create(meshVar::mi, meshDim::scalar, INMOST::DATA_REAL);
+    edge_data.Create("test variable", meshDim::vector, INMOST::DATA_INTEGER);
+    edge_data.Create("test variable2", 5, INMOST::DATA_INTEGER);
+    edge_data.Create("test variable3", 10, INMOST::DATA_INTEGER);
+    edge_data.Create("test variable4", 15, INMOST::DATA_INTEGER);
+    edge_data.Create("test variable5", 15, INMOST::DATA_INTEGER);
+    ice_mesh->DeleteTag(edge_data.Get("test variable"), INMOST::NODE);
+    edge_data.Delete("test variable3");
+    edge_data.Delete((std::vector<string>){"test variable4", "test variable5"});
+    edge_data.Delete((std::vector<meshVar>){meshVar::mi});
 
-    triangle_data.CreateData(meshVar::mi, meshDim::scalar, INMOST::DATA_REAL);
-    triangle_data.CreateData("test variable", meshDim::vector, INMOST::DATA_INTEGER);
-    triangle_data.CreateData("test variable2", 5, INMOST::DATA_INTEGER);
-    triangle_data.CreateData("test variable3", 10, INMOST::DATA_INTEGER);
-    triangle_data.CreateData("test variable4", 15, INMOST::DATA_INTEGER);
-    triangle_data.CreateData("test variable5", 15, INMOST::DATA_INTEGER);
-    ice_mesh->DeleteTag(triangle_data.GetData("test variable"), INMOST::NODE);
-    triangle_data.DeleteData("test variable3");
-    triangle_data.DeleteData((std::vector<string>){"test variable4", "test variable5"});
-    triangle_data.DeleteData((std::vector<meshVar>){meshVar::mi});
+    triangle_data.Create(meshVar::mi, meshDim::scalar, INMOST::DATA_REAL);
+    triangle_data.Create("test variable", meshDim::vector, INMOST::DATA_INTEGER);
+    triangle_data.Create("test variable2", 5, INMOST::DATA_INTEGER);
+    triangle_data.Create("test variable3", 10, INMOST::DATA_INTEGER);
+    triangle_data.Create("test variable4", 15, INMOST::DATA_INTEGER);
+    triangle_data.Create("test variable5", 15, INMOST::DATA_INTEGER);
+    ice_mesh->DeleteTag(triangle_data.Get("test variable"), INMOST::NODE);
+    triangle_data.Delete("test variable3");
+    triangle_data.Delete((std::vector<string>){"test variable4", "test variable5"});
+    triangle_data.Delete((std::vector<meshVar>){meshVar::mi});
 
     // to output faces
     ice_mesh->SetFileOption("VTK_GRID_DIMS", "2");

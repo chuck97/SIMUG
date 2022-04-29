@@ -16,6 +16,14 @@ int main()
     else
         SIMUG_ERR("MeshDataVar test: FAILED!\n");
 
+    if (test_mesh_load())
+    {
+        if (rank == 0)
+            std::cout << "Mesh loading test: OK!\n";
+    }
+    else
+        SIMUG_ERR("Mesh loading test: FAILED!\n");
+
 #ifdef USE_MPI
     MPI_Finalize();
 #endif
