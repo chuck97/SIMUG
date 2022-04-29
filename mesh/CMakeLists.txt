@@ -1,36 +1,31 @@
 # Set the project name
 project(mesh)
 
-# libraries path
-set(INMOST_SRC "/home/users/spetrov/INMOST_BUILD_PVTU/INMOST")
-set(INMOST_BUILD "/home/users/spetrov/INMOST_BUILD_PVTU/INMOST-intel-build")
-set(PETSC_DIR "/home/users/spetrov/INMOST_BUILD_PVTU/petsc-3.5.2")
-set(PETSC_ARCH "linux-gnu-debug")
+# find inmost package
+find_package(inmost 0.3.0 REQUIRED)
 
-# include libraries headers
-include_directories(${INMOST_SRC}/Source/Headers)
-include_directories(${INMOST_BUILD})
-include_directories(${PETSC_DIR}/include)
-include_directories(${PETSC_DIR}/${PETSC_ARCH}/include)
+# include inmost variables
+link_directories(${INMOST_LIBRARY_DIRS})
+include_directories(${INMOST_INCLUDE_DIRS})
+add_definitions(${INMOST_DEFINITIONS})
 
-# Add a library with the above sources
+# Make library from sources
 add_library(mesh STATIC 
-  src/basis.cpp  
-  src/mesh.cpp)
+  src/data.cpp
+  )
 
-# link with variables and tools libraries
+# link with external libraries
+target_link_libraries(mesh PUBLIC ${INMOST_LIBRARIES})
+
+# link with internal libraries
 target_link_libraries(mesh PRIVATE 
-  sub::variables)
+  sub::variables
+)
 
-  target_link_libraries(mesh PRIVATE ${INMOST_BUILD}/libinmost.a)
-  target_link_libraries(mesh PRIVATE ${PETSC_DIR}/${PETSC_ARCH}/lib/libpetsc.a)
-  target_link_libraries(mesh PRIVATE ${PETSC_DIR}/${PETSC_ARCH}/lib/libparmetis.a)
-  target_link_libraries(mesh PRIVATE ${PETSC_DIR}/${PETSC_ARCH}/lib/libmetis.a)
-  target_link_libraries(mesh PRIVATE ${PETSC_DIR}/${PETSC_ARCH}/lib/libf2clapack.a)
-  target_link_libraries(mesh PRIVATE ${PETSC_DIR}/${PETSC_ARCH}/lib/libf2cblas.a)
-
+# make internal alias
 add_library(sub::mesh ALIAS mesh)
 
-target_include_directories( mesh
+# include headers
+target_include_directories(mesh
     PUBLIC ${PROJECT_SOURCE_DIR}/inc
 )

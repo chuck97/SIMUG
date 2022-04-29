@@ -6,11 +6,12 @@
 #include "inmost.h"
 
 #include "defines.hpp"
-#include "modvar.hpp"
-#include "coordvar.hpp"
-#include "basis.hpp"
-#include "model_config.hpp"
-#include "mesh_config.hpp"
+#include "data.hpp"
+//#include "modvar.hpp"
+//#include "coordvar.hpp"
+//#include "basis.hpp"
+//#include "model_config.hpp"
+//#include "mesh_config.hpp"
 
 namespace SIMUG::mesh
 {

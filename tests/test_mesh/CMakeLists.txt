@@ -1,13 +1,32 @@
 project(test_mesh)
 
-# Create the executable
-add_executable(${PROJECT_NAME} main.cpp)
+# find inmost package
+find_package(inmost 0.3.0 REQUIRED)
 
-# Link the static library from subprojects
+# include inmost variables
+link_directories(${INMOST_LIBRARY_DIRS})
+include_directories(${INMOST_INCLUDE_DIRS})
+add_definitions(${INMOST_DEFINITIONS})
+
+# create the executable
+add_executable(${PROJECT_NAME} 
+    src/main.cpp 
+    src/test_data.cpp
+    )
+
+# link with internal libraries
 target_link_libraries(${PROJECT_NAME}
     sub::variables
-    sub::configuration
+#    sub::configuration
     sub::mesh
+)
+
+# link with external libraries
+target_link_libraries(${PROJECT_NAME} ${INMOST_LIBRARIES})
+
+# include headers
+target_include_directories(${PROJECT_NAME}
+    PRIVATE ${PROJECT_SOURCE_DIR}/inc
 )
 
 # to run tests

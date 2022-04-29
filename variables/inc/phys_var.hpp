@@ -6,7 +6,7 @@
 namespace SIMUG::phys
 {
     //  variables 
-    enum var
+    enum physVar
     {
         g,      // gravity acceleration
         rhow,   // water density

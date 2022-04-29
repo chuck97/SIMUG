@@ -22,15 +22,42 @@ option(USE_SOLVER "Compile with solver" OFF)
 option(USE_FP64 "Use 64-bit floating-point types (usually on)" ON)
 option(COMPILE_TESTS "Compile tests" ON)
 
+if (USE_MPI)
+  MESSAGE(STATUS "MPI enabled")
+  add_definitions(-DUSE_MPI)
+endif()
+
+if (USE_PARTITIONER)
+  MESSAGE(STATUS "Partitioner ENABLED")
+  add_definitions(-DUSE_PARTITIONER)
+endif()
+
+if (USE_SOLVER)
+  MESSAGE(STATUS "Linear system solver ENABLED")
+  add_definitions(-DUSE_SOLVER)
+endif()
+
+if (USE_FP64)
+  MESSAGE(STATUS "Real type = double")
+  add_definitions(-DUSE_FP64)
+endif()
+
+if (COMPILE_TESTS)
+  MESSAGE(STATUS "Test compiling enabled")
+endif()
+
+
+
 # Add subdirectories
 add_subdirectory(variables)
-#add_subdirectory(tools)
+add_subdirectory(tools)
 #add_subdirectory(configuration)
-#add_subdirectory(mesh)
+add_subdirectory(mesh)
+
 
 if(COMPILE_TESTS)
-    enable_testing()
-    add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
-    add_subdirectory(tests)
+  enable_testing()
+  add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND}) 
+  add_subdirectory(tests)
 endif(COMPILE_TESTS)
 

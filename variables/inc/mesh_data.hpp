@@ -25,7 +25,7 @@ namespace SIMUG::mesh
         scalar,
         vector,
         tensor
-    }; 
+    };
 
     // mesh variable notation -> mesh variable name
     static const std::map<meshVar, std::string> meshVarName =

@@ -12,31 +12,29 @@ namespace SIMUG
 {
     enum varType
     {
+        varScal,
+        varVec,
+        varTens,
         varNoType, 
-        varPhysConst,   
-        varModel,  
-        varAdvection,    
-        varDynamics,    
-        varMeshData,
-        varMeshInfo,   
-        varForcing    
+        varValue,
+        varNoUnit   
     };
 
     // variable base class
-    class Var
+    class VarBase
     {
     protected:
         std::string varName_;
         varType varType_;
 
     public:
-        inline Var():
+        inline VarBase():
             varName_(""),
             varType_(varNoType)
         {};
 
-        inline Var(const std::string& _varName_,
-                   const varType&     _varType_):
+        inline VarBase(const std::string& _varName_,
+                       const varType&     _varType_):
             varName_(_varName_),
             varType_(_varType_)
         {};
@@ -51,20 +49,20 @@ namespace SIMUG
     };
 
     // mesh data variable class
-    class MeshDataVar : public Var
+    template <typename T>
+    class VarNoUnit : public VarBase
     {
-    private:
-        std::string varUnit_;
-        mesh::meshDim varDim_;
+    protected:
+        std::string varValue_;
 
     public:
-        inline MeshDataVar():
-            Var("", varType::varMeshData)
+        inline VarNoUnit():
+            VarBase("", varType::varValueNoUnit)
         {};
 
-        inline MeshDataVar(const std::string&    _varName_, 
-                           const std::string&    _varUnit_,
-                           const mesh::meshDim&  _varDim_ ):
+        inline VarNoUnit(const std::string&    _varName_, 
+                         const std::string&    _varUnit_,
+                         const mesh::meshDim&  _varDim_ ):
             Var(_varName_, varType::varMeshData),
             varUnit_(_varUnit_),
             varDim_(_varDim_)
@@ -140,17 +138,17 @@ namespace SIMUG
 
     // model variable class
     template<typename T>
-    class ModelVar: public Var
+    class ValueVar: public Var
     {
     private:
         std::string varUnit_;
         T           varValue_;
     public:
-        inline ModelVar():
+        inline ValueVar():
             Var("", varType::varModel)
         {};
 
-        inline ModelVar(const std::string& _varName_,
+        inline ValueVar(const std::string& _varName_,
                         const std::string& _varUnit_,
                         const T&           _varValue_):
             Var(_varName_, varType::varModel),
@@ -174,13 +172,13 @@ namespace SIMUG
         {return varValue_;};
     };
 
-    template class ModelVar<int>;
-    template class ModelVar<float>;
-    template class ModelVar<double>;
-    template class ModelVar<std::string>;
+    template class ValueVar<int>;
+    template class ValueVar<float>;
+    template class ValueVar<double>;
+    template class ValueVar<std::string>;
 
     template <typename T>
-    std::ostream& operator<< (std::ostream& out, const ModelVar<T>& var)
+    std::ostream& operator<< (std::ostream& out, const ValueVar<T>& var)
     {
         out << "Model variable \'" << var.GetName()
         << "\': value = \'" << var.GetValue()
@@ -188,5 +186,20 @@ namespace SIMUG
         return out;
     }
 
+    // physics consts class
+    template <typename T>
+    class PhysConstVar: public Var
+    {
+    private:
+        std::string varUnit_;
+        T           varValue_;
+    public:
+        inline PhysConstVar():
+            Var("", varType::varPhysConst)
+        {};
+
+        inline PhysConstVar(const std::string& _varName_,
+                            const std::string& _varName_)
+    }
     
 }
