@@ -105,7 +105,14 @@ void IceMesh::Partition()
 
 void IceMesh::SelectBndEdges()
 {
-    bnd_edges = ice_mesh->GatherBoundaryFaces();
+    ElementArray<Face> all_bnd_edges = ice_mesh->GatherBoundaryFaces();
+    for (size_t i = 0; i < all_bnd_edges.size(); ++i)
+    {
+        if (all_bnd_edges[i].GetStatus() != Element::Ghost)
+        {
+            bnd_edges.push_back(all_bnd_edges[i]);
+        }
+    }
     BARRIER
 }
 
