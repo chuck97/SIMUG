@@ -12,6 +12,7 @@
 #include "timer.hpp"
 #include "logger.hpp"
 #include "mesh_info.hpp"
+#include "stringtrim.hpp"
 
 #ifdef USE_MPI
 #include "mpi.h"
@@ -76,31 +77,34 @@ namespace SIMUG::mesh
         //IceMesh(const MeshConfig& mesh_config_);
 
         // Get INMOST::Mesh pointer
-        inline INMOST::Mesh* GetMesh()
-        {return ice_mesh.get();};
+        inline INMOST::Mesh* GetMesh() {return ice_mesh.get();};
 
         // Get map <layer number -> pointer to GridData> (could be (bnd)node, (bnd)edge, (bnd)trian)
-        inline LayersDataMap& GetData(const gridElemType& gdtype)
-        {return grid_data[gdtype];};
-
-        // const version of GetData()
-        inline const LayersDataMap& GetData(const gridElemType& gdtype) const
-        {return grid_data.at(gdtype);};
+        inline LayersDataMap& GetData(const gridElemType& gdtype) {return grid_data[gdtype];};
+        inline const LayersDataMap& GetData(const gridElemType& gdtype) const {return grid_data.at(gdtype);};
 
         // Get mesh information (number of elements and local processor ids) 
-        inline MeshInfo& GetInfo()
-        {return mesh_info;}; 
-
-        // const version of GetInfo()
-        inline const MeshInfo& GetInfo() const
-        {return mesh_info;};
-
-        // get number of ice layers (always const)
+        inline MeshInfo& GetInfo() {return mesh_info;}; 
+        inline const MeshInfo& GetInfo() const {return mesh_info;};
+        
+        //Get number of ice layers 
         inline int GetNumLayers() const
         {return num_ice_layers;};
     
         // save mesh with data to a file
         void SaveVTU(const std::string& filename) const;
+
+        // get vector of bnd nodes on current processor
+        inline INMOST::ElementArray<INMOST::Node>& GetBndNodes() {return bnd_nodes;};
+        const INMOST::ElementArray<INMOST::Node>& GetBndNodes() const {return bnd_nodes;};
+
+        // get array of bnd edges on current processor
+        INMOST::ElementArray<INMOST::Face>& GetBndEdges() {return bnd_edges;};
+        const INMOST::ElementArray<INMOST::Face>& GetBndEdges() const {return bnd_edges;};
+
+        // get array of bnd triangles on current processor
+        INMOST::ElementArray<INMOST::Cell>& GetBndTrians() {return bnd_trians;};
+        const INMOST::ElementArray<INMOST::Cell>& GetBndTrians() const {return bnd_trians;};
 
         // Destructor that frees up the grid data
         //~IceMesh();   
@@ -108,16 +112,21 @@ namespace SIMUG::mesh
     private:
 
         void Partition();
-        void SetBoundaryElements(bool display);
+        void ComputeMeshInfo();
+        void SelectBndNodes();
+        void SelectBndEdges();
+        void SelectBndTrians();
         void AssignVariables();
         void AssignCoords();
         void AssignIntervals();
-        void ComputeMeshInfo();
-        void AssembleBasisData(bool display);
+        void AssembleBasisData();
 
     private:
         std::shared_ptr<INMOST::Mesh> ice_mesh;
         std::map<gridElemType, LayersDataMap> grid_data;
+        INMOST::ElementArray<INMOST::Node> bnd_nodes;
+        INMOST::ElementArray<INMOST::Face> bnd_edges;
+        INMOST::ElementArray<INMOST::Cell> bnd_trians;
         MeshInfo mesh_info;
         int num_ice_layers;
     };
