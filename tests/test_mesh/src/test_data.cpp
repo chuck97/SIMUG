@@ -78,7 +78,7 @@ bool test_data()
 
     NodeData node_data(ice_mesh);
     EdgeData edge_data(ice_mesh);
-    TriangleData triangle_data(ice_mesh);
+    TrianData triangle_data(ice_mesh);
 
     node_data.Create(meshVar::mi, meshDim::scalar, INMOST::DATA_REAL);
     node_data.Create("test variable", meshDim::vector, INMOST::DATA_INTEGER);

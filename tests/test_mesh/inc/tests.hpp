@@ -17,3 +17,4 @@
 bool test_data();
 bool test_mesh_load();
 bool test_bnd_selection();
+bool test_id();

@@ -169,10 +169,10 @@ namespace SIMUG::mesh
     };
 
     // Triangle data inharited class
-    class TriangleData: public GridData
+    class TrianData: public GridData
     {
     public:
-        inline TriangleData(INMOST::Mesh* ice_mesh_):
+        inline TrianData(INMOST::Mesh* ice_mesh_):
             GridData(ice_mesh_)
         {};
 
@@ -239,11 +239,11 @@ namespace SIMUG::mesh
     };
 
     // Boundary edge data inharited class
-    class BndTriangleData: public TriangleData
+    class BndTrianData: public TrianData
     {
     public:
-        inline BndTriangleData(INMOST::Mesh* ice_mesh_):
-            TriangleData(ice_mesh_)
+        inline BndTrianData(INMOST::Mesh* ice_mesh_):
+            TrianData(ice_mesh_)
         {};
 
         // Create data on all boundary triangles

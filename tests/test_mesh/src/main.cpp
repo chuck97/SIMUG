@@ -32,6 +32,14 @@ int main()
     else
         SIMUG_ERR("Mesh bnd elems selection test: FAILED!\n");
 
+    if (test_id())
+    {
+        if (rank == 0)
+            std::cout << "Mesh ID test: OK!\n";
+    }
+    else
+        SIMUG_ERR("Mesh ID test: FAILED!\n");
+
 #ifdef USE_MPI
     MPI_Finalize();
 #endif
