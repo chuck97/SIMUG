@@ -14,6 +14,7 @@ add_executable(${PROJECT_NAME}
     src/test_data.cpp
     src/test_mesh_load.cpp
     src/test_bnd_selection.cpp
+    src/test_id.cpp
     )
 
 # link with internal libraries

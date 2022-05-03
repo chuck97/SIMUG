@@ -58,7 +58,7 @@ namespace SIMUG::mesh
 
     class IceMesh
     {
-        typedef std::map<int, std::unique_ptr<GridData>> LayersDataMap;
+        typedef std::map<int, std::shared_ptr<GridData>> LayersDataMap;
 
     public:
 
@@ -84,8 +84,12 @@ namespace SIMUG::mesh
         inline const LayersDataMap& GetData(const gridElemType& gdtype) const {return grid_data.at(gdtype);};
 
         // Get mesh information (number of elements and local processor ids) 
-        inline MeshInfo& GetInfo() {return mesh_info;}; 
-        inline const MeshInfo& GetInfo() const {return mesh_info;};
+        inline MeshInfo& GetMeshInfo() {return mesh_info;}; 
+        inline const MeshInfo& GetMeshInfo() const {return mesh_info;};
+
+        // Get mesh information (number of elements and local processor ids) 
+        inline std::map<gridElemType, std::shared_ptr<GridData>>& GetGridInfo() {return grid_info;}; 
+        inline const std::map<gridElemType, std::shared_ptr<GridData>>& GetGridInfo() const {return grid_info;};
         
         //Get number of ice layers 
         inline int GetNumLayers() const
@@ -118,12 +122,15 @@ namespace SIMUG::mesh
         void SelectBndTrians();
         void AssignVariables();
         void AssignCoords();
-        void AssignIntervals();
+        void AssignIds();
+        void AssignIdIntervals();
         void AssembleBasisData();
 
     private:
+
         std::shared_ptr<INMOST::Mesh> ice_mesh;
         std::map<gridElemType, LayersDataMap> grid_data;
+        std::map<gridElemType, std::shared_ptr<GridData>> grid_info;
         INMOST::ElementArray<INMOST::Node> bnd_nodes;
         INMOST::ElementArray<INMOST::Face> bnd_edges;
         INMOST::ElementArray<INMOST::Cell> bnd_trians;

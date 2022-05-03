@@ -11,6 +11,7 @@ bool test_bnd_selection()
                  gridType::Agrid);
 
     INMOST::Tag tag_bnd_nodes = imesh.GetMesh()->CreateTag("bnd_nodes", DATA_INTEGER, INMOST::NODE, INMOST::NODE, 1);
+    INMOST::Tag tag_bnd_adj_trians = imesh.GetMesh()->CreateTag("adj_tr_for_bnd_edges", DATA_INTEGER, INMOST::CELL, INMOST::CELL, 1);
     INMOST::Tag tag_bnd_trians = imesh.GetMesh()->CreateTag("bnd_trians", DATA_INTEGER, INMOST::CELL, INMOST::CELL, 1);
 
 
@@ -19,6 +20,12 @@ bool test_bnd_selection()
 
     for (auto btrianit = imesh.GetBndTrians().begin(); btrianit != imesh.GetBndTrians().end(); ++btrianit)
         btrianit->Integer(tag_bnd_trians) = 1.0;
+    
+    for (auto bedgit = imesh.GetBndEdges().begin(); bedgit != imesh.GetBndEdges().end(); ++bedgit)
+    { 
+        INMOST::ElementArray<INMOST::Cell> adj_tr =  bedgit->getCells();
+        adj_tr[0].Integer(tag_bnd_adj_trians) = 1.0;
+    }
 
 
     if (imesh.GetMesh()->GetProcessorsNumber() > 1)
