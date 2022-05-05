@@ -63,6 +63,21 @@ namespace SIMUG::mesh
         inline const INMOST::Tag& Get(const std::string& tName) const 
         {return temp_data.at(tName);};
 
+        // Mute data
+        inline void Mute(const meshVar& pNot)
+        {ice_mesh->SetFileOption("Tag:" + meshVarName.at(pNot), "nosave");};
+
+        inline void Mute(const std::string& tName)
+        {ice_mesh->SetFileOption("Tag:" + tName, "nosave");};
+
+        // Unmute data
+        inline void Unmute(const meshVar& pNot)
+        {ice_mesh->SetFileOption("Tag:" + meshVarName.at(pNot), "save");};
+        
+        inline void Unmute(const std::string& tName)
+        {ice_mesh->SetFileOption("Tag:" + tName, "save");};
+
+
         // Delete mesh data
         virtual void Delete(const meshVar& pNot) = 0;
         virtual void Delete(const std::string& tVar) = 0;

@@ -7,14 +7,19 @@
 #include "data.hpp"
 #include "mesh.hpp"
 
+#ifdef USE_MPI
+#include "mpi.h"
+#endif
+
 #include <memory>
 #include <vector>
 #include <string>
 #include <iostream>
 
-#define MESH_PATH "/home/users/spetrov/SIMUG/SIMUG_v1/MESHES/pmf/square8km.pmf"
+#define MESH_PATH "/home/users/spetrov/SIMUG/SIMUG_v0/MESHES/pmf/square8km.pmf"
 
 bool test_data();
 bool test_mesh_load();
 bool test_bnd_selection();
 bool test_id();
+bool test_mute();

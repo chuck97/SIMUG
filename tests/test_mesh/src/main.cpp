@@ -16,6 +16,8 @@ int main()
     else
         SIMUG_ERR("MeshDataVar test: FAILED!\n");
 
+    BARRIER 
+
     if (test_mesh_load())
     {
         if (rank == 0)
@@ -23,6 +25,8 @@ int main()
     }
     else
         SIMUG_ERR("Mesh loading test: FAILED!\n");
+
+    BARRIER
 
     if (test_bnd_selection())
     {
@@ -32,6 +36,8 @@ int main()
     else
         SIMUG_ERR("Mesh bnd elems selection test: FAILED!\n");
 
+    BARRIER
+
     if (test_id())
     {
         if (rank == 0)
@@ -39,6 +45,16 @@ int main()
     }
     else
         SIMUG_ERR("Mesh ID test: FAILED!\n");
+
+    BARRIER
+
+    if (test_mute())
+    {
+        if (rank == 0)
+            std::cout << "Mute tag test: OK!\n";
+    }
+    else
+        SIMUG_ERR("Mute tag test: FAILED!\n");
 
 #ifdef USE_MPI
     MPI_Finalize();
