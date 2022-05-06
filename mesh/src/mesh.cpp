@@ -3,6 +3,7 @@
 using namespace std;
 using namespace INMOST;
 using namespace SIMUG::mesh;
+using namespace SIMUG::coord;
 
 IceMesh::IceMesh(const std::string& path_to_file_,
                  const surfType& surf_type_,
@@ -73,7 +74,32 @@ IceMesh::IceMesh(const std::string& path_to_file_,
 #endif
 
     // find boundary elements, setup ids and id intervals
+    grid_info[gridElemType::Node] = make_shared<NodeInfo>();
+    grid_info[gridElemType::Edge] = make_shared<EdgeInfo>();
+    grid_info[gridElemType::Trian] = make_shared<TrianInfo>();
+
+    mesh_timer.Launch();
     ComputeMeshInfo();
+    mesh_timer.Stop();
+    duration = mesh_timer.GetMaxTime();
+    mesh_timer.Reset();
+
+    if (ice_mesh->GetProcessorRank()==0)
+        mesh_log.Log("Cumputing mesh information successfully! (" + to_string(duration) + " ms)\n");
+    BARRIER
+
+    // assign coords for grid elements
+    mesh_timer.Launch();
+    AssignCoords();
+    mesh_timer.Stop();
+    duration = mesh_timer.GetMaxTime();
+    mesh_timer.Reset();
+
+    if (ice_mesh->GetProcessorRank()==0)
+        mesh_log.Log("Assigning coordinates successfully! (" + to_string(duration) + " ms)\n");
+    BARRIER
+
+    //AssembleBasisData();
 }
 
 void IceMesh::Partition()
@@ -144,9 +170,10 @@ void IceMesh::AssignIds()
     // assign global ids for nodes, edges and trians
     ice_mesh->AssignGlobalID(CELL|EDGE|FACE|NODE);
 
+    // assign id and no_bnd id for nodes
+    grid_info[gridElemType::Node]->id = ice_mesh->CreateTag("id node", INMOST::DATA_INTEGER, INMOST::NODE, INMOST::NONE, 1);
+    grid_info[gridElemType::Node]->id_no_bnd = ice_mesh->CreateTag("id node no_bnd", INMOST::DATA_INTEGER, INMOST::NODE, INMOST::NONE, 1);
 
-    // assign no_bnd ids for nodes
-    grid_info[gridElemType::Node]->Create("node id no_bnd", 1, INMOST::DATA_INTEGER);
     int node_id = 0;
     for (int procn = 0; procn < ice_mesh->GetProcessorsNumber(); procn++)
     {
@@ -154,10 +181,13 @@ void IceMesh::AssignIds()
         {
             for(auto nodeit = ice_mesh->BeginNode(); nodeit != ice_mesh->EndNode(); ++nodeit)
             {
+                if (nodeit->GetStatus() != Element::Ghost)
+                    nodeit->Integer(grid_info[gridElemType::Node]->id) = nodeit->GlobalID();
+
                 if ((nodeit->GetStatus() != Element::Ghost) and
-                    (nodeit->Integer(grid_info[gridElemType::Node]->Get("is node bnd")) == 0))
+                    (nodeit->Integer(grid_info[gridElemType::Node]->is_bnd) == 0))
                 {
-                    nodeit->Integer(grid_info[gridElemType::Node]->Get("node id no_bnd")) = node_id;
+                    nodeit->Integer(grid_info[gridElemType::Node]->id_no_bnd) = node_id;
                     ++node_id;
                 }
             }
@@ -169,8 +199,10 @@ void IceMesh::AssignIds()
 #endif
     }
 
-    // assign no_bnd ids for edges
-    grid_info[gridElemType::Edge]->Create("edge id no_bnd", 1, INMOST::DATA_INTEGER);
+    // assign id and no_bnd id for edges
+    grid_info[gridElemType::Edge]->id = ice_mesh->CreateTag("id edge", INMOST::DATA_INTEGER, INMOST::FACE, INMOST::NONE, 1);
+    grid_info[gridElemType::Edge]->id_no_bnd = ice_mesh->CreateTag("id edge no_bnd", INMOST::DATA_INTEGER, INMOST::FACE, INMOST::NONE, 1);
+
     int edge_id = 0;
     for (int procn = 0; procn < ice_mesh->GetProcessorsNumber(); procn++)
     {
@@ -178,10 +210,13 @@ void IceMesh::AssignIds()
         {
             for(auto edgeit = ice_mesh->BeginFace(); edgeit != ice_mesh->EndFace(); ++edgeit)
             {
+                if (edgeit->GetStatus() != Element::Ghost)
+                    edgeit->Integer(grid_info[gridElemType::Edge]->id) = edgeit->GlobalID();
+
                 if ((edgeit->GetStatus() != Element::Ghost) and
-                    (edgeit->Integer(grid_info[gridElemType::Edge]->Get("is edge bnd")) == 0))
+                    (edgeit->Integer(grid_info[gridElemType::Edge]->is_bnd) == 0))
                 {
-                    edgeit->Integer(grid_info[gridElemType::Edge]->Get("edge id no_bnd")) = edge_id;
+                    edgeit->Integer(grid_info[gridElemType::Edge]->id_no_bnd) = edge_id;
                     ++edge_id;
                 }
             }
@@ -194,7 +229,9 @@ void IceMesh::AssignIds()
     }
 
     // assign no_bnd ids for trians
-    grid_info[gridElemType::Trian]->Create("trian id no_bnd", 1, INMOST::DATA_INTEGER);
+    grid_info[gridElemType::Trian]->id = ice_mesh->CreateTag("id trian", INMOST::DATA_INTEGER, INMOST::CELL, INMOST::NONE, 1);
+    grid_info[gridElemType::Trian]->id_no_bnd = ice_mesh->CreateTag("id trian no_bnd", INMOST::DATA_INTEGER, INMOST::CELL, INMOST::NONE, 1);
+
     int trian_id = 0;
     for (int procn = 0; procn < ice_mesh->GetProcessorsNumber(); procn++)
     {
@@ -202,10 +239,13 @@ void IceMesh::AssignIds()
         {
             for(auto trianit = ice_mesh->BeginCell(); trianit != ice_mesh->EndCell(); ++trianit)
             {
+                if (trianit->GetStatus() != Element::Ghost)
+                trianit->Integer(grid_info[gridElemType::Trian]->id) = trianit->GlobalID();
+
                 if ((trianit->GetStatus() != Element::Ghost) and
-                    (trianit->Integer(grid_info[gridElemType::Trian]->Get("is trian bnd")) == 0))
+                    (trianit->Integer(grid_info[gridElemType::Trian]->is_bnd) == 0))
                 {
-                    trianit->Integer(grid_info[gridElemType::Trian]->Get("trian id no_bnd")) = trian_id;
+                    trianit->Integer(grid_info[gridElemType::Trian]->id_no_bnd) = trian_id;
                     ++trian_id;
                 }
             }
@@ -217,6 +257,13 @@ void IceMesh::AssignIds()
 #endif
     }
     BARRIER
+
+#ifdef USE_MPI
+    ice_mesh->ExchangeGhost(1, NODE);
+#endif
+
+    BARRIER
+
 }
 
 void IceMesh::AssignIdIntervals()
@@ -231,16 +278,16 @@ void IceMesh::AssignIdIntervals()
     {
         if(nodeit->GetStatus() != Element::Ghost)
         {
-            int pid = nodeit->GlobalID();
+            int pid = nodeit->Integer(grid_info[gridElemType::Node]->id);
 
             if(pid < nodeidmin)
                 nodeidmin = pid;
             if((pid + 1) > nodeidmax)
                 nodeidmax = pid + 1;
 
-            if (nodeit->Integer(grid_info[gridElemType::Node]->Get("is node bnd")) == 0)
+            if (nodeit->Integer(grid_info[gridElemType::Node]->is_bnd) == 0)
             {
-                int nobnd_pid = nodeit->Integer(grid_info[gridElemType::Node]->Get("node id no_bnd"));
+                int nobnd_pid = nodeit->Integer(grid_info[gridElemType::Node]->id_no_bnd);
                 if(nobnd_pid < nobnd_nodeidmin)
                     nobnd_nodeidmin = nobnd_pid;
                 if((nobnd_pid + 1) > nobnd_nodeidmax)
@@ -264,15 +311,15 @@ void IceMesh::AssignIdIntervals()
     {
         if(edgeit->GetStatus() != Element::Ghost)
         {
-            int pid = edgeit->GlobalID();;
+            int pid = edgeit->Integer(grid_info[gridElemType::Edge]->id);
             if(pid < edgeidmin)
                 edgeidmin = pid;
             if((pid + 1) > edgeidmax)
                 edgeidmax = pid + 1;
             
-            if (edgeit->Integer(grid_info[gridElemType::Edge]->Get("is edge bnd")) == 0)
+            if (edgeit->Integer(grid_info[gridElemType::Edge]->is_bnd) == 0)
             {
-                int nobnd_pid = edgeit->Integer(grid_info[gridElemType::Edge]->Get("edge id no_bnd"));
+                int nobnd_pid = edgeit->Integer(grid_info[gridElemType::Edge]->id_no_bnd);
                 if(nobnd_pid < nobnd_edgeidmin)
                     nobnd_edgeidmin = nobnd_pid;
                 if((nobnd_pid + 1) > nobnd_edgeidmax)
@@ -296,7 +343,7 @@ void IceMesh::AssignIdIntervals()
     {
         if(trianit->GetStatus() != Element::Ghost)
         {
-            int pid = trianit->GlobalID();;
+            int pid = trianit->Integer(grid_info[gridElemType::Trian]->id);
             if(pid < trianidmin)
             {
                 trianidmin = pid;
@@ -306,9 +353,9 @@ void IceMesh::AssignIdIntervals()
                 trianidmax = pid + 1;
             } 
 
-            if (trianit->Integer(grid_info[gridElemType::Trian]->Get("is trian bnd")) == 0)
+            if (trianit->Integer(grid_info[gridElemType::Trian]->is_bnd) == 0)
             {
-                int nobnd_pid = trianit->Integer(grid_info[gridElemType::Trian]->Get("trian id no_bnd"));
+                int nobnd_pid = trianit->Integer(grid_info[gridElemType::Trian]->id_no_bnd);
                 if(nobnd_pid < nobnd_trianidmin)
                     nobnd_trianidmin = nobnd_pid;
                 if((nobnd_pid + 1) > nobnd_trianidmax)
@@ -360,20 +407,17 @@ void IceMesh::ComputeMeshInfo()
     BARRIER
 
     // make boundary identification tag for nodes, edges and triangles
-    grid_info[gridElemType::Node] = make_shared<NodeData>(ice_mesh.get());
-    grid_info[gridElemType::Node]->Create("is node bnd", 1, INMOST::DATA_INTEGER);
+    grid_info[gridElemType::Node]->is_bnd = ice_mesh.get()->CreateTag("is node bnd", INMOST::DATA_INTEGER, INMOST::NODE, INMOST::NONE, 1);
     for (size_t i = 0; i < bnd_nodes.size(); ++i)
-        bnd_nodes[i].Integer(grid_info[gridElemType::Node]->Get("is node bnd")) = 1;
+        bnd_nodes[i].Integer(grid_info[gridElemType::Node]->is_bnd) = 1;
 
-    grid_info[gridElemType::Edge] = make_shared<EdgeData>(ice_mesh.get());
-    grid_info[gridElemType::Edge]->Create("is edge bnd", 1, INMOST::DATA_INTEGER);
+    grid_info[gridElemType::Edge]->is_bnd = ice_mesh.get()->CreateTag("is edge bnd", INMOST::DATA_INTEGER, INMOST::FACE, INMOST::NONE, 1);
     for (size_t i = 0; i < bnd_edges.size(); ++i)
-        bnd_edges[i].Integer(grid_info[gridElemType::Edge]->Get("is edge bnd")) = 1;
+        bnd_edges[i].Integer(grid_info[gridElemType::Edge]->is_bnd) = 1;
 
-    grid_info[gridElemType::Trian] = make_shared<TrianData>(ice_mesh.get());
-    grid_info[gridElemType::Trian]->Create("is trian bnd", 1, INMOST::DATA_INTEGER);
+    grid_info[gridElemType::Trian]->is_bnd = ice_mesh.get()->CreateTag("is trian bnd", INMOST::DATA_INTEGER, INMOST::CELL, INMOST::NONE, 1);
     for (size_t i = 0; i < bnd_trians.size(); ++i)
-        bnd_trians[i].Integer(grid_info[gridElemType::Trian]->Get("is trian bnd")) = 1; 
+        bnd_trians[i].Integer(grid_info[gridElemType::Trian]->is_bnd) = 1; 
     BARRIER
 
     // assign ids 
@@ -395,6 +439,286 @@ void IceMesh::ComputeMeshInfo()
     if (ice_mesh->GetProcessorRank()==0)
         mesh_log.Log("Assigning ID intervals succeessfully! (" + to_string(duration) + " ms)\n");
     BARRIER
+
+#ifdef USE_MPI
+    ice_mesh->ExchangeGhost(1, NODE);
+#endif
+}
+
+void IceMesh::AssignCoords()
+{
+    // ## model coords ##
+
+    // nodes
+    INMOST::Tag node_coords_tag = ice_mesh->CreateTag("model coords node", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 3);
+    grid_info[gridElemType::Node]->coords[coordType::model] = node_coords_tag;
+
+    for(auto nodeit = ice_mesh->BeginNode(); nodeit != ice_mesh->EndNode(); ++nodeit)
+    {
+        nodeit->RealArray(node_coords_tag)[0] = nodeit->Coords()[0];
+        nodeit->RealArray(node_coords_tag)[1] = nodeit->Coords()[1];
+        nodeit->RealArray(node_coords_tag)[2] = (mesh_info.surface_type == surfType::sphere)?nodeit->Coords()[2]:0.0;
+    }
+
+    // edges
+    INMOST::Tag edge_coords_tag = ice_mesh->CreateTag("model coords edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 3);
+    grid_info[gridElemType::Edge]->coords[coordType::model] = edge_coords_tag;
+
+    for(auto edgeit = ice_mesh->BeginFace(); edgeit != ice_mesh->EndFace(); ++edgeit)
+    {
+        ElementArray<INMOST::Node> adj_nodes = edgeit->getNodes();
+        edgeit->RealArray(edge_coords_tag)[0] = 0.5*(adj_nodes[0].Coords()[0] + adj_nodes[1].Coords()[0]);
+        edgeit->RealArray(edge_coords_tag)[1] = 0.5*(adj_nodes[0].Coords()[1] + adj_nodes[1].Coords()[1]);
+        edgeit->RealArray(edge_coords_tag)[2] = (mesh_info.surface_type == surfType::sphere)?0.5*(adj_nodes[0].Coords()[2] +
+                                                                                                   adj_nodes[1].Coords()[2]):0.0;
+    }
+
+    // trians
+    INMOST::Tag trian_coords_tag = ice_mesh->CreateTag("model coords trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
+    grid_info[gridElemType::Trian]->coords[coordType::model] = trian_coords_tag;
+
+    for(auto trianit = ice_mesh->BeginCell(); trianit != ice_mesh->EndCell(); ++trianit)
+    {
+        ElementArray<INMOST::Node> adj_nodes = trianit->getNodes();
+        trianit->RealArray(trian_coords_tag)[0] = (adj_nodes[0].Coords()[0] + adj_nodes[1].Coords()[0] + adj_nodes[2].Coords()[0])/3.0;
+        trianit->RealArray(trian_coords_tag)[1] = (adj_nodes[0].Coords()[1] + adj_nodes[1].Coords()[1] + adj_nodes[2].Coords()[1])/3.0;
+        trianit->RealArray(trian_coords_tag)[2] = (mesh_info.surface_type == surfType::sphere)?(adj_nodes[0].Coords()[2] +
+                                                                                                 adj_nodes[1].Coords()[2] +
+                                                                                                 adj_nodes[2].Coords()[2])/3.0:0.0;
+    }
+
+    BARRIER
+
+    // ## cartesian coords ##
+
+    // nodes 
+    INMOST::Tag node_cart_tag = ice_mesh->CreateTag("cart coords node", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 3);
+    grid_info[gridElemType::Node]->coords[coordType::cart] = node_cart_tag;
+
+    for(auto nodeit = ice_mesh->BeginNode(); nodeit != ice_mesh->EndNode(); ++nodeit)
+    {
+        double model_x = nodeit->RealArray(node_coords_tag)[0];
+        double model_y = nodeit->RealArray(node_coords_tag)[1];
+        double model_z = nodeit->RealArray(node_coords_tag)[2];
+
+        nodeit->RealArray(node_cart_tag)[0] = (mesh_info.surface_type == surfType::basin)?cos(model_x*(M_PI/180.0))*cos(model_y*(M_PI/180.0))
+                                                                                          :model_x;
+        nodeit->RealArray(node_cart_tag)[1] = (mesh_info.surface_type == surfType::basin)?sin(model_x*(M_PI/180.0))*cos(model_y*(M_PI/180.0))
+                                                                                          :model_y;
+        nodeit->RealArray(node_cart_tag)[2] = (mesh_info.surface_type == surfType::basin)?sin(model_y*(M_PI/180.0))
+                                                                                          :model_z;
+    }
+
+    // edges
+    INMOST::Tag edge_cart_tag = ice_mesh->CreateTag("cart coords edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 3);
+    grid_info[gridElemType::Edge]->coords[coordType::cart] = edge_cart_tag;
+
+    for(auto edgeit = ice_mesh->BeginFace(); edgeit != ice_mesh->EndFace(); ++edgeit)
+    {
+        double model_x = edgeit->RealArray(edge_coords_tag)[0];
+        double model_y = edgeit->RealArray(edge_coords_tag)[1];
+        double model_z = edgeit->RealArray(edge_coords_tag)[2];
+
+        edgeit->RealArray(edge_cart_tag)[0] = (mesh_info.surface_type == surfType::basin)?cos(model_x*(M_PI/180.0))*cos(model_y*(M_PI/180.0))
+                                                                                          :model_x;
+        edgeit->RealArray(edge_cart_tag)[1] = (mesh_info.surface_type == surfType::basin)?sin(model_x*(M_PI/180.0))*cos(model_y*(M_PI/180.0))
+                                                                                          :model_y;
+        edgeit->RealArray(edge_cart_tag)[2] = (mesh_info.surface_type == surfType::basin)?sin(model_y*(M_PI/180.0))
+                                                                                          :model_z;
+    }
+
+    // triangles
+    INMOST::Tag trian_cart_tag = ice_mesh->CreateTag("cart coords trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
+    grid_info[gridElemType::Trian]->coords[coordType::cart] = trian_cart_tag;
+
+    for(auto trianit = ice_mesh->BeginCell(); trianit != ice_mesh->EndCell(); ++trianit)
+    {
+        double model_x = trianit->RealArray(trian_coords_tag)[0];
+        double model_y = trianit->RealArray(trian_coords_tag)[1];
+        double model_z = trianit->RealArray(trian_coords_tag)[2];
+
+        trianit->RealArray(trian_cart_tag)[0] = (mesh_info.surface_type == surfType::basin)?cos(model_x*(M_PI/180.0))*cos(model_y*(M_PI/180.0))
+                                                                                          :model_x;
+        trianit->RealArray(trian_cart_tag)[1] = (mesh_info.surface_type == surfType::basin)?sin(model_x*(M_PI/180.0))*cos(model_y*(M_PI/180.0))
+                                                                                          :model_y;
+        trianit->RealArray(trian_cart_tag)[2] = (mesh_info.surface_type == surfType::basin)?sin(model_y*(M_PI/180.0))
+                                                                                          :model_z;
+    }
+
+    BARRIER
+
+    // ## geo coords ##
+
+    // nodes 
+    INMOST::Tag node_geo_tag = ice_mesh->CreateTag("geo coords node", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 3);
+    grid_info[gridElemType::Node]->coords[coordType::geo] = node_geo_tag;
+
+    for(auto nodeit = ice_mesh->BeginNode(); nodeit != ice_mesh->EndNode(); ++nodeit)
+    {
+        if (mesh_info.surface_type == surfType::sphere)
+        {
+            double x = nodeit->RealArray(node_cart_tag)[0];
+            double y = nodeit->RealArray(node_cart_tag)[1];
+            double z = nodeit->RealArray(node_cart_tag)[2];
+
+            double r = 1;
+            double lat, lon;
+
+
+            if ((x >= 0) and (y >= 0))
+            {
+                lat = std::asin(z/r);
+                lon = std::atan(y/x);
+            }
+            else if ((x >= 0) and (y <= 0))
+            {
+                lat = std::asin(z/r);
+                lon = 2*M_PI + std::atan(y/x);
+            }
+            else if ((x <= 0) and (y >= 0))
+            {
+                lat = std::asin(z/r);
+                lon = M_PI + std::atan(y/x);
+            }
+            else
+            {
+                lat = std::asin(z/r);
+                lon = M_PI + std::atan(y/x);
+            }
+
+            nodeit->RealArray(node_geo_tag)[0] = lon;
+            nodeit->RealArray(node_geo_tag)[1] = lat;
+            nodeit->RealArray(node_geo_tag)[2] = 1.0;  
+        }
+        else if (mesh_info.surface_type == surfType::basin)
+        {
+            nodeit->RealArray(node_geo_tag)[0] = nodeit->RealArray(node_coords_tag)[0]*(M_PI/180.0);
+            nodeit->RealArray(node_geo_tag)[1] = nodeit->RealArray(node_coords_tag)[1]*(M_PI/180.0);
+            nodeit->RealArray(node_geo_tag)[2] = 1.0;
+        }
+        else
+        {
+            nodeit->RealArray(node_geo_tag)[0] = 0.0;
+            nodeit->RealArray(node_geo_tag)[1] = 0.0;
+            nodeit->RealArray(node_geo_tag)[2] = 0.0;
+        }
+    }
+
+    // edges
+    INMOST::Tag edge_geo_tag = ice_mesh->CreateTag("geo coords edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 3);
+    grid_info[gridElemType::Edge]->coords[coordType::geo] = edge_geo_tag;
+
+    for(auto edgeit = ice_mesh->BeginFace(); edgeit != ice_mesh->EndFace(); ++edgeit)
+    {
+        if (mesh_info.surface_type == surfType::sphere)
+        {
+            double x = edgeit->RealArray(edge_cart_tag)[0];
+            double y = edgeit->RealArray(edge_cart_tag)[1];
+            double z = edgeit->RealArray(edge_cart_tag)[2];
+
+            double r = 1;
+            double lat, lon;
+
+
+            if ((x >= 0) and (y >= 0))
+            {
+                lat = std::asin(z/r);
+                lon = std::atan(y/x);
+            }
+            else if ((x >= 0) and (y <= 0))
+            {
+                lat = std::asin(z/r);
+                lon = 2*M_PI + std::atan(y/x);
+            }
+            else if ((x <= 0) and (y >= 0))
+            {
+                lat = std::asin(z/r);
+                lon = M_PI + std::atan(y/x);
+            }
+            else
+            {
+                lat = std::asin(z/r);
+                lon = M_PI + std::atan(y/x);
+            }
+
+            edgeit->RealArray(edge_geo_tag)[0] = lon;
+            edgeit->RealArray(edge_geo_tag)[1] = lat;
+            edgeit->RealArray(edge_geo_tag)[2] = 1.0;  
+        }
+        else if (mesh_info.surface_type == surfType::basin)
+        {
+            edgeit->RealArray(edge_geo_tag)[0] = edgeit->RealArray(edge_coords_tag)[0]*M_PI/180.0;
+            edgeit->RealArray(edge_geo_tag)[1] = edgeit->RealArray(edge_coords_tag)[1]*M_PI/180.0;
+            edgeit->RealArray(edge_geo_tag)[2] = 1.0;
+        }
+        else
+        {
+            edgeit->RealArray(edge_geo_tag)[0] = 0.0;
+            edgeit->RealArray(edge_geo_tag)[1] = 0.0;
+            edgeit->RealArray(edge_geo_tag)[2] = 0.0;
+        }
+    }
+
+    // trians
+    INMOST::Tag trian_geo_tag = ice_mesh->CreateTag("geo coords trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
+    grid_info[gridElemType::Trian]->coords[coordType::geo] = trian_geo_tag;
+
+    for(auto trianit = ice_mesh->BeginCell(); trianit != ice_mesh->EndCell(); ++trianit)
+    {
+        if (mesh_info.surface_type == surfType::sphere)
+        {
+            double x = trianit->RealArray(trian_cart_tag)[0];
+            double y = trianit->RealArray(trian_cart_tag)[1];
+            double z = trianit->RealArray(trian_cart_tag)[2];
+
+            double r = 1;
+            double lat, lon;
+
+
+            if ((x >= 0) and (y >= 0))
+            {
+                lat = std::asin(z/r);
+                lon = std::atan(y/x);
+            }
+            else if ((x >= 0) and (y <= 0))
+            {
+                lat = std::asin(z/r);
+                lon = 2*M_PI + std::atan(y/x);
+            }
+            else if ((x <= 0) and (y >= 0))
+            {
+                lat = std::asin(z/r);
+                lon = M_PI + std::atan(y/x);
+            }
+            else
+            {
+                lat = std::asin(z/r);
+                lon = M_PI + std::atan(y/x);
+            }
+
+            trianit->RealArray(trian_geo_tag)[0] = lon;
+            trianit->RealArray(trian_geo_tag)[1] = lat;
+            trianit->RealArray(trian_geo_tag)[2] = 1.0;  
+        }
+        else if (mesh_info.surface_type == surfType::basin)
+        {
+            trianit->RealArray(trian_geo_tag)[0] = trianit->RealArray(trian_coords_tag)[0]*M_PI/180.0;
+            trianit->RealArray(trian_geo_tag)[1] = trianit->RealArray(trian_coords_tag)[1]*M_PI/180.0;
+            trianit->RealArray(trian_geo_tag)[2] = 1.0;
+        }
+        else
+        {
+            trianit->RealArray(trian_geo_tag)[0] = 0.0;
+            trianit->RealArray(trian_geo_tag)[1] = 0.0;
+            trianit->RealArray(trian_geo_tag)[2] = 0.0;
+        }
+    }
+
+    BARRIER
+
+#ifdef USE_MPI
+    ice_mesh->ExchangeGhost(1, NODE);
+#endif
 }
 
 void IceMesh::SaveVTU(const std::string& filename) const

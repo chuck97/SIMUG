@@ -5,6 +5,7 @@
 #include <map>
 #include <memory>
 #include <filesystem>
+#include <cmath>
 #include "inmost.h"
 
 #include "defines.hpp"
@@ -13,6 +14,7 @@
 #include "logger.hpp"
 #include "mesh_info.hpp"
 #include "stringtrim.hpp"
+#include "coordvar.hpp"
 
 #ifdef USE_MPI
 #include "mpi.h"
@@ -26,16 +28,16 @@
 
 namespace SIMUG::mesh
 {
-    // id interval for set of elements on processor   
-    struct IdInterval
-    {
-        int id_min;
-        int id_max;
-    };
-
     // general mesh information on processor
     struct MeshInfo
     {
+        // id interval for set of elements on processor   
+        struct IdInterval
+        {
+            int id_min;
+            int id_max;
+        };
+
         surfType surface_type;
         gridType grid_type;
 
@@ -54,6 +56,30 @@ namespace SIMUG::mesh
         IdInterval id_interval_nodes_no_bnd;
         IdInterval id_interval_edges_no_bnd;
         IdInterval id_interval_trians_no_bnd;
+    };
+
+    // grid information for particular element
+    struct GridInfo
+    {
+        INMOST::Tag id;
+        INMOST::Tag id_no_bnd;
+        INMOST::Tag is_bnd;
+        std::map<SIMUG::coord::coordType, INMOST::Tag> coords;
+    };
+
+    struct NodeInfo : public GridInfo
+    {
+        // additional local basis data
+    };
+
+    struct EdgeInfo : public GridInfo
+    {
+        // additional local basis data
+    };
+
+    struct TrianInfo : public GridInfo
+    {
+        // additional local basis data
     };
 
     class IceMesh
@@ -88,11 +114,11 @@ namespace SIMUG::mesh
         inline const MeshInfo& GetMeshInfo() const {return mesh_info;};
 
         // Get mesh information (number of elements and local processor ids) 
-        inline std::map<gridElemType, std::shared_ptr<GridData>>& GetGridInfo() {return grid_info;}; 
-        inline const std::map<gridElemType, std::shared_ptr<GridData>>& GetGridInfo() const {return grid_info;};
+        inline std::map<gridElemType, std::shared_ptr<GridInfo>>& GetGridInfo() {return grid_info;}; 
+        inline const std::map<gridElemType, std::shared_ptr<GridInfo>>& GetGridInfo() const {return grid_info;};
         
         //Get number of ice layers 
-        inline int GetNumLayers() const
+        inline const int GetNumLayers() const
         {return num_ice_layers;};
     
         // save mesh with data to a file
@@ -130,7 +156,7 @@ namespace SIMUG::mesh
 
         std::shared_ptr<INMOST::Mesh> ice_mesh;
         std::map<gridElemType, LayersDataMap> grid_data;
-        std::map<gridElemType, std::shared_ptr<GridData>> grid_info;
+        std::map<gridElemType, std::shared_ptr<GridInfo>> grid_info;
         INMOST::ElementArray<INMOST::Node> bnd_nodes;
         INMOST::ElementArray<INMOST::Face> bnd_edges;
         INMOST::ElementArray<INMOST::Cell> bnd_trians;
