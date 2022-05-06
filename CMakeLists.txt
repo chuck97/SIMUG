@@ -32,6 +32,13 @@ if (USE_PARTITIONER)
   add_definitions(-DUSE_PARTITIONER)
 endif()
 
+if (USE_PARTITIONER_PARMETIS)
+  MESSAGE(STATUS "Partitioner ParMetis ENABLED")
+  add_definitions(-DUSE_PARTITIONER)
+  add_definitions(-DUSE_PARTITIONER_PARMETIS)
+endif()
+
+
 if (USE_SOLVER)
   MESSAGE(STATUS "Linear system solver ENABLED")
   add_definitions(-DUSE_SOLVER)

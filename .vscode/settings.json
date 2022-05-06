@@ -65,7 +65,8 @@
         "set": "cpp",
         "future": "cpp",
         "mutex": "cpp",
-        "typeindex": "cpp"
+        "typeindex": "cpp",
+        "variant": "cpp"
     },
     "git.ignoreLimitWarning": true
 }

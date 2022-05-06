@@ -99,6 +99,9 @@ IceMesh::IceMesh(const std::string& path_to_file_,
         mesh_log.Log("Assigning coordinates successfully! (" + to_string(duration) + " ms)\n");
     BARRIER
 
+    for (auto [key, val]: grid_info)
+        val->Exchange(ice_mesh.get());
+
     //AssembleBasisData();
 }
 
@@ -121,17 +124,23 @@ void IceMesh::Partition()
 		ice_mesh->ReorderEmpty(CELL|FACE|EDGE|NODE);
         ice_mesh->ExchangeGhost(1, NODE); 
         BARRIER
-
-        ice_mesh->AssignGlobalID(CELL|EDGE|FACE|NODE);
-        BARRIER
-        ice_mesh->ExchangeGhost(1, NODE);
-        BARRIER
 	}
 };
 
 void IceMesh::SelectBndEdges()
 {
     ElementArray<Face> all_bnd_edges = ice_mesh->GatherBoundaryFaces();
+    for (size_t i = 0; i < all_bnd_edges.size(); ++i)
+    {
+        bnd_edges.push_back(all_bnd_edges[i]);
+    }
+    BARRIER
+}
+
+void IceMesh::SelectBndEdgesNoGhost()
+{
+    ElementArray<Face> all_bnd_edges = ice_mesh->GatherBoundaryFaces();
+    bnd_edges.clear();
     for (size_t i = 0; i < all_bnd_edges.size(); ++i)
     {
         if (all_bnd_edges[i].GetStatus() != Element::Ghost)
@@ -256,11 +265,6 @@ void IceMesh::AssignIds()
             MPI_Bcast(&trian_id, 1, MPI_INT, procn, MPI_COMM_WORLD);        
 #endif
     }
-    BARRIER
-
-#ifdef USE_MPI
-    ice_mesh->ExchangeGhost(1, NODE);
-#endif
 
     BARRIER
 
@@ -406,16 +410,26 @@ void IceMesh::ComputeMeshInfo()
         mesh_log.Log("Boundary triangles selected succeessfully! (" + to_string(duration) + " ms)\n");
     BARRIER
 
+    // select boundary edges no ghost
+    mesh_timer.Launch();
+    SelectBndEdgesNoGhost()
+    mesh_timer.Stop();
+    duration = mesh_timer.GetMaxTime();
+    mesh_timer.Reset();
+    if (ice_mesh->GetProcessorRank()==0)
+        mesh_log.Log("Boundary edges (no ghost) selected succeessfully! (" + to_string(duration) + " ms)\n");
+    BARRIER
+
     // make boundary identification tag for nodes, edges and triangles
-    grid_info[gridElemType::Node]->is_bnd = ice_mesh.get()->CreateTag("is node bnd", INMOST::DATA_INTEGER, INMOST::NODE, INMOST::NONE, 1);
+    grid_info[gridElemType::Node]->is_bnd = ice_mesh->CreateTag("is node bnd", INMOST::DATA_INTEGER, INMOST::NODE, INMOST::NONE, 1);
     for (size_t i = 0; i < bnd_nodes.size(); ++i)
         bnd_nodes[i].Integer(grid_info[gridElemType::Node]->is_bnd) = 1;
 
-    grid_info[gridElemType::Edge]->is_bnd = ice_mesh.get()->CreateTag("is edge bnd", INMOST::DATA_INTEGER, INMOST::FACE, INMOST::NONE, 1);
+    grid_info[gridElemType::Edge]->is_bnd = ice_mesh->CreateTag("is edge bnd", INMOST::DATA_INTEGER, INMOST::FACE, INMOST::NONE, 1);
     for (size_t i = 0; i < bnd_edges.size(); ++i)
         bnd_edges[i].Integer(grid_info[gridElemType::Edge]->is_bnd) = 1;
 
-    grid_info[gridElemType::Trian]->is_bnd = ice_mesh.get()->CreateTag("is trian bnd", INMOST::DATA_INTEGER, INMOST::CELL, INMOST::NONE, 1);
+    grid_info[gridElemType::Trian]->is_bnd = ice_mesh->CreateTag("is trian bnd", INMOST::DATA_INTEGER, INMOST::CELL, INMOST::NONE, 1);
     for (size_t i = 0; i < bnd_trians.size(); ++i)
         bnd_trians[i].Integer(grid_info[gridElemType::Trian]->is_bnd) = 1; 
     BARRIER
@@ -439,10 +453,6 @@ void IceMesh::ComputeMeshInfo()
     if (ice_mesh->GetProcessorRank()==0)
         mesh_log.Log("Assigning ID intervals succeessfully! (" + to_string(duration) + " ms)\n");
     BARRIER
-
-#ifdef USE_MPI
-    ice_mesh->ExchangeGhost(1, NODE);
-#endif
 }
 
 void IceMesh::AssignCoords()
@@ -715,10 +725,6 @@ void IceMesh::AssignCoords()
     }
 
     BARRIER
-
-#ifdef USE_MPI
-    ice_mesh->ExchangeGhost(1, NODE);
-#endif
 }
 
 void IceMesh::SaveVTU(const std::string& filename) const

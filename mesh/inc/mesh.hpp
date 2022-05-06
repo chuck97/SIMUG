@@ -65,20 +65,57 @@ namespace SIMUG::mesh
         INMOST::Tag id_no_bnd;
         INMOST::Tag is_bnd;
         std::map<SIMUG::coord::coordType, INMOST::Tag> coords;
+
+        virtual void Exchange(INMOST::Mesh* ice_mesh) = 0;
+        //virtual void Mute(INMOST::Mesh* ice_mesh) = 0;
+        //virtual void UnMute(INMOST::Mesh* ice_mesh) = 0;
+
+        void ExchangeAll(INMOST::Mesh* ice_mesh, const unsigned char& GridElem)
+        {
+            ice_mesh->ExchangeData(id, GridElem, 0);
+            ice_mesh->ExchangeData(id_no_bnd, GridElem, 0);
+            ice_mesh->ExchangeData(is_bnd, GridElem, 0);
+
+            for (auto [key, value]: coords)
+                ice_mesh->ExchangeData(value, GridElem, 0);
+            BARRIER
+        };
+
+        void MuteAll(INMOST::Mesh* ice_mesh)
+        {
+
+        };
+
+        void UnMuteAll(INMOST::Mesh* ice_mesh)
+        {
+
+        };
     };
 
     struct NodeInfo : public GridInfo
     {
+        inline void Exchange(INMOST::Mesh* ice_mesh)
+        {ExchangeAll(ice_mesh, INMOST::NODE);};
+
+        //inline void Mute(INMOST::Mesh* ice_mesh)
+        //{};
+
         // additional local basis data
     };
 
     struct EdgeInfo : public GridInfo
     {
+        inline void Exchange(INMOST::Mesh* ice_mesh)
+        {ExchangeAll(ice_mesh, INMOST::FACE);};
+
         // additional local basis data
     };
 
     struct TrianInfo : public GridInfo
     {
+        inline void Exchange(INMOST::Mesh* ice_mesh)
+        {ExchangeAll(ice_mesh, INMOST::CELL);};
+
         // additional local basis data
     };
 
