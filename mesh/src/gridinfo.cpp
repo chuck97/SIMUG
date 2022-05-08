@@ -39,6 +39,17 @@ void NodeInfo::Mute()
     BARRIER
 }
 
+void NodeInfo::UnMute()
+{
+    ice_mesh->SetFileOption("Tag:id node", "save");
+    ice_mesh->SetFileOption("Tag:id node no bnd", "save");
+    ice_mesh->SetFileOption("Tag:is node bnd", "save");
+    ice_mesh->SetFileOption("Tag:model coords node", "save");
+    ice_mesh->SetFileOption("Tag:cart coords node", "save");
+    ice_mesh->SetFileOption("Tag:geo coords node", "save");
+    BARRIER
+}
+
 void EdgeInfo::Mute()
 {
     ice_mesh->SetFileOption("Tag:id edge", "nosave");
@@ -47,6 +58,17 @@ void EdgeInfo::Mute()
     ice_mesh->SetFileOption("Tag:model coords edge", "nosave");
     ice_mesh->SetFileOption("Tag:cart coords edge", "nosave");
     ice_mesh->SetFileOption("Tag:geo coords edge", "nosave");
+    BARRIER
+}
+
+void EdgeInfo::UnMute()
+{
+    ice_mesh->SetFileOption("Tag:id edge", "save");
+    ice_mesh->SetFileOption("Tag:id edge no bnd", "save");
+    ice_mesh->SetFileOption("Tag:is edge bnd", "save");
+    ice_mesh->SetFileOption("Tag:model coords edge", "save");
+    ice_mesh->SetFileOption("Tag:cart coords edge", "save");
+    ice_mesh->SetFileOption("Tag:geo coords edge", "save");
     BARRIER
 }
 
@@ -60,4 +82,16 @@ void TrianInfo::Mute()
     ice_mesh->SetFileOption("Tag:geo coords trian", "nosave");
     BARRIER
 }
+
+void TrianInfo::UnMute()
+{
+    ice_mesh->SetFileOption("Tag:id trian", "save");
+    ice_mesh->SetFileOption("Tag:id trian no bnd", "save");
+    ice_mesh->SetFileOption("Tag:is trian bnd", "save");
+    ice_mesh->SetFileOption("Tag:model coords trian", "save");
+    ice_mesh->SetFileOption("Tag:cart coords trian", "save");
+    ice_mesh->SetFileOption("Tag:geo coords trian", "save");
+    BARRIER
+}
+
 

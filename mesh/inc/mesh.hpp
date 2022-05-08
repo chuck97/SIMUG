@@ -72,6 +72,7 @@ namespace SIMUG::mesh
     public:
         virtual void Exchange() = 0;
         virtual void Mute() = 0;
+        virtual void UnMute() = 0;
 
     protected:
         INMOST::Mesh* ice_mesh;
@@ -87,6 +88,7 @@ namespace SIMUG::mesh
     public:
         void Exchange();
         void Mute();
+        void UnMute();
     };
 
     class EdgeInfo : public GridInfo
@@ -97,6 +99,7 @@ namespace SIMUG::mesh
     public:
         void Exchange();
         void Mute();
+        void UnMute();
 
     };
 
@@ -108,6 +111,7 @@ namespace SIMUG::mesh
     public:
         void Exchange();
         void Mute();
+        void UnMute();
     };
 
     class IceMesh
