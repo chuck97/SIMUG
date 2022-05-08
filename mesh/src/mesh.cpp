@@ -74,9 +74,9 @@ IceMesh::IceMesh(const std::string& path_to_file_,
 #endif
 
     // find boundary elements, setup ids and id intervals
-    grid_info[gridElemType::Node] = make_shared<NodeInfo>();
-    grid_info[gridElemType::Edge] = make_shared<EdgeInfo>();
-    grid_info[gridElemType::Trian] = make_shared<TrianInfo>();
+    grid_info[gridElemType::Node] = make_shared<NodeInfo>(ice_mesh.get());
+    grid_info[gridElemType::Edge] = make_shared<EdgeInfo>(ice_mesh.get());
+    grid_info[gridElemType::Trian] = make_shared<TrianInfo>(ice_mesh.get());
 
     mesh_timer.Launch();
     ComputeMeshInfo();
@@ -99,8 +99,12 @@ IceMesh::IceMesh(const std::string& path_to_file_,
         mesh_log.Log("Assigning coordinates successfully! (" + to_string(duration) + " ms)\n");
     BARRIER
 
+    // exchange and mute all grid info
     for (auto [key, val]: grid_info)
-        val->Exchange(ice_mesh.get());
+    {
+        val->Exchange();
+        //val->Mute();
+    }
 
     //AssembleBasisData();
 }
@@ -181,7 +185,7 @@ void IceMesh::AssignIds()
 
     // assign id and no_bnd id for nodes
     grid_info[gridElemType::Node]->id = ice_mesh->CreateTag("id node", INMOST::DATA_INTEGER, INMOST::NODE, INMOST::NONE, 1);
-    grid_info[gridElemType::Node]->id_no_bnd = ice_mesh->CreateTag("id node no_bnd", INMOST::DATA_INTEGER, INMOST::NODE, INMOST::NONE, 1);
+    grid_info[gridElemType::Node]->id_no_bnd = ice_mesh->CreateTag("id node no bnd", INMOST::DATA_INTEGER, INMOST::NODE, INMOST::NONE, 1);
 
     int node_id = 0;
     for (int procn = 0; procn < ice_mesh->GetProcessorsNumber(); procn++)
@@ -210,7 +214,7 @@ void IceMesh::AssignIds()
 
     // assign id and no_bnd id for edges
     grid_info[gridElemType::Edge]->id = ice_mesh->CreateTag("id edge", INMOST::DATA_INTEGER, INMOST::FACE, INMOST::NONE, 1);
-    grid_info[gridElemType::Edge]->id_no_bnd = ice_mesh->CreateTag("id edge no_bnd", INMOST::DATA_INTEGER, INMOST::FACE, INMOST::NONE, 1);
+    grid_info[gridElemType::Edge]->id_no_bnd = ice_mesh->CreateTag("id edge no bnd", INMOST::DATA_INTEGER, INMOST::FACE, INMOST::NONE, 1);
 
     int edge_id = 0;
     for (int procn = 0; procn < ice_mesh->GetProcessorsNumber(); procn++)
@@ -239,7 +243,7 @@ void IceMesh::AssignIds()
 
     // assign no_bnd ids for trians
     grid_info[gridElemType::Trian]->id = ice_mesh->CreateTag("id trian", INMOST::DATA_INTEGER, INMOST::CELL, INMOST::NONE, 1);
-    grid_info[gridElemType::Trian]->id_no_bnd = ice_mesh->CreateTag("id trian no_bnd", INMOST::DATA_INTEGER, INMOST::CELL, INMOST::NONE, 1);
+    grid_info[gridElemType::Trian]->id_no_bnd = ice_mesh->CreateTag("id trian no bnd", INMOST::DATA_INTEGER, INMOST::CELL, INMOST::NONE, 1);
 
     int trian_id = 0;
     for (int procn = 0; procn < ice_mesh->GetProcessorsNumber(); procn++)
@@ -412,7 +416,7 @@ void IceMesh::ComputeMeshInfo()
 
     // select boundary edges no ghost
     mesh_timer.Launch();
-    SelectBndEdgesNoGhost()
+    SelectBndEdgesNoGhost();
     mesh_timer.Stop();
     duration = mesh_timer.GetMaxTime();
     mesh_timer.Reset();

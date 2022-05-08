@@ -30,8 +30,7 @@ namespace SIMUG::mesh
 {
     // general mesh information on processor
     struct MeshInfo
-    {
-        // id interval for set of elements on processor   
+    {   
         struct IdInterval
         {
             int id_min;
@@ -59,64 +58,56 @@ namespace SIMUG::mesh
     };
 
     // grid information for particular element
-    struct GridInfo
+    class GridInfo
     {
+    public:
+        GridInfo(INMOST::Mesh* ice_mesh_): ice_mesh(ice_mesh_) {}; 
+
+    public:
         INMOST::Tag id;
         INMOST::Tag id_no_bnd;
         INMOST::Tag is_bnd;
         std::map<SIMUG::coord::coordType, INMOST::Tag> coords;
 
-        virtual void Exchange(INMOST::Mesh* ice_mesh) = 0;
-        //virtual void Mute(INMOST::Mesh* ice_mesh) = 0;
-        //virtual void UnMute(INMOST::Mesh* ice_mesh) = 0;
+    public:
+        virtual void Exchange() = 0;
+        virtual void Mute() = 0;
 
-        void ExchangeAll(INMOST::Mesh* ice_mesh, const unsigned char& GridElem)
-        {
-            ice_mesh->ExchangeData(id, GridElem, 0);
-            ice_mesh->ExchangeData(id_no_bnd, GridElem, 0);
-            ice_mesh->ExchangeData(is_bnd, GridElem, 0);
+    protected:
+        INMOST::Mesh* ice_mesh;
+        void ExchangeAll(const unsigned char& GridElem);
 
-            for (auto [key, value]: coords)
-                ice_mesh->ExchangeData(value, GridElem, 0);
-            BARRIER
-        };
-
-        void MuteAll(INMOST::Mesh* ice_mesh)
-        {
-
-        };
-
-        void UnMuteAll(INMOST::Mesh* ice_mesh)
-        {
-
-        };
     };
 
-    struct NodeInfo : public GridInfo
+    class NodeInfo : public GridInfo
     {
-        inline void Exchange(INMOST::Mesh* ice_mesh)
-        {ExchangeAll(ice_mesh, INMOST::NODE);};
-
-        //inline void Mute(INMOST::Mesh* ice_mesh)
-        //{};
-
-        // additional local basis data
+    public:
+        NodeInfo(INMOST::Mesh* ice_mesh_): GridInfo(ice_mesh_) {};
+    
+    public:
+        void Exchange();
+        void Mute();
     };
 
-    struct EdgeInfo : public GridInfo
+    class EdgeInfo : public GridInfo
     {
-        inline void Exchange(INMOST::Mesh* ice_mesh)
-        {ExchangeAll(ice_mesh, INMOST::FACE);};
+    public:
+        EdgeInfo(INMOST::Mesh* ice_mesh_): GridInfo(ice_mesh_) {};
+    
+    public:
+        void Exchange();
+        void Mute();
 
-        // additional local basis data
     };
 
-    struct TrianInfo : public GridInfo
+    class TrianInfo : public GridInfo
     {
-        inline void Exchange(INMOST::Mesh* ice_mesh)
-        {ExchangeAll(ice_mesh, INMOST::CELL);};
-
-        // additional local basis data
+    public:
+        TrianInfo(INMOST::Mesh* ice_mesh_): GridInfo(ice_mesh_) {};
+    
+    public:
+        void Exchange();
+        void Mute();
     };
 
     class IceMesh
@@ -182,6 +173,7 @@ namespace SIMUG::mesh
         void ComputeMeshInfo();
         void SelectBndNodes();
         void SelectBndEdges();
+        void SelectBndEdgesNoGhost();
         void SelectBndTrians();
         void AssignVariables();
         void AssignCoords();

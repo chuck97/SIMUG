@@ -13,6 +13,7 @@ add_definitions(${INMOST_DEFINITIONS})
 add_library(mesh STATIC 
   src/data.cpp
   src/mesh.cpp
+  src/gridinfo.cpp
   )
 
 # link with external libraries
