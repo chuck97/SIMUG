@@ -14,15 +14,15 @@ void GridData::GridCreateData(const meshVar& pNot, const meshDim& pDim,
     switch(pDim)
     {
         case scalar:
-            tag = ice_mesh->CreateTag(meshVarName.at(pNot), InmostDataType, GridElem, GridSparse, 1);
+            tag = ice_mesh->CreateTag(meshVarName.at(pNot) + " " + std::to_string(layer), InmostDataType, GridElem, GridSparse, 1);
             break;
                 
         case vector:
-            tag = ice_mesh->CreateTag(meshVarName.at(pNot), InmostDataType, GridElem, GridSparse, 3);
+            tag = ice_mesh->CreateTag(meshVarName.at(pNot) + " " + std::to_string(layer), InmostDataType, GridElem, GridSparse, 3);
             break;
                 
         case tensor:
-            tag = ice_mesh->CreateTag(meshVarName.at(pNot), InmostDataType, GridElem, GridSparse, 4);
+            tag = ice_mesh->CreateTag(meshVarName.at(pNot) + " " + std::to_string(layer), InmostDataType, GridElem, GridSparse, 4);
     }
     prog_data[pNot] = tag;
 };
@@ -37,15 +37,15 @@ void GridData::GridCreateData(const std::string& tVar, const meshDim& tDim,
     switch(tDim)
     {
         case scalar:
-            tag = ice_mesh->CreateTag(tVar, InmostDataType, GridElem, GridSparse, 1);
+            tag = ice_mesh->CreateTag(tVar + " " + std::to_string(layer), InmostDataType, GridElem, GridSparse, 1);
             break;
                 
         case vector:
-            tag = ice_mesh->CreateTag(tVar, InmostDataType, GridElem, GridSparse, 3);
+            tag = ice_mesh->CreateTag(tVar + " " + std::to_string(layer), InmostDataType, GridElem, GridSparse, 3);
             break;
                 
         case tensor:
-            tag = ice_mesh->CreateTag(tVar, InmostDataType, GridElem, GridSparse, 4);
+            tag = ice_mesh->CreateTag(tVar + " " + std::to_string(layer), InmostDataType, GridElem, GridSparse, 4);
     }
     temp_data[tVar] = tag;
 };
@@ -55,6 +55,6 @@ void GridData::GridCreateData(const std::string& tVar, const int& vSize,
                               const unsigned char& GridElem,
                               const unsigned char& GridSparse)
 {
-    INMOST::Tag tag = ice_mesh->CreateTag(tVar, InmostDataType, GridElem, GridSparse, vSize);
+    INMOST::Tag tag = ice_mesh->CreateTag(tVar + " " + std::to_string(layer), InmostDataType, GridElem, GridSparse, vSize);
     temp_data[tVar] = tag;
 };

@@ -24,19 +24,13 @@ using namespace std;
 
 bool test_not_plane()
 {
-    IceMesh mesh_arctic(ARCTIC_PATH, surfType::basin, gridType::Agrid);
+    //IceMesh mesh_arctic(ARCTIC_PATH, surfType::basin, gridType::Agrid);
     IceMesh mesh_sphere(SPHERE_PATH, surfType::sphere, gridType::Agrid);
 
-    //for (auto [key, val]: mesh_arctic.GetGridInfo())
-    //    val->UnMute();
-
-    //for (auto [key, val]: mesh_sphere.GetGridInfo())
-    //    val->UnMute();
-
-    if (mesh_arctic.GetMesh()->GetProcessorsNumber() > 1)
-        mesh_arctic.SaveVTU("./arctic.pvtu");
-    else
-        mesh_arctic.SaveVTU("./arctic.vtu");
+    //if (mesh_arctic.GetMesh()->GetProcessorsNumber() > 1)
+    //    mesh_arctic.SaveVTU("./arctic.pvtu");
+    //else
+     //   mesh_arctic.SaveVTU("./arctic.vtu");
 
     if (mesh_sphere.GetMesh()->GetProcessorsNumber() > 1)
         mesh_sphere.SaveVTU("./sphere.pvtu");

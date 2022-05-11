@@ -40,9 +40,12 @@ namespace SIMUG::mesh
         ProgData prog_data;
         TempData temp_data;
 
+        int layer;
+
     public:
-        inline GridData(INMOST::Mesh* ice_mesh_):
-            ice_mesh(ice_mesh_)
+        inline GridData(INMOST::Mesh* ice_mesh_, int layer_):
+            ice_mesh(ice_mesh_),
+            layer(layer_)
         {};
 
         // Create mesh data
@@ -65,17 +68,17 @@ namespace SIMUG::mesh
 
         // Mute data
         inline void Mute(const meshVar& pNot)
-        {ice_mesh->SetFileOption("Tag:" + meshVarName.at(pNot), "nosave");};
+        {ice_mesh->SetFileOption("Tag:" + meshVarName.at(pNot) + std::to_string(layer), "nosave");};
 
         inline void Mute(const std::string& tName)
-        {ice_mesh->SetFileOption("Tag:" + tName, "nosave");};
+        {ice_mesh->SetFileOption("Tag:" + tName + std::to_string(layer), "nosave");};
 
         // Unmute data
         inline void Unmute(const meshVar& pNot)
-        {ice_mesh->SetFileOption("Tag:" + meshVarName.at(pNot), "save");};
+        {ice_mesh->SetFileOption("Tag:" + meshVarName.at(pNot) + std::to_string(layer), "save");};
         
         inline void Unmute(const std::string& tName)
-        {ice_mesh->SetFileOption("Tag:" + tName, "save");};
+        {ice_mesh->SetFileOption("Tag:" + tName + std::to_string(layer), "save");};
 
 
         // Delete mesh data
@@ -123,8 +126,8 @@ namespace SIMUG::mesh
     class NodeData: public GridData
     {
     public:
-        inline NodeData(INMOST::Mesh* ice_mesh_):
-            GridData(ice_mesh_)
+        inline NodeData(INMOST::Mesh* ice_mesh_, int layer_):
+            GridData(ice_mesh_, layer_)
         {};
 
         // Create data on all nodes
@@ -155,8 +158,8 @@ namespace SIMUG::mesh
     class EdgeData: public GridData
     {
     public:
-        inline EdgeData(INMOST::Mesh* ice_mesh_):
-            GridData(ice_mesh_)
+        inline EdgeData(INMOST::Mesh* ice_mesh_, int layer_):
+            GridData(ice_mesh_, layer_)
         {};
 
         // Create data on all edges
@@ -187,8 +190,8 @@ namespace SIMUG::mesh
     class TrianData: public GridData
     {
     public:
-        inline TrianData(INMOST::Mesh* ice_mesh_):
-            GridData(ice_mesh_)
+        inline TrianData(INMOST::Mesh* ice_mesh_, int layer_):
+            GridData(ice_mesh_, layer_)
         {};
 
         // Create data on all triangles
@@ -219,8 +222,8 @@ namespace SIMUG::mesh
     class BndNodeData: public NodeData
     {
     public:
-        inline BndNodeData(INMOST::Mesh* ice_mesh_):
-            NodeData(ice_mesh_)
+        inline BndNodeData(INMOST::Mesh* ice_mesh_, int layer_):
+            NodeData(ice_mesh_, layer_)
         {};
 
         // Create on all boundary nodes
@@ -238,8 +241,8 @@ namespace SIMUG::mesh
     class BndEdgeData: public EdgeData
     {
     public:
-        inline BndEdgeData(INMOST::Mesh* ice_mesh_):
-            EdgeData(ice_mesh_)
+        inline BndEdgeData(INMOST::Mesh* ice_mesh_, int layer_):
+            EdgeData(ice_mesh_, layer_)
         {};
 
         // Create data on all boundary edges
@@ -257,8 +260,8 @@ namespace SIMUG::mesh
     class BndTrianData: public TrianData
     {
     public:
-        inline BndTrianData(INMOST::Mesh* ice_mesh_):
-            TrianData(ice_mesh_)
+        inline BndTrianData(INMOST::Mesh* ice_mesh_, int layer_):
+            TrianData(ice_mesh_, layer_)
         {};
 
         // Create data on all boundary triangles

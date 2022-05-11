@@ -93,9 +93,9 @@ bool test_mute()
     Partition(ice_mesh);
 #endif
 
-    NodeData node_data(ice_mesh);
-    EdgeData edge_data(ice_mesh);
-    TrianData triangle_data(ice_mesh);
+    NodeData node_data(ice_mesh, 0);
+    EdgeData edge_data(ice_mesh,0);
+    TrianData triangle_data(ice_mesh, 0);
 
     node_data.Create(meshVar::mi, meshDim::scalar, INMOST::DATA_REAL);
 

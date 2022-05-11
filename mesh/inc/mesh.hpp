@@ -138,8 +138,8 @@ namespace SIMUG::mesh
         inline INMOST::Mesh* GetMesh() {return ice_mesh.get();};
 
         // Get map <layer number -> pointer to GridData> (could be (bnd)node, (bnd)edge, (bnd)trian)
-        inline LayersDataMap& GetData(const gridElemType& gdtype) {return grid_data[gdtype];};
-        inline const LayersDataMap& GetData(const gridElemType& gdtype) const {return grid_data.at(gdtype);};
+        inline std::shared_ptr<GridData>& GetData(const gridElemType& gdtype, int layer) {return grid_data[gdtype][layer];};
+        inline const std::shared_ptr<GridData>& GetData(const gridElemType& gdtype, int layer) const {return grid_data.at(gdtype).at(layer);};
 
         // Get mesh information (number of elements and local processor ids) 
         inline MeshInfo& GetMeshInfo() {return mesh_info;}; 
@@ -179,7 +179,7 @@ namespace SIMUG::mesh
         void SelectBndEdges();
         void SelectBndEdgesNoGhost();
         void SelectBndTrians();
-        void AssignVariables();
+        void AssignGridVariables();
         void AssignCoords();
         void AssignIds();
         void AssignIdIntervals();
