@@ -52,11 +52,7 @@ bool test_id()
         BARRIER
     }
 
-    if (imesh.GetMesh()->GetProcessorsNumber() > 1)
-        imesh.SaveVTU("./bndtest.pvtu");
-    else
-        imesh.SaveVTU("./bndtest.vtu");
-
+    imesh.SaveVTU("bndtest");
     return true;
 }
 

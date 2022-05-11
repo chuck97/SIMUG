@@ -46,11 +46,7 @@ bool test_bnd_selection()
     }
 
 
-    if (imesh.GetMesh()->GetProcessorsNumber() > 1)
-        imesh.SaveVTU("./bndtest.pvtu");
-    else
-        imesh.SaveVTU("./bndtest.vtu");
-
+    imesh.SaveVTU("bndtest");
     return true;
 }
 

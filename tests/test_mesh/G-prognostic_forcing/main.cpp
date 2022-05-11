@@ -15,24 +15,16 @@
 #include <iostream>
 
 #define MESH_PATH "/home/users/spetrov/SIMUG/SIMUG_v0/MESHES/pmf/square8km.pmf"
-#define ARCTIC_PATH "/home/users/spetrov/SIMUG/SIMUG_v0/MESHES/pmf/Arctic.pmf"
-#define SPHERE_PATH "/home/users/spetrov/SIMUG/SIMUG_v0/MESHES/pmf/Sphere.pmf"
 
 using namespace INMOST;
 using namespace SIMUG::mesh;
 using namespace std;
 
-bool test_not_plane()
+bool test_prognostic_forcing()
 {
-    //IceMesh mesh_arctic(ARCTIC_PATH, surfType::basin, gridType::Agrid);
-    IceMesh mesh_sphere(SPHERE_PATH, surfType::sphere, gridType::Agrid);
+    IceMesh mesh_plane(MESH_PATH, surfType::plane, gridType::Agrid, 5);
+    mesh_plane.SaveVTU("mult_layers");
 
-    //if (mesh_arctic.GetMesh()->GetProcessorsNumber() > 1)
-    //    mesh_arctic.SaveVTU("./arctic.pvtu");
-    //else
-     //   mesh_arctic.SaveVTU("./arctic.vtu");
-
-    mesh_sphere.SaveVTU("sphere");
     return true;
 }
 
@@ -44,13 +36,13 @@ int main()
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 #endif
 
-    if (test_not_plane())
+    if (test_prognostic_forcing())
     {
         if (rank == 0)
-            std::cout << "Not plane test: OK!\n";
+            std::cout << "Prognostic_forcing test: OK!\n";
     }
     else
-        SIMUG_ERR("Not plane test: FAILED!\n");
+        SIMUG_ERR("Prognostic_forcing test: FAILED!\n");
 
     BARRIER
 

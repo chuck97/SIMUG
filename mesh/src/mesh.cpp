@@ -6,6 +6,7 @@ using namespace SIMUG::mesh;
 using namespace SIMUG::coord;
 
 IceMesh::IceMesh(const std::string& path_to_file_,
+                 const std::string& output_folder_,
                  const surfType& surf_type_,
                  const gridType& grid_type_,
                  const int& n_ice_layers_) 
@@ -18,7 +19,24 @@ IceMesh::IceMesh(const std::string& path_to_file_,
     // update mesh information
     mesh_info.surface_type = surf_type_;
     mesh_info.grid_type = grid_type_;
-    num_ice_layers = n_ice_layers_;
+    mesh_info.num_ice_layers = n_ice_layers_;
+    mesh_info.output_folder = output_folder_;  
+
+    if (mesh_info.grid_type == gridType::Agrid)
+    {
+        mesh_info.prog_elems = gridA_progElems;
+        mesh_info.forc_elems = gridA_forcElems;
+    }
+    else if (mesh_info.grid_type == gridType::Bgrid)
+    {
+        SIMUG_ERR("B grid is not implemented yet");
+    }
+    else if (mesh_info.grid_type == gridType::Cgrid)
+    {
+        SIMUG_ERR("C grid is not implemented yet");
+    }
+    else
+        SIMUG_ERR("Unknown type of grid! Possible options: Agrid, Bgrid, Cgrid");
 
     // INMOST::mesh initialization and creating new mesh
     Mesh::Initialize(NULL, NULL);
@@ -107,35 +125,72 @@ IceMesh::IceMesh(const std::string& path_to_file_,
         val->Mute();
     }
 
-    // assign model variables
-    for (int lay = 0; lay < num_ice_layers; ++lay)
+    // assign prognostic model grid variables
+    for (int lay = 0; lay < mesh_info.num_ice_layers; ++lay)
     {
-        grid_data[gridElemType::Node][lay] = make_shared<NodeData>(ice_mesh.get(), lay);
-        grid_data[gridElemType::Edge][lay] = make_shared<EdgeData>(ice_mesh.get(), lay);
-        grid_data[gridElemType::Trian][lay] = make_shared<TrianData>(ice_mesh.get(), lay);
-        grid_data[gridElemType::bndNode][lay] = make_shared<BndNodeData>(ice_mesh.get(), lay);
-        grid_data[gridElemType::bndEdge][lay] = make_shared<BndEdgeData>(ice_mesh.get(), lay);
-        grid_data[gridElemType::bndTrian][lay] = make_shared<BndTrianData>(ice_mesh.get(), lay);
+        prognostic_data[gridElemType::Node][lay] = make_shared<NodeData>(ice_mesh.get(), lay);
+        prognostic_data[gridElemType::Edge][lay] = make_shared<EdgeData>(ice_mesh.get(), lay);
+        prognostic_data[gridElemType::Trian][lay] = make_shared<TrianData>(ice_mesh.get(), lay);
+        prognostic_data[gridElemType::bndNode][lay] = make_shared<BndNodeData>(ice_mesh.get(), lay);
+        prognostic_data[gridElemType::bndEdge][lay] = make_shared<BndEdgeData>(ice_mesh.get(), lay);
+        prognostic_data[gridElemType::bndTrian][lay] = make_shared<BndTrianData>(ice_mesh.get(), lay);
     }
     BARRIER
 
     mesh_timer.Launch();
-    AssignGridVariables();
+    AssignPrognosticVariables();
+    MuteProgData();
     mesh_timer.Stop();
     duration = mesh_timer.GetMaxTime();
     mesh_timer.Reset();
     if (ice_mesh->GetProcessorRank()==0)
-        mesh_log.Log("Assigning grid variables successfully! (" + to_string(duration) + " ms)\n");
+        mesh_log.Log("Assigning prognostic variables successfully! (" + to_string(duration) + " ms)\n");
     BARRIER
+
+    // assign forcing grid variables
+    forcing_data[gridElemType::Node] = make_shared<NodeData>(ice_mesh.get());
+    forcing_data[gridElemType::Edge] = make_shared<EdgeData>(ice_mesh.get());
+    forcing_data[gridElemType::Trian] = make_shared<TrianData>(ice_mesh.get());
+    forcing_data[gridElemType::bndNode] = make_shared<BndNodeData>(ice_mesh.get());
+    forcing_data[gridElemType::bndEdge] = make_shared<BndEdgeData>(ice_mesh.get());
+    forcing_data[gridElemType::bndTrian] = make_shared<BndTrianData>(ice_mesh.get());
+    
+    BARRIER
+
+    mesh_timer.Launch();
+    AssignForcingVariables();
+    mesh_timer.Stop();
+    duration = mesh_timer.GetMaxTime();
+    mesh_timer.Reset();
+    if (ice_mesh->GetProcessorRank()==0)
+        mesh_log.Log("Assigning forcing variables successfully! (" + to_string(duration) + " ms)\n");
+    BARRIER
+
 
     //AssembleBasisData();
 }
 
 IceMesh::IceMesh(const std::string& path_to_file_,
                  const surfType& surf_type_,
+                 const gridType& grid_type_,
+                 const int& n_ice_layers_):
+        IceMesh(path_to_file_, "./", surf_type_, grid_type_, n_ice_layers_)
+{}
+
+IceMesh::IceMesh(const std::string& path_to_file_,
+                 const std::string& output_folder_,
+                 const surfType& surf_type_,
                  const gridType& grid_type_):
-        IceMesh(path_to_file_, surf_type_, grid_type_, 1)
-{}; 
+        IceMesh(path_to_file_, output_folder_, surf_type_, grid_type_, 1)
+{}
+
+IceMesh::IceMesh(const std::string& path_to_file_,
+                 const surfType& surf_type_,
+                 const gridType& grid_type_):
+        IceMesh(path_to_file_, "./", surf_type_, grid_type_, 1)
+{}
+
+
 
 void IceMesh::Partition()
 {
@@ -420,7 +475,7 @@ void IceMesh::ComputeMeshInfo()
     duration = mesh_timer.GetMaxTime();
     mesh_timer.Reset();
     if (ice_mesh->GetProcessorRank()==0)
-        mesh_log.Log("Boundary edges selected succeessfully! (" + to_string(duration) + " ms)\n");
+        mesh_log.Log("Boundary edges selected successfully! (" + to_string(duration) + " ms)\n");
     BARRIER
 
     // select boundary nodes
@@ -430,7 +485,7 @@ void IceMesh::ComputeMeshInfo()
     duration = mesh_timer.GetMaxTime();
     mesh_timer.Reset();
     if (ice_mesh->GetProcessorRank()==0)
-        mesh_log.Log("Boundary nodes selected succeessfully! (" + to_string(duration) + " ms)\n");
+        mesh_log.Log("Boundary nodes selected successfully! (" + to_string(duration) + " ms)\n");
     BARRIER
 
     // select boundary triangles
@@ -440,7 +495,7 @@ void IceMesh::ComputeMeshInfo()
     duration = mesh_timer.GetMaxTime();
     mesh_timer.Reset();
     if (ice_mesh->GetProcessorRank()==0)
-        mesh_log.Log("Boundary triangles selected succeessfully! (" + to_string(duration) + " ms)\n");
+        mesh_log.Log("Boundary triangles selected successfully! (" + to_string(duration) + " ms)\n");
     BARRIER
 
     // select boundary edges no ghost
@@ -450,7 +505,7 @@ void IceMesh::ComputeMeshInfo()
     duration = mesh_timer.GetMaxTime();
     mesh_timer.Reset();
     if (ice_mesh->GetProcessorRank()==0)
-        mesh_log.Log("Boundary edges (no ghost) selected succeessfully! (" + to_string(duration) + " ms)\n");
+        mesh_log.Log("Boundary edges (no ghost) selected successfully! (" + to_string(duration) + " ms)\n");
     BARRIER
 
     // make boundary identification tag for nodes, edges and triangles
@@ -474,7 +529,7 @@ void IceMesh::ComputeMeshInfo()
     duration = mesh_timer.GetMaxTime();
     mesh_timer.Reset();
     if (ice_mesh->GetProcessorRank()==0)
-        mesh_log.Log("Assigning IDS succeessfully! (" + to_string(duration) + " ms)\n");
+        mesh_log.Log("Assigning IDS successfully! (" + to_string(duration) + " ms)\n");
     BARRIER
 
     // assign id intervals
@@ -484,7 +539,7 @@ void IceMesh::ComputeMeshInfo()
     duration = mesh_timer.GetMaxTime();
     mesh_timer.Reset();
     if (ice_mesh->GetProcessorRank()==0)
-        mesh_log.Log("Assigning ID intervals succeessfully! (" + to_string(duration) + " ms)\n");
+        mesh_log.Log("Assigning ID intervals successfully! (" + to_string(duration) + " ms)\n");
     BARRIER
 }
 
@@ -760,99 +815,43 @@ void IceMesh::AssignCoords()
     BARRIER
 }
 
-void IceMesh::SaveVTU(const std::string& filename) const
+void IceMesh::SaveVTU(const std::string& meshname) const
 {
     SIMUG::Logger mesh_log(cout);
     SIMUG::Timer mesh_timer;
     double duration;
 
-    std::string no_spaces_filename = filename;
-    SIMUG::tools::rtrim(no_spaces_filename);
-#ifdef USE_MPI
-    if (ice_mesh->GetProcessorsNumber() > 1)
-    {
-        if(no_spaces_filename.substr(no_spaces_filename.size()-5, 5) != ".pvtu")
-            SIMUG_ERR("Can't write mesh to this file. Filename should ended by .pvtu");
-    }
-    else
-    {
-        if(no_spaces_filename.substr(no_spaces_filename.size()-4, 4) != ".vtu")
-            SIMUG_ERR("Can't write mesh to this file. Filename should ended by .vtu");
-    }
-#else
-    if(no_spaces_filename.substr(no_spaces_filename.size()-4, 4) != ".vtu")
-            SIMUG_ERR("Can't write mesh to this file. Filename should ended by .vtu");
-#endif
+    std::string no_spaces_meshname = meshname;
+    SIMUG::tools::rtrim(no_spaces_meshname);
 
     mesh_timer.Launch();
-	ice_mesh->Save(filename);
+    no_spaces_meshname += (ice_mesh->GetProcessorsNumber() == 1) ? ".vtu": ".pvtu";
+    ice_mesh->Save(mesh_info.output_folder + no_spaces_meshname);
     mesh_timer.Stop();
     duration = mesh_timer.GetMaxTime();
 
     if (ice_mesh->GetProcessorRank()==0)
-        mesh_log.Log("Mesh saved to \'" + filename + "\'! (" + to_string(duration) + " ms)\n");
+        mesh_log.Log("Mesh saved to \'" + mesh_info.output_folder + no_spaces_meshname + "\'! (" + to_string(duration) + " ms)\n");
     BARRIER
 }
 
-void IceMesh::AssignGridVariables()
+void IceMesh::AssignPrognosticVariables()
 {
-    // variable dimension for every model variable
-    map<meshVar, meshDim> var_dims = 
+    // making all prognostic model grid variables
+    for (int layer_n = 0; layer_n < mesh_info.num_ice_layers; ++layer_n)
     {
-        {meshVar::mi, meshDim::scalar},
-        {meshVar::hi, meshDim::scalar},
-        {meshVar::ai, meshDim::scalar},
-        {meshVar::P0, meshDim::scalar},
-        {meshVar::del, meshDim::scalar},
-        {meshVar::hw, meshDim::scalar},
-        {meshVar::ui, meshDim::vector},
-        {meshVar::ua, meshDim::vector},
-        {meshVar::uw, meshDim::vector},
-        {meshVar::sig, meshDim::tensor},
-        {meshVar::eps, meshDim::tensor}
-    };
+        for (auto& [variable, element]: mesh_info.prog_elems)
+            prognostic_data[element][layer_n]->Create(variable, progDims.at(variable), INMOST::DATA_REAL);
+    }
 
-    // elements for every model variables
-    map<meshVar, gridElemType> var_elems;
-
-    if (mesh_info.grid_type == gridType::Agrid)
-    {
-        var_elems = 
-        {
-            {meshVar::mi, gridElemType::Node},
-            {meshVar::hi, gridElemType::Node},
-            {meshVar::ai, gridElemType::Node},
-            {meshVar::P0, gridElemType::Node},
-            {meshVar::del, gridElemType::Trian},
-            {meshVar::hw, gridElemType::Node},
-            {meshVar::ui, gridElemType::Node},
-            {meshVar::ua, gridElemType::Node},
-            {meshVar::uw, gridElemType::Node},
-            {meshVar::sig, gridElemType::Trian},
-            {meshVar::eps, gridElemType::Trian}
-        };
-    }
-    else if (mesh_info.grid_type == gridType::Bgrid)
-    {
-        SIMUG_ERR("Bgrid is not implemented yet");
-    }
-    else if (mesh_info.grid_type == gridType::Cgrid)
-    {
-        SIMUG_ERR("Cgrid is not implemented yet");
-    }
-    else
-    {
-        SIMUG_ERR("Unknown grid type! possible options: Agrid, Bgrid, Cgrid");
-    }
     BARRIER
+}
 
-    // making all model grid variables
-    for (int layer_n = 0; layer_n < num_ice_layers; ++layer_n)
-    {
-        for (auto& [variable, element]: var_elems)
-        {
-            grid_data[element][layer_n]->Create(variable, var_dims[variable], INMOST::DATA_REAL);            
-        }
-    }
+void IceMesh::AssignForcingVariables()
+{
+    // making all forcing grid variables
+    for (auto& [variable, element]: mesh_info.forc_elems)
+        forcing_data[element]->Create(variable, forcDims.at(variable), INMOST::DATA_REAL);
+
     BARRIER
 }

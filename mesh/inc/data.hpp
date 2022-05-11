@@ -12,21 +12,11 @@
 
 #include "mesh_data.hpp"
 #include "defines.hpp"
+#include "gridvars.hpp"
 
 
 namespace SIMUG::mesh
 {
-    enum gridElemType
-    {
-        Node,
-        Edge,
-        Trian,
-        bndNode,
-        bndEdge,
-        bndTrian
-    };
-
-
     // Grid Data base class
     class GridData
     {
@@ -40,12 +30,16 @@ namespace SIMUG::mesh
         ProgData prog_data;
         TempData temp_data;
 
-        int layer;
+        std::optional<int> layer;
 
     public:
         inline GridData(INMOST::Mesh* ice_mesh_, int layer_):
             ice_mesh(ice_mesh_),
             layer(layer_)
+        {};
+
+        inline GridData(INMOST::Mesh* ice_mesh_):
+            ice_mesh(ice_mesh_)
         {};
 
         // Create mesh data
@@ -68,17 +62,37 @@ namespace SIMUG::mesh
 
         // Mute data
         inline void Mute(const meshVar& pNot)
-        {ice_mesh->SetFileOption("Tag:" + meshVarName.at(pNot) + std::to_string(layer), "nosave");};
+        {
+            if (layer.has_value())
+                ice_mesh->SetFileOption("Tag:" + meshVarName.at(pNot) + " " + std::to_string(layer.value()), "nosave");
+            else
+                ice_mesh->SetFileOption("Tag:" + meshVarName.at(pNot), "nosave");
+        };
 
         inline void Mute(const std::string& tName)
-        {ice_mesh->SetFileOption("Tag:" + tName + std::to_string(layer), "nosave");};
+        {
+            if (layer.has_value())
+                ice_mesh->SetFileOption("Tag:" + tName + " " + std::to_string(layer.value()), "nosave");
+            else
+                ice_mesh->SetFileOption("Tag:" + tName, "nosave");
+        };
 
         // Unmute data
         inline void Unmute(const meshVar& pNot)
-        {ice_mesh->SetFileOption("Tag:" + meshVarName.at(pNot) + std::to_string(layer), "save");};
+        {
+            if (layer.has_value())
+                ice_mesh->SetFileOption("Tag:" + meshVarName.at(pNot) + " " + std::to_string(layer.value()), "save");
+            else
+                ice_mesh->SetFileOption("Tag:" + meshVarName.at(pNot), "save");
+        };
         
         inline void Unmute(const std::string& tName)
-        {ice_mesh->SetFileOption("Tag:" + tName + std::to_string(layer), "save");};
+        {
+            if (layer.has_value())
+                ice_mesh->SetFileOption("Tag:" + tName + " " + std::to_string(layer.value()), "save");
+            else
+                ice_mesh->SetFileOption("Tag:" + tName, "save");
+        };
 
 
         // Delete mesh data
@@ -126,6 +140,10 @@ namespace SIMUG::mesh
     class NodeData: public GridData
     {
     public:
+        inline NodeData(INMOST::Mesh* ice_mesh_):
+            GridData(ice_mesh_)
+        {};
+
         inline NodeData(INMOST::Mesh* ice_mesh_, int layer_):
             GridData(ice_mesh_, layer_)
         {};
@@ -158,6 +176,10 @@ namespace SIMUG::mesh
     class EdgeData: public GridData
     {
     public:
+        inline EdgeData(INMOST::Mesh* ice_mesh_):
+            GridData(ice_mesh_)
+        {};
+
         inline EdgeData(INMOST::Mesh* ice_mesh_, int layer_):
             GridData(ice_mesh_, layer_)
         {};
@@ -190,6 +212,10 @@ namespace SIMUG::mesh
     class TrianData: public GridData
     {
     public:
+        inline TrianData(INMOST::Mesh* ice_mesh_):
+            GridData(ice_mesh_)
+        {};
+
         inline TrianData(INMOST::Mesh* ice_mesh_, int layer_):
             GridData(ice_mesh_, layer_)
         {};
@@ -222,6 +248,10 @@ namespace SIMUG::mesh
     class BndNodeData: public NodeData
     {
     public:
+        inline BndNodeData(INMOST::Mesh* ice_mesh_):
+            NodeData(ice_mesh_)
+        {};
+
         inline BndNodeData(INMOST::Mesh* ice_mesh_, int layer_):
             NodeData(ice_mesh_, layer_)
         {};
@@ -241,6 +271,10 @@ namespace SIMUG::mesh
     class BndEdgeData: public EdgeData
     {
     public:
+        inline BndEdgeData(INMOST::Mesh* ice_mesh_):
+            EdgeData(ice_mesh_)
+        {};
+
         inline BndEdgeData(INMOST::Mesh* ice_mesh_, int layer_):
             EdgeData(ice_mesh_, layer_)
         {};
@@ -260,6 +294,10 @@ namespace SIMUG::mesh
     class BndTrianData: public TrianData
     {
     public:
+        inline BndTrianData(INMOST::Mesh* ice_mesh_):
+            TrianData(ice_mesh_)
+        {};
+
         inline BndTrianData(INMOST::Mesh* ice_mesh_, int layer_):
             TrianData(ice_mesh_, layer_)
         {};

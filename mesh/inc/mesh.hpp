@@ -15,6 +15,7 @@
 #include "mesh_info.hpp"
 #include "stringtrim.hpp"
 #include "coordvar.hpp"
+#include "gridvars.hpp"
 
 #ifdef USE_MPI
 #include "mpi.h"
@@ -39,6 +40,10 @@ namespace SIMUG::mesh
 
         surfType surface_type;
         gridType grid_type;
+        std::string output_folder;
+        int num_ice_layers;
+        std::map<meshVar, gridElemType> prog_elems;
+        std::map<meshVar, gridElemType> forc_elems;
 
         int num_nodes;
         int num_edges;
@@ -120,16 +125,31 @@ namespace SIMUG::mesh
 
     public:
 
-        // construct manually with number of ice layers
+        // construct manually with number of ice layers (with output folder)
+        IceMesh(const std::string& path_to_file_,
+                const std::string& output_folder_,
+                const surfType& surf_type_,
+                const gridType& grid_type_,
+                const int& n_ice_layers_);
+        
+        // construct manually with number of ice layers (without output folder)
         IceMesh(const std::string& path_to_file_,
                 const surfType& surf_type_,
                 const gridType& grid_type_,
                 const int& n_ice_layers_);
 
-        // construct manually with 1 ice layer
+        // construct manually with 1 ice layer (with output folder)
+        IceMesh(const std::string& path_to_file_,
+                const std::string& output_folder_,
+                const surfType& surf_type_,
+                const gridType& grid_type_);
+        
+        // construct manually with 1 ice layer (without output folder)
         IceMesh(const std::string& path_to_file_,
                 const surfType& surf_type_,
                 const gridType& grid_type_);
+
+            
 
         // construct with mesh config class and number of ice layers (to do)
         //IceMesh(const MeshConfig& mesh_config_);
@@ -137,24 +157,27 @@ namespace SIMUG::mesh
         // Get INMOST::Mesh pointer
         inline INMOST::Mesh* GetMesh() {return ice_mesh.get();};
 
-        // Get map <layer number -> pointer to GridData> (could be (bnd)node, (bnd)edge, (bnd)trian)
-        inline std::shared_ptr<GridData>& GetData(const gridElemType& gdtype, int layer) {return grid_data[gdtype][layer];};
-        inline const std::shared_ptr<GridData>& GetData(const gridElemType& gdtype, int layer) const {return grid_data.at(gdtype).at(layer);};
+        // Get and Mute prognostic data
+        inline std::shared_ptr<GridData>& GetProgData(const gridElemType& gdtype, int layer) {return prognostic_data[gdtype][layer];};
+        inline const std::shared_ptr<GridData>& GetProgData(const gridElemType& gdtype, int layer) const {return prognostic_data.at(gdtype).at(layer);};
+        inline void MuteProgData(int layer) {for (auto& [var, elem]: mesh_info.prog_elems){prognostic_data[elem][layer]->Mute(var);};};
+        inline void MuteProgData() {for (int layer = 1; layer < mesh_info.num_ice_layers; ++layer){MuteProgData(layer);};};
+
+        // Get and Mute forcing data
+        inline std::shared_ptr<GridData>& GetForcData(const gridElemType& gdtype) {return forcing_data[gdtype];};
+        inline const std::shared_ptr<GridData>& GetForcData(const gridElemType& gdtype) const {return forcing_data.at(gdtype);};
+        void MuteForcData() {for (auto& [var, elem]: mesh_info.forc_elems){forcing_data[elem]->Mute(var);};};
 
         // Get mesh information (number of elements and local processor ids) 
         inline MeshInfo& GetMeshInfo() {return mesh_info;}; 
         inline const MeshInfo& GetMeshInfo() const {return mesh_info;};
 
         // Get mesh information (number of elements and local processor ids) 
-        inline std::map<gridElemType, std::shared_ptr<GridInfo>>& GetGridInfo() {return grid_info;}; 
-        inline const std::map<gridElemType, std::shared_ptr<GridInfo>>& GetGridInfo() const {return grid_info;};
-        
-        //Get number of ice layers 
-        inline const int GetNumLayers() const
-        {return num_ice_layers;};
+        inline std::shared_ptr<GridInfo>& GetGridInfo(const gridElemType& gdtype) {return grid_info[gdtype];}; 
+        inline const std::shared_ptr<GridInfo>& GetGridInfo(const gridElemType& gdtype) const {return grid_info.at(gdtype);};
     
         // save mesh with data to a file
-        void SaveVTU(const std::string& filename) const;
+        void SaveVTU(const std::string& meshname) const;
 
         // get vector of bnd nodes on current processor
         inline INMOST::ElementArray<INMOST::Node>& GetBndNodes() {return bnd_nodes;};
@@ -179,7 +202,8 @@ namespace SIMUG::mesh
         void SelectBndEdges();
         void SelectBndEdgesNoGhost();
         void SelectBndTrians();
-        void AssignGridVariables();
+        void AssignPrognosticVariables();
+        void AssignForcingVariables();
         void AssignCoords();
         void AssignIds();
         void AssignIdIntervals();
@@ -188,12 +212,12 @@ namespace SIMUG::mesh
     private:
 
         std::shared_ptr<INMOST::Mesh> ice_mesh;
-        std::map<gridElemType, LayersDataMap> grid_data;
+        std::map<gridElemType, LayersDataMap> prognostic_data;
+        std::map<gridElemType, std::shared_ptr<GridData>> forcing_data;
         std::map<gridElemType, std::shared_ptr<GridInfo>> grid_info;
         INMOST::ElementArray<INMOST::Node> bnd_nodes;
         INMOST::ElementArray<INMOST::Face> bnd_edges;
         INMOST::ElementArray<INMOST::Cell> bnd_trians;
         MeshInfo mesh_info;
-        int num_ice_layers;
     };
 }
