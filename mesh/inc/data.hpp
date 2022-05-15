@@ -60,6 +60,10 @@ namespace SIMUG::mesh
         inline const INMOST::Tag& Get(const std::string& tName) const 
         {return temp_data.at(tName);};
 
+        // Exchange mesh data
+        virtual void Exchange(const meshVar& pNot) = 0;
+        virtual void Exchange(const std::string& tName) = 0; 
+
         // Mute data
         inline void Mute(const meshVar& pNot)
         {
@@ -170,6 +174,13 @@ namespace SIMUG::mesh
 
         inline void Delete(const std::vector<std::string>& tVars) override
         {GridDeleteData(tVars, INMOST::NODE);};
+
+        // Exchane data
+        inline void Exchange(const meshVar& pNot)
+        {ice_mesh->ExchangeData(prog_data.at(pNot), INMOST::NODE, 0);};
+
+        inline void Exchange(const std::string& tName)
+        {ice_mesh->ExchangeData(temp_data.at(tName), INMOST::NODE, 0);};
     };
 
     // Edge data inharited class
@@ -206,6 +217,13 @@ namespace SIMUG::mesh
 
         inline void Delete(const std::vector<std::string>& tVars) override
         {GridDeleteData(tVars, INMOST::FACE);};
+
+        // Exchane data
+        inline void Exchange(const meshVar& pNot)
+        {ice_mesh->ExchangeData(prog_data.at(pNot), INMOST::FACE, 0);};
+
+        inline void Exchange(const std::string& tName)
+        {ice_mesh->ExchangeData(temp_data.at(tName), INMOST::FACE, 0);};
     };
 
     // Triangle data inharited class
@@ -242,6 +260,13 @@ namespace SIMUG::mesh
 
         inline void Delete(const std::vector<std::string>& tVars) override
         {GridDeleteData(tVars, INMOST::CELL);};
+
+        // Exchane data
+        inline void Exchange(const meshVar& pNot)
+        {ice_mesh->ExchangeData(prog_data.at(pNot), INMOST::CELL, 0);};
+
+        inline void Exchange(const std::string& tName)
+        {ice_mesh->ExchangeData(temp_data.at(tName), INMOST::CELL, 0);};
     };
 
     // Boundary node data inharited class

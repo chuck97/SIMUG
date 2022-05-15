@@ -14,6 +14,7 @@ add_library(mesh STATIC
   src/data.cpp
   src/mesh.cpp
   src/gridinfo.cpp
+  src/basis.cpp
   )
 
 # link with external libraries

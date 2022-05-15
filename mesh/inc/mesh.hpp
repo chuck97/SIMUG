@@ -16,6 +16,7 @@
 #include "stringtrim.hpp"
 #include "coordvar.hpp"
 #include "gridvars.hpp"
+#include "vecmath.hpp"
 
 #ifdef USE_MPI
 #include "mpi.h"
@@ -72,7 +73,10 @@ namespace SIMUG::mesh
         INMOST::Tag id;
         INMOST::Tag id_no_bnd;
         INMOST::Tag is_bnd;
+        INMOST::Tag element_basis;
         std::map<SIMUG::coord::coordType, INMOST::Tag> coords;
+        INMOST::Tag geo_basis;
+        INMOST::Tag cart_basis;
 
     public:
         virtual void Exchange() = 0;
@@ -89,7 +93,7 @@ namespace SIMUG::mesh
     {
     public:
         NodeInfo(INMOST::Mesh* ice_mesh_): GridInfo(ice_mesh_) {};
-    
+
     public:
         void Exchange();
         void Mute();
@@ -207,7 +211,10 @@ namespace SIMUG::mesh
         void AssignCoords();
         void AssignIds();
         void AssignIdIntervals();
+
         void AssembleBasisData();
+        void AssembleGeoElementBasis();
+        void AssembleCartesianElementBasis();
 
     private:
 

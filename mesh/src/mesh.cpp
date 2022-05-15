@@ -122,7 +122,7 @@ IceMesh::IceMesh(const std::string& path_to_file_,
     for (auto [key, val]: grid_info)
     {
         val->Exchange();
-        val->Mute();
+        //val->Mute();
     }
 
     // assign prognostic model grid variables
@@ -166,8 +166,15 @@ IceMesh::IceMesh(const std::string& path_to_file_,
         mesh_log.Log("Assigning forcing variables successfully! (" + to_string(duration) + " ms)\n");
     BARRIER
 
+    mesh_timer.Launch();
+    AssembleBasisData();
+    mesh_timer.Stop();
+    duration = mesh_timer.GetMaxTime();
+    mesh_timer.Reset();
+    if (ice_mesh->GetProcessorRank()==0)
+        mesh_log.Log("Assembling basis data successfully! (" + to_string(duration) + " ms)\n");
 
-    //AssembleBasisData();
+    BARRIER
 }
 
 IceMesh::IceMesh(const std::string& path_to_file_,
@@ -854,4 +861,4 @@ void IceMesh::AssignForcingVariables()
         forcing_data[element]->Create(variable, forcDims.at(variable), INMOST::DATA_REAL);
 
     BARRIER
-}
+} 

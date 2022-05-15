@@ -4,7 +4,8 @@ project(tools)
 # Add a library with the above sources
 add_library(tools STATIC 
     src/stringtrim.cpp
-    src/timer.cpp)
+    src/timer.cpp
+    )
     
 add_library(sub::tools ALIAS tools)
 
