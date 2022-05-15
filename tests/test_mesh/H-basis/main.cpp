@@ -32,8 +32,8 @@ bool test_basis()
     IceMesh mesh_plane(MESH_PATH, surfType::plane, gridType::Agrid);
     mesh_plane.GetProgData(gridElemType::Node, 0)->Create("angle node", 1, DATA_REAL);
 
-    INMOST::Tag geo_basis_tag = mesh_plane.GetGridInfo(gridElemType::Node)->geo_basis;
-    INMOST::Tag cart_basis_tag = mesh_plane.GetGridInfo(gridElemType::Node)->cart_basis;
+    INMOST::Tag geo_basis_tag = mesh_plane.GetGridInfo(gridElemType::Node)->geo_basis[2];
+    INMOST::Tag cart_basis_tag = mesh_plane.GetGridInfo(gridElemType::Node)->cart_basis[2];
 
     INMOST::Tag angle_node_tag = mesh_plane.GetProgData(gridElemType::Node, 0)->Get("angle node");
 
@@ -41,13 +41,13 @@ bool test_basis()
     {
         if (nodeit->GetStatus() != Element::Ghost)
         {
-            std::vector<double> basis_k_geo = {nodeit->RealArray(geo_basis_tag)[6],
-                                               nodeit->RealArray(geo_basis_tag)[7],
-                                               nodeit->RealArray(geo_basis_tag)[8]};
+            std::vector<double> basis_k_geo = {nodeit->RealArray(geo_basis_tag)[0],
+                                               nodeit->RealArray(geo_basis_tag)[1],
+                                               nodeit->RealArray(geo_basis_tag)[2]};
 
-            std::vector<double> basis_k_cart = {nodeit->RealArray(cart_basis_tag)[6],
-                                                nodeit->RealArray(cart_basis_tag)[7],
-                                                nodeit->RealArray(cart_basis_tag)[8]};
+            std::vector<double> basis_k_cart = {nodeit->RealArray(cart_basis_tag)[0],
+                                                nodeit->RealArray(cart_basis_tag)[1],
+                                                nodeit->RealArray(cart_basis_tag)[2]};
 
             nodeit->Real(angle_node_tag) = SIMUG::angle_vecs(basis_k_geo, basis_k_cart);
         }
@@ -63,8 +63,8 @@ bool test_basis()
     IceMesh mesh_sphere(SPHERE_PATH, surfType::sphere, gridType::Agrid);
     mesh_sphere.GetProgData(gridElemType::Node, 0)->Create("angle node", 1, DATA_REAL);
 
-    INMOST::Tag geo_basis_tag = mesh_sphere.GetGridInfo(gridElemType::Node)->geo_basis;
-    INMOST::Tag cart_basis_tag = mesh_sphere.GetGridInfo(gridElemType::Node)->cart_basis;
+    INMOST::Tag geo_basis_tag = mesh_sphere.GetGridInfo(gridElemType::Node)->geo_basis[2];
+    INMOST::Tag cart_basis_tag = mesh_sphere.GetGridInfo(gridElemType::Node)->cart_basis[2];
 
     INMOST::Tag angle_node_tag = mesh_sphere.GetProgData(gridElemType::Node, 0)->Get("angle node");
 
@@ -72,13 +72,13 @@ bool test_basis()
     {
         if (nodeit->GetStatus() != Element::Ghost)
         {
-            std::vector<double> basis_k_geo = {nodeit->RealArray(geo_basis_tag)[6],
-                                               nodeit->RealArray(geo_basis_tag)[7],
-                                               nodeit->RealArray(geo_basis_tag)[8]};
+            std::vector<double> basis_k_geo = {nodeit->RealArray(geo_basis_tag)[0],
+                                               nodeit->RealArray(geo_basis_tag)[1],
+                                               nodeit->RealArray(geo_basis_tag)[2]};
 
-            std::vector<double> basis_k_cart = {nodeit->RealArray(cart_basis_tag)[6],
-                                                nodeit->RealArray(cart_basis_tag)[7],
-                                                nodeit->RealArray(cart_basis_tag)[8]};
+            std::vector<double> basis_k_cart = {nodeit->RealArray(cart_basis_tag)[0],
+                                                nodeit->RealArray(cart_basis_tag)[1],
+                                                nodeit->RealArray(cart_basis_tag)[2]};
 
             nodeit->Real(angle_node_tag) = SIMUG::angle_vecs(basis_k_geo, basis_k_cart);
         }
@@ -96,39 +96,29 @@ bool test_basis()
     mesh_arctic.GetProgData(gridElemType::Node, 0)->Create("cart k norm", 1, DATA_REAL);
     mesh_arctic.GetProgData(gridElemType::Node, 0)->Create("geo k * cart k", 1, DATA_REAL);
 
-    INMOST::Tag geo_basis_tag = mesh_arctic.GetGridInfo(gridElemType::Node)->geo_basis;
-    INMOST::Tag cart_basis_tag = mesh_arctic.GetGridInfo(gridElemType::Node)->cart_basis;
+    INMOST::Tag geo_basis_tag = mesh_arctic.GetGridInfo(gridElemType::Node)->geo_basis[2];
+    INMOST::Tag cart_basis_tag = mesh_arctic.GetGridInfo(gridElemType::Node)->cart_basis[2];
 
     INMOST::Tag angle_node_tag = mesh_arctic.GetProgData(gridElemType::Node, 0)->Get("angle node");
-    INMOST::Tag geo_k_tag = mesh_arctic.GetProgData(gridElemType::Node, 0)->Get("geo k norm");
-    INMOST::Tag cart_k_tag = mesh_arctic.GetProgData(gridElemType::Node, 0)->Get("cart k norm");
-    INMOST::Tag geo_k_mult_cart_k = mesh_arctic.GetProgData(gridElemType::Node, 0)->Get("geo k * cart k");
 
     for (auto nodeit = mesh_arctic.GetMesh()->BeginNode(); nodeit != mesh_arctic.GetMesh()->EndNode(); ++nodeit)
     {
         if (nodeit->GetStatus() != Element::Ghost)
         {
-            std::vector<double> basis_k_geo = {nodeit->RealArray(geo_basis_tag)[6],
-                                               nodeit->RealArray(geo_basis_tag)[7],
-                                               nodeit->RealArray(geo_basis_tag)[8]};
+            std::vector<double> basis_k_geo = {nodeit->RealArray(geo_basis_tag)[0],
+                                               nodeit->RealArray(geo_basis_tag)[1],
+                                               nodeit->RealArray(geo_basis_tag)[2]};
 
-            std::vector<double> basis_k_cart = {nodeit->RealArray(cart_basis_tag)[6],
-                                                nodeit->RealArray(cart_basis_tag)[7],
-                                                nodeit->RealArray(cart_basis_tag)[8]};
+            std::vector<double> basis_k_cart = {nodeit->RealArray(cart_basis_tag)[0],
+                                                nodeit->RealArray(cart_basis_tag)[1],
+                                                nodeit->RealArray(cart_basis_tag)[2]};
 
             
             nodeit->Real(angle_node_tag) = SIMUG::angle_vecs(basis_k_geo, basis_k_cart);
-            nodeit->Real(geo_k_tag) = SIMUG::L2_norm_vec(basis_k_geo);
-            nodeit->Real(cart_k_tag) = SIMUG::L2_norm_vec(basis_k_cart);
-            nodeit->Real(geo_k_mult_cart_k) = basis_k_geo*basis_k_cart;
         }
 
     }
     mesh_arctic.GetProgData(gridElemType::Node, 0)->Exchange("angle node");
-    mesh_arctic.GetProgData(gridElemType::Node, 0)->Exchange("geo k norm");
-    mesh_arctic.GetProgData(gridElemType::Node, 0)->Exchange("cart k norm");
-    mesh_arctic.GetProgData(gridElemType::Node, 0)->Exchange("geo k * cart k");
-    mesh_arctic.SaveVTU("arctic");
     }
     
     return true;

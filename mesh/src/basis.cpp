@@ -8,8 +8,11 @@ using namespace SIMUG::coord;
 void IceMesh::AssembleGeoElementBasis()
 {
     // nodes
-    INMOST::Tag node_geo_basis_tag = ice_mesh->CreateTag("geo basis node", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 9);
-    grid_info[gridElemType::Node]->geo_basis = node_geo_basis_tag;
+    INMOST::Tag node_geo_basis_x_tag = ice_mesh->CreateTag("geo basis x node", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 3);
+    INMOST::Tag node_geo_basis_y_tag = ice_mesh->CreateTag("geo basis y node", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 3);
+    INMOST::Tag node_geo_basis_z_tag = ice_mesh->CreateTag("geo basis z node", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 3);
+
+    grid_info[gridElemType::Node]->geo_basis = {node_geo_basis_x_tag, node_geo_basis_y_tag, node_geo_basis_z_tag};
 
     for(auto nodeit = ice_mesh->BeginNode(); nodeit != ice_mesh->EndNode(); ++nodeit)
     {
@@ -18,24 +21,27 @@ void IceMesh::AssembleGeoElementBasis()
         double lat = nodeit->RealArray(grid_info[gridElemType::Node]->coords[coordType::geo])[1];
 
         // first basis vector
-        nodeit->RealArray(node_geo_basis_tag)[0] = (mesh_info.surface_type == surfType::plane)?1.0:-sin(lon);
-        nodeit->RealArray(node_geo_basis_tag)[1] = (mesh_info.surface_type == surfType::plane)?0.0:cos(lon);
-        nodeit->RealArray(node_geo_basis_tag)[2] = (mesh_info.surface_type == surfType::plane)?0.0:0.0;
+        nodeit->RealArray(node_geo_basis_x_tag)[0] = (mesh_info.surface_type == surfType::plane)?1.0:-sin(lon);
+        nodeit->RealArray(node_geo_basis_x_tag)[1] = (mesh_info.surface_type == surfType::plane)?0.0:cos(lon);
+        nodeit->RealArray(node_geo_basis_x_tag)[2] = (mesh_info.surface_type == surfType::plane)?0.0:0.0;
 
         // second basis vector
-        nodeit->RealArray(node_geo_basis_tag)[3] = (mesh_info.surface_type == surfType::plane)?0.0:-sin(lat)*cos(lon);
-        nodeit->RealArray(node_geo_basis_tag)[4] = (mesh_info.surface_type == surfType::plane)?1.0:-sin(lat)*sin(lon);
-        nodeit->RealArray(node_geo_basis_tag)[5] = (mesh_info.surface_type == surfType::plane)?0.0:cos(lat);
+        nodeit->RealArray(node_geo_basis_y_tag)[0] = (mesh_info.surface_type == surfType::plane)?0.0:-sin(lat)*cos(lon);
+        nodeit->RealArray(node_geo_basis_y_tag)[1] = (mesh_info.surface_type == surfType::plane)?1.0:-sin(lat)*sin(lon);
+        nodeit->RealArray(node_geo_basis_y_tag)[2] = (mesh_info.surface_type == surfType::plane)?0.0:cos(lat);
 
         // third basis vector
-        nodeit->RealArray(node_geo_basis_tag)[6] = (mesh_info.surface_type == surfType::plane)?0.0:cos(lat)*cos(lon);
-        nodeit->RealArray(node_geo_basis_tag)[7] = (mesh_info.surface_type == surfType::plane)?0.0:cos(lat)*sin(lon);
-        nodeit->RealArray(node_geo_basis_tag)[8] = (mesh_info.surface_type == surfType::plane)?1.0:sin(lat);
+        nodeit->RealArray(node_geo_basis_z_tag)[0] = (mesh_info.surface_type == surfType::plane)?0.0:cos(lat)*cos(lon);
+        nodeit->RealArray(node_geo_basis_z_tag)[1] = (mesh_info.surface_type == surfType::plane)?0.0:cos(lat)*sin(lon);
+        nodeit->RealArray(node_geo_basis_z_tag)[2] = (mesh_info.surface_type == surfType::plane)?1.0:sin(lat);
     }
 
     // edges
-    INMOST::Tag edge_geo_basis_tag = ice_mesh->CreateTag("geo basis edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 9);
-    grid_info[gridElemType::Edge]->geo_basis = edge_geo_basis_tag;
+    INMOST::Tag edge_geo_basis_x_tag = ice_mesh->CreateTag("geo basis x edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 3);
+    INMOST::Tag edge_geo_basis_y_tag = ice_mesh->CreateTag("geo basis y edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 3);
+    INMOST::Tag edge_geo_basis_z_tag = ice_mesh->CreateTag("geo basis z edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 3);
+
+    grid_info[gridElemType::Edge]->geo_basis = {edge_geo_basis_x_tag, edge_geo_basis_y_tag, edge_geo_basis_z_tag};
 
     for(auto edgeit = ice_mesh->BeginFace(); edgeit != ice_mesh->EndFace(); ++edgeit)
     {
@@ -44,24 +50,27 @@ void IceMesh::AssembleGeoElementBasis()
         double lat = edgeit->RealArray(grid_info[gridElemType::Edge]->coords[coordType::geo])[1];
 
         // first basis vector
-        edgeit->RealArray(edge_geo_basis_tag)[0] = (mesh_info.surface_type == surfType::plane)?1.0:-sin(lon);
-        edgeit->RealArray(edge_geo_basis_tag)[1] = (mesh_info.surface_type == surfType::plane)?0.0:cos(lon);
-        edgeit->RealArray(edge_geo_basis_tag)[2] = (mesh_info.surface_type == surfType::plane)?0.0:0.0;
+        edgeit->RealArray(edge_geo_basis_x_tag)[0] = (mesh_info.surface_type == surfType::plane)?1.0:-sin(lon);
+        edgeit->RealArray(edge_geo_basis_x_tag)[1] = (mesh_info.surface_type == surfType::plane)?0.0:cos(lon);
+        edgeit->RealArray(edge_geo_basis_x_tag)[2] = (mesh_info.surface_type == surfType::plane)?0.0:0.0;
 
         // second basis vector
-        edgeit->RealArray(edge_geo_basis_tag)[3] = (mesh_info.surface_type == surfType::plane)?0.0:-sin(lat)*cos(lon);
-        edgeit->RealArray(edge_geo_basis_tag)[4] = (mesh_info.surface_type == surfType::plane)?1.0:-sin(lat)*sin(lon);
-        edgeit->RealArray(edge_geo_basis_tag)[5] = (mesh_info.surface_type == surfType::plane)?0.0:cos(lat);
+        edgeit->RealArray(edge_geo_basis_y_tag)[0] = (mesh_info.surface_type == surfType::plane)?0.0:-sin(lat)*cos(lon);
+        edgeit->RealArray(edge_geo_basis_y_tag)[1] = (mesh_info.surface_type == surfType::plane)?1.0:-sin(lat)*sin(lon);
+        edgeit->RealArray(edge_geo_basis_y_tag)[2] = (mesh_info.surface_type == surfType::plane)?0.0:cos(lat);
 
         // third basis vector
-        edgeit->RealArray(edge_geo_basis_tag)[6] = (mesh_info.surface_type == surfType::plane)?0.0:cos(lat)*cos(lon);
-        edgeit->RealArray(edge_geo_basis_tag)[7] = (mesh_info.surface_type == surfType::plane)?0.0:cos(lat)*sin(lon);
-        edgeit->RealArray(edge_geo_basis_tag)[8] = (mesh_info.surface_type == surfType::plane)?1.0:sin(lat);
+        edgeit->RealArray(edge_geo_basis_z_tag)[0] = (mesh_info.surface_type == surfType::plane)?0.0:cos(lat)*cos(lon);
+        edgeit->RealArray(edge_geo_basis_z_tag)[1] = (mesh_info.surface_type == surfType::plane)?0.0:cos(lat)*sin(lon);
+        edgeit->RealArray(edge_geo_basis_z_tag)[2] = (mesh_info.surface_type == surfType::plane)?1.0:sin(lat);
     }
 
     // trians
-    INMOST::Tag trian_geo_basis_tag = ice_mesh->CreateTag("geo basis trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 9);
-    grid_info[gridElemType::Trian]->geo_basis = trian_geo_basis_tag;
+    INMOST::Tag trian_geo_basis_x_tag = ice_mesh->CreateTag("geo basis x trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
+    INMOST::Tag trian_geo_basis_y_tag = ice_mesh->CreateTag("geo basis y trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
+    INMOST::Tag trian_geo_basis_z_tag = ice_mesh->CreateTag("geo basis z trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
+
+    grid_info[gridElemType::Trian]->geo_basis = {trian_geo_basis_x_tag, trian_geo_basis_y_tag, trian_geo_basis_z_tag};
 
     for(auto trianit = ice_mesh->BeginCell(); trianit != ice_mesh->EndCell(); ++trianit)
     {
@@ -70,19 +79,19 @@ void IceMesh::AssembleGeoElementBasis()
         double lat = trianit->RealArray(grid_info[gridElemType::Trian]->coords[coordType::geo])[1];
 
         // first basis vector
-        trianit->RealArray(trian_geo_basis_tag)[0] = (mesh_info.surface_type == surfType::plane)?1.0:-sin(lon);
-        trianit->RealArray(trian_geo_basis_tag)[1] = (mesh_info.surface_type == surfType::plane)?0.0:cos(lon);
-        trianit->RealArray(trian_geo_basis_tag)[2] = (mesh_info.surface_type == surfType::plane)?0.0:0.0;
+        trianit->RealArray(trian_geo_basis_x_tag)[0] = (mesh_info.surface_type == surfType::plane)?1.0:-sin(lon);
+        trianit->RealArray(trian_geo_basis_x_tag)[1] = (mesh_info.surface_type == surfType::plane)?0.0:cos(lon);
+        trianit->RealArray(trian_geo_basis_x_tag)[2] = (mesh_info.surface_type == surfType::plane)?0.0:0.0;
 
         // second basis vector
-        trianit->RealArray(trian_geo_basis_tag)[3] = (mesh_info.surface_type == surfType::plane)?0.0:-sin(lat)*cos(lon);
-        trianit->RealArray(trian_geo_basis_tag)[4] = (mesh_info.surface_type == surfType::plane)?1.0:-sin(lat)*sin(lon);
-        trianit->RealArray(trian_geo_basis_tag)[5] = (mesh_info.surface_type == surfType::plane)?0.0:cos(lat);
+        trianit->RealArray(trian_geo_basis_y_tag)[0] = (mesh_info.surface_type == surfType::plane)?0.0:-sin(lat)*cos(lon);
+        trianit->RealArray(trian_geo_basis_y_tag)[1] = (mesh_info.surface_type == surfType::plane)?1.0:-sin(lat)*sin(lon);
+        trianit->RealArray(trian_geo_basis_y_tag)[2] = (mesh_info.surface_type == surfType::plane)?0.0:cos(lat);
 
         // third basis vector
-        trianit->RealArray(trian_geo_basis_tag)[6] = (mesh_info.surface_type == surfType::plane)?0.0:cos(lat)*cos(lon);
-        trianit->RealArray(trian_geo_basis_tag)[7] = (mesh_info.surface_type == surfType::plane)?0.0:cos(lat)*sin(lon);
-        trianit->RealArray(trian_geo_basis_tag)[8] = (mesh_info.surface_type == surfType::plane)?1.0:sin(lat);
+        trianit->RealArray(trian_geo_basis_z_tag)[0] = (mesh_info.surface_type == surfType::plane)?0.0:cos(lat)*cos(lon);
+        trianit->RealArray(trian_geo_basis_z_tag)[1] = (mesh_info.surface_type == surfType::plane)?0.0:cos(lat)*sin(lon);
+        trianit->RealArray(trian_geo_basis_z_tag)[2] = (mesh_info.surface_type == surfType::plane)?1.0:sin(lat);
     }
     BARRIER
 }
@@ -90,8 +99,11 @@ void IceMesh::AssembleGeoElementBasis()
 void IceMesh::AssembleCartesianElementBasis()
 {
     // ## triangles ##
-    INMOST::Tag trian_cart_basis_tag = ice_mesh->CreateTag("cart basis trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 9);
-    grid_info[gridElemType::Trian]->cart_basis = trian_cart_basis_tag;
+    INMOST::Tag trian_cart_basis_x_tag = ice_mesh->CreateTag("cart basis x trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
+    INMOST::Tag trian_cart_basis_y_tag = ice_mesh->CreateTag("cart basis y trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
+    INMOST::Tag trian_cart_basis_z_tag = ice_mesh->CreateTag("cart basis z trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
+
+    grid_info[gridElemType::Trian]->cart_basis = {trian_cart_basis_x_tag, trian_cart_basis_y_tag, trian_cart_basis_z_tag};
 
     for(auto trianit = ice_mesh->BeginCell(); trianit != ice_mesh->EndCell(); ++trianit)
     {
@@ -140,24 +152,27 @@ void IceMesh::AssembleCartesianElementBasis()
         basis_j = basis_k%basis_i;
 
         // first basis vector
-        trianit->RealArray(trian_cart_basis_tag)[0] = basis_i[0];
-        trianit->RealArray(trian_cart_basis_tag)[1] = basis_i[1];
-        trianit->RealArray(trian_cart_basis_tag)[2] = basis_i[2];
+        trianit->RealArray(trian_cart_basis_x_tag)[0] = basis_i[0];
+        trianit->RealArray(trian_cart_basis_x_tag)[1] = basis_i[1];
+        trianit->RealArray(trian_cart_basis_x_tag)[2] = basis_i[2];
 
         // second basis vector
-        trianit->RealArray(trian_cart_basis_tag)[3] = basis_j[0];
-        trianit->RealArray(trian_cart_basis_tag)[4] = basis_j[1];
-        trianit->RealArray(trian_cart_basis_tag)[5] = basis_j[2];
+        trianit->RealArray(trian_cart_basis_y_tag)[0] = basis_j[0];
+        trianit->RealArray(trian_cart_basis_y_tag)[1] = basis_j[1];
+        trianit->RealArray(trian_cart_basis_y_tag)[2] = basis_j[2];
 
         // third basis vector
-        trianit->RealArray(trian_cart_basis_tag)[6] = basis_k[0];
-        trianit->RealArray(trian_cart_basis_tag)[7] = basis_k[1];
-        trianit->RealArray(trian_cart_basis_tag)[8] = basis_k[2];
+        trianit->RealArray(trian_cart_basis_z_tag)[0] = basis_k[0];
+        trianit->RealArray(trian_cart_basis_z_tag)[1] = basis_k[1];
+        trianit->RealArray(trian_cart_basis_z_tag)[2] = basis_k[2];
     }
 
     // ## edges ##
-    INMOST::Tag edge_cart_basis_tag = ice_mesh->CreateTag("cart basis edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 9);
-    grid_info[gridElemType::Edge]->cart_basis = edge_cart_basis_tag;
+    INMOST::Tag edge_cart_basis_x_tag = ice_mesh->CreateTag("cart basis x edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 3);
+    INMOST::Tag edge_cart_basis_y_tag = ice_mesh->CreateTag("cart basis y edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 3);
+    INMOST::Tag edge_cart_basis_z_tag = ice_mesh->CreateTag("cart basis z edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 3);
+
+    grid_info[gridElemType::Edge]->cart_basis = {edge_cart_basis_x_tag, edge_cart_basis_y_tag, edge_cart_basis_z_tag};
 
     for (auto edgeit = ice_mesh->BeginFace(); edgeit != ice_mesh->EndFace(); ++edgeit)
     {
@@ -191,10 +206,10 @@ void IceMesh::AssembleCartesianElementBasis()
                                                 {node_coords[6], node_coords[7], node_coords[8]});
 
             // gain unit normal of current trian
-            INMOST::Tag tr_cart_basis_tag = grid_info[gridElemType::Trian]->cart_basis;
-            std::vector<double> basis_k_tr(3);
-
-            basis_k_tr[0] = adj_trians[tr_num].RealArray(tr_cart_basis_tag)[6]; basis_k_tr[1] = adj_trians[tr_num].RealArray(tr_cart_basis_tag)[7]; basis_k_tr[2] = adj_trians[tr_num].RealArray(tr_cart_basis_tag)[8];
+            INMOST::Tag tr_cart_basis_tag = grid_info[gridElemType::Trian]->cart_basis[2];
+            std::vector<double> basis_k_tr = {adj_trians[tr_num].RealArray(trian_cart_basis_z_tag)[0],
+                                              adj_trians[tr_num].RealArray(trian_cart_basis_z_tag)[1],
+                                              adj_trians[tr_num].RealArray(trian_cart_basis_z_tag)[2]};
 
             basis_k_not_unit = basis_k_not_unit + basis_k_tr*Scurr;
             sum_S += Scurr;
@@ -222,24 +237,27 @@ void IceMesh::AssembleCartesianElementBasis()
         basis_i = basis_j%basis_k;
 
         // first basis vector
-        edgeit->RealArray(edge_cart_basis_tag)[0] = basis_i[0];
-        edgeit->RealArray(edge_cart_basis_tag)[1] = basis_i[1];
-        edgeit->RealArray(edge_cart_basis_tag)[2] = basis_i[2];
+        edgeit->RealArray(edge_cart_basis_x_tag)[0] = basis_i[0];
+        edgeit->RealArray(edge_cart_basis_x_tag)[1] = basis_i[1];
+        edgeit->RealArray(edge_cart_basis_x_tag)[2] = basis_i[2];
 
         // second basis vector
-        edgeit->RealArray(edge_cart_basis_tag)[3] = basis_j[0];
-        edgeit->RealArray(edge_cart_basis_tag)[4] = basis_j[1];
-        edgeit->RealArray(edge_cart_basis_tag)[5] = basis_j[2];
+        edgeit->RealArray(edge_cart_basis_y_tag)[0] = basis_j[0];
+        edgeit->RealArray(edge_cart_basis_y_tag)[1] = basis_j[1];
+        edgeit->RealArray(edge_cart_basis_y_tag)[2] = basis_j[2];
 
         // third basis vector
-        edgeit->RealArray(edge_cart_basis_tag)[6] = basis_k[0];
-        edgeit->RealArray(edge_cart_basis_tag)[7] = basis_k[1];
-        edgeit->RealArray(edge_cart_basis_tag)[8] = basis_k[2];
+        edgeit->RealArray(edge_cart_basis_z_tag)[0] = basis_k[0];
+        edgeit->RealArray(edge_cart_basis_z_tag)[1] = basis_k[1];
+        edgeit->RealArray(edge_cart_basis_z_tag)[2] = basis_k[2];
     }
     
     // ## nodes ##
-    INMOST::Tag node_cart_basis_tag = ice_mesh->CreateTag("cart basis node", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 9);
-    grid_info[gridElemType::Node]->cart_basis = node_cart_basis_tag;
+    INMOST::Tag node_cart_basis_x_tag = ice_mesh->CreateTag("cart basis x node", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 3);
+    INMOST::Tag node_cart_basis_y_tag = ice_mesh->CreateTag("cart basis y node", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 3);
+    INMOST::Tag node_cart_basis_z_tag = ice_mesh->CreateTag("cart basis z node", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 3);
+
+    grid_info[gridElemType::Node]->cart_basis = {node_cart_basis_x_tag, node_cart_basis_y_tag, node_cart_basis_z_tag};
 
     for (auto nodeit = ice_mesh->BeginNode(); nodeit != ice_mesh->EndNode(); ++nodeit)
     {
@@ -273,10 +291,9 @@ void IceMesh::AssembleCartesianElementBasis()
                                                 {node_coords[6], node_coords[7], node_coords[8]});
 
             // gain unit normal of current trian
-            INMOST::Tag tr_cart_basis_tag = grid_info[gridElemType::Trian]->cart_basis;
-            std::vector<double> basis_k_tr(3);
-
-            basis_k_tr[0] = adj_trians[tr_num].RealArray(tr_cart_basis_tag)[6]; basis_k_tr[1] = adj_trians[tr_num].RealArray(tr_cart_basis_tag)[7]; basis_k_tr[2] = adj_trians[tr_num].RealArray(tr_cart_basis_tag)[8];
+            std::vector<double> basis_k_tr = {adj_trians[tr_num].RealArray(trian_cart_basis_z_tag)[0],
+                                              adj_trians[tr_num].RealArray(trian_cart_basis_z_tag)[1],
+                                              adj_trians[tr_num].RealArray(trian_cart_basis_z_tag)[2]};
 
             basis_k_not_unit = basis_k_not_unit + basis_k_tr*Scurr;
             sum_S += Scurr;
@@ -291,19 +308,19 @@ void IceMesh::AssembleCartesianElementBasis()
         basis_i = basis_j%basis_k;
 
         // first basis vector
-        nodeit->RealArray(node_cart_basis_tag)[0] = basis_i[0];
-        nodeit->RealArray(node_cart_basis_tag)[1] = basis_i[1];
-        nodeit->RealArray(node_cart_basis_tag)[2] = basis_i[2];
+        nodeit->RealArray(node_cart_basis_x_tag)[0] = basis_i[0];
+        nodeit->RealArray(node_cart_basis_x_tag)[1] = basis_i[1];
+        nodeit->RealArray(node_cart_basis_x_tag)[2] = basis_i[2];
 
         // second basis vector
-        nodeit->RealArray(node_cart_basis_tag)[3] = basis_j[0];
-        nodeit->RealArray(node_cart_basis_tag)[4] = basis_j[1];
-        nodeit->RealArray(node_cart_basis_tag)[5] = basis_j[2];
+        nodeit->RealArray(node_cart_basis_y_tag)[0] = basis_j[0];
+        nodeit->RealArray(node_cart_basis_y_tag)[1] = basis_j[1];
+        nodeit->RealArray(node_cart_basis_y_tag)[2] = basis_j[2];
 
         // third basis vector
-        nodeit->RealArray(node_cart_basis_tag)[6] = basis_k[0];
-        nodeit->RealArray(node_cart_basis_tag)[7] = basis_k[1];
-        nodeit->RealArray(node_cart_basis_tag)[8] = basis_k[2];
+        nodeit->RealArray(node_cart_basis_z_tag)[0] = basis_k[0];
+        nodeit->RealArray(node_cart_basis_z_tag)[1] = basis_k[1];
+        nodeit->RealArray(node_cart_basis_z_tag)[2] = basis_k[2];
     }
     BARRIER
 }

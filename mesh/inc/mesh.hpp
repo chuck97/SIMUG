@@ -75,8 +75,8 @@ namespace SIMUG::mesh
         INMOST::Tag is_bnd;
         INMOST::Tag element_basis;
         std::map<SIMUG::coord::coordType, INMOST::Tag> coords;
-        INMOST::Tag geo_basis;
-        INMOST::Tag cart_basis;
+        std::vector<INMOST::Tag> geo_basis;
+        std::vector<INMOST::Tag> cart_basis;
 
     public:
         virtual void Exchange() = 0;
