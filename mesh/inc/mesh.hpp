@@ -70,13 +70,15 @@ namespace SIMUG::mesh
         GridInfo(INMOST::Mesh* ice_mesh_): ice_mesh(ice_mesh_) {}; 
 
     public:
-        INMOST::Tag id;
-        INMOST::Tag id_no_bnd;
-        INMOST::Tag is_bnd;
-        INMOST::Tag element_basis;
-        std::map<SIMUG::coord::coordType, INMOST::Tag> coords;
-        std::vector<INMOST::Tag> geo_basis;
-        std::vector<INMOST::Tag> cart_basis;
+        INMOST::Tag id;                                         // global element id 
+        INMOST::Tag id_no_bnd;                                  // global element id without bnd elements
+        INMOST::Tag is_bnd;                                     // is node bnd (1 = true, 0 = false)
+        std::map<SIMUG::coord::coordType, INMOST::Tag> coords;  // coordinates of element centroid (model, geographical, cartesian)
+        std::vector<INMOST::Tag> geo_basis;                     // geographical basis vectors coordinates
+        std::vector<INMOST::Tag> cart_basis;                    // local cartesian basis vectors coordinates
+        INMOST::Tag trans_matr_from_geo_to_elem;                // transition 2x2 matrix for vector/tensor coordinates while switching from geo to element basis
+        INMOST::Tag trans_matr_from_elem_to_geo;                // transition 2x2 matrix for vector/tensor coordinates while switching from element to geo basis ( = trans_matr_from_geo_to_elem^-1)
+
 
     public:
         virtual void Exchange() = 0;
@@ -215,6 +217,7 @@ namespace SIMUG::mesh
         void AssembleBasisData();
         void AssembleGeoElementBasis();
         void AssembleCartesianElementBasis();
+        void AssembleGeoToElementTransitionMatricies();
 
     private:
 

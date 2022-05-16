@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include <math.h>
+#include <cmath>
 #include <iostream>
 #include "defines.hpp"
 
@@ -91,6 +91,18 @@ namespace SIMUG
         return res;
     }
 
+    // matrix mult number (matrix is storad as vector of raws)
+    template<typename T>
+    std::vector<std::vector<T>> operator* (const std::vector<std::vector<T>>& m, const T& num)
+    {
+        std::vector<std::vector<T>> res = m;
+
+        for (size_t i = 0; i < m.size(); ++i)
+            res[i] = m[i]*num;
+
+        return res;
+    }
+
     // L2-norm of vector
     template<typename T>
     T L2_norm_vec(const std::vector<T>& v)
@@ -153,5 +165,128 @@ namespace SIMUG
         std::vector<T> v02 = node1 - node0;
 
         return (L2_norm_vec(v01%v02)/2.0);
+    }
+
+    // 2x2 or 3x3 matrix determinant (matrix is stored as vector of raws)
+    template<typename T>
+    T det(const std::vector<std::vector<T>>& m)
+    {       
+        if (m.size() == 1)
+        {
+            return m[0][0];
+        }
+        else if (m.size() == 2)
+        {
+            T a00 = m[0][0];
+            T a01 = m[0][1];
+            T a10 = m[1][0];
+            T a11 = m[1][1];
+
+            return (a00*a11 - a01*a10);
+        }
+        else if (m.size() == 3)
+        {
+            T a00 = m[0][0];
+            T a01 = m[0][1];
+            T a02 = m[0][2];
+            T a10 = m[1][0];
+            T a11 = m[1][1];
+            T a12 = m[1][2];
+            T a20 = m[2][0];
+            T a21 = m[2][1];
+            T a22 = m[2][2];
+
+            return (a00*a11*a22 + a01*a12*a20 + a10*a21*a02 -
+                    a02*a11*a20 - a01*a10*a22 - a12*a21*a00);
+        }
+        else
+        {
+            SIMUG_ERR("Can compute determinant only for 1x1, 2x2 or 3x3 matrix!");
+        }
+    }
+
+    // algebraic addition for 2x2 or 3x3 matrix (matrix is stored as vector of raws)
+    template <typename T>
+    T alg_add(const std::vector<std::vector<T>>& m, size_t rawnum, size_t colnum)
+    {
+        if (m.size() > 3)
+        {
+            SIMUG_ERR("Can compute algebraic addition only for 2x2 or 3x3 matricies");
+        }
+        else
+        {
+            std::vector<std::vector<T>> add_matr;
+            for (size_t raw = 0; raw < m.size(); ++raw)
+            {
+                if (raw == rawnum)
+                    continue;
+                
+                std::vector<T> curr_raw;
+                
+                for (size_t col = 0; col < m.size(); ++col)
+                {
+                    if (col != colnum)
+                        curr_raw.push_back(m[raw][col]);
+                }
+                add_matr.push_back(curr_raw);
+            }
+            return (pow(-1, colnum + rawnum)*det(add_matr));
+        }
+    }
+    
+    // matrix transposition (matrix is stored as a vector of raws)
+    template <typename T>
+    std::vector<std::vector<T>> transp(const std::vector<std::vector<T>>& m)
+    {
+        if (m.size() > 3)
+        {
+            SIMUG_ERR("Can compute transpose only for 2x2 or 3x3 matricies");
+        }
+        else
+        {
+            std::vector<std::vector<T>> res = m;
+            
+            for (size_t raw = 0; raw < m.size(); ++raw)
+            {
+                for (size_t col = 0; col < m.size(); ++col)
+                {
+                    res[raw][col] = m[col][raw];
+                }
+               
+            }
+            return res;
+        }
+    }
+
+    // 2x2 or 3x3 inverse matrix (matrix is stored as vector of raws)
+    template <typename T>
+    std::vector<std::vector<T>> inv(const std::vector<std::vector<T>>& m)
+    {
+        if (m.size() > 3)
+            SIMUG_ERR("can compute inverse matrix only for 2x2 or 3x3 matricies!");
+
+        std::vector<std::vector<T>>  inv_m = m;
+
+        for (size_t raw = 0; raw < m.size(); ++raw)
+        {
+            for (size_t col = 0; col < m.size(); ++col)
+            {
+                inv_m[raw][col] = alg_add(transp(m), raw, col);
+            }
+        }
+        return inv_m*(1.0/det(m));
+    }
+    
+    // output operator for matricies
+    template <typename T>
+    std::ostream& operator<< (std::ostream& out, const std::vector<std::vector<T>>& m)
+    {
+        for (int i = 0; i < m.size(); ++i)
+        {
+            for (int j = 0; j < m.size(); ++j)
+                out << m[i][j] << " ";
+            out << std::endl;
+        }
+        return out;
     }
 }

@@ -92,9 +92,6 @@ bool test_basis()
     {
     IceMesh mesh_arctic(ARCTIC_PATH, surfType::basin, gridType::Agrid);
     mesh_arctic.GetProgData(gridElemType::Node, 0)->Create("angle node", 1, DATA_REAL);
-    mesh_arctic.GetProgData(gridElemType::Node, 0)->Create("geo k norm", 1, DATA_REAL);
-    mesh_arctic.GetProgData(gridElemType::Node, 0)->Create("cart k norm", 1, DATA_REAL);
-    mesh_arctic.GetProgData(gridElemType::Node, 0)->Create("geo k * cart k", 1, DATA_REAL);
 
     INMOST::Tag geo_basis_tag = mesh_arctic.GetGridInfo(gridElemType::Node)->geo_basis[2];
     INMOST::Tag cart_basis_tag = mesh_arctic.GetGridInfo(gridElemType::Node)->cart_basis[2];
@@ -119,6 +116,7 @@ bool test_basis()
 
     }
     mesh_arctic.GetProgData(gridElemType::Node, 0)->Exchange("angle node");
+    mesh_arctic.SaveVTU("arctic");
     }
     
     return true;
