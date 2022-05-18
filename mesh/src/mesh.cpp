@@ -114,16 +114,15 @@ IceMesh::IceMesh(const std::string& path_to_file_,
     duration = mesh_timer.GetMaxTime();
     mesh_timer.Reset();
 
+    // exchange and mute all grid info
+    for (auto [key, val]: grid_info)
+        val->Mute();
+        
+    BARRIER
+
     if (ice_mesh->GetProcessorRank()==0)
         mesh_log.Log("Assigning coordinates successfully! (" + to_string(duration) + " ms)\n");
     BARRIER
-
-    // exchange and mute all grid info
-    for (auto [key, val]: grid_info)
-    {
-        val->Exchange();
-        //val->Mute();
-    }
 
     // assign prognostic model grid variables
     for (int lay = 0; lay < mesh_info.num_ice_layers; ++lay)
@@ -303,6 +302,10 @@ void IceMesh::AssignIds()
 #endif
     }
 
+    // exchange node ids
+    ice_mesh->ExchangeData(grid_info[gridElemType::Node]->id, INMOST::NODE, 0);
+    ice_mesh->ExchangeData(grid_info[gridElemType::Node]->id_no_bnd, INMOST::NODE, 0);
+
     // assign id and no_bnd id for edges
     grid_info[gridElemType::Edge]->id = ice_mesh->CreateTag("id edge", INMOST::DATA_INTEGER, INMOST::FACE, INMOST::NONE, 1);
     grid_info[gridElemType::Edge]->id_no_bnd = ice_mesh->CreateTag("id edge no bnd", INMOST::DATA_INTEGER, INMOST::FACE, INMOST::NONE, 1);
@@ -332,6 +335,10 @@ void IceMesh::AssignIds()
 #endif
     }
 
+    // exchange edge ids
+    ice_mesh->ExchangeData(grid_info[gridElemType::Edge]->id, INMOST::FACE, 0);
+    ice_mesh->ExchangeData(grid_info[gridElemType::Edge]->id_no_bnd, INMOST::FACE, 0);
+
     // assign no_bnd ids for trians
     grid_info[gridElemType::Trian]->id = ice_mesh->CreateTag("id trian", INMOST::DATA_INTEGER, INMOST::CELL, INMOST::NONE, 1);
     grid_info[gridElemType::Trian]->id_no_bnd = ice_mesh->CreateTag("id trian no bnd", INMOST::DATA_INTEGER, INMOST::CELL, INMOST::NONE, 1);
@@ -360,6 +367,10 @@ void IceMesh::AssignIds()
             MPI_Bcast(&trian_id, 1, MPI_INT, procn, MPI_COMM_WORLD);        
 #endif
     }
+
+    // exchange trian ids
+    ice_mesh->ExchangeData(grid_info[gridElemType::Trian]->id, INMOST::CELL, 0);
+    ice_mesh->ExchangeData(grid_info[gridElemType::Trian]->id_no_bnd, INMOST::CELL, 0);
 
     BARRIER
 
@@ -519,14 +530,18 @@ void IceMesh::ComputeMeshInfo()
     grid_info[gridElemType::Node]->is_bnd = ice_mesh->CreateTag("is node bnd", INMOST::DATA_INTEGER, INMOST::NODE, INMOST::NONE, 1);
     for (size_t i = 0; i < bnd_nodes.size(); ++i)
         bnd_nodes[i].Integer(grid_info[gridElemType::Node]->is_bnd) = 1;
+    ice_mesh->ExchangeData(grid_info[gridElemType::Node]->is_bnd, INMOST::NODE, 0);
 
     grid_info[gridElemType::Edge]->is_bnd = ice_mesh->CreateTag("is edge bnd", INMOST::DATA_INTEGER, INMOST::FACE, INMOST::NONE, 1);
     for (size_t i = 0; i < bnd_edges.size(); ++i)
         bnd_edges[i].Integer(grid_info[gridElemType::Edge]->is_bnd) = 1;
+    ice_mesh->ExchangeData(grid_info[gridElemType::Edge]->is_bnd, INMOST::FACE, 0);
 
     grid_info[gridElemType::Trian]->is_bnd = ice_mesh->CreateTag("is trian bnd", INMOST::DATA_INTEGER, INMOST::CELL, INMOST::NONE, 1);
     for (size_t i = 0; i < bnd_trians.size(); ++i)
         bnd_trians[i].Integer(grid_info[gridElemType::Trian]->is_bnd) = 1; 
+    ice_mesh->ExchangeData(grid_info[gridElemType::Trian]->is_bnd, INMOST::CELL, 0);
+
     BARRIER
 
     // assign ids 
@@ -560,10 +575,14 @@ void IceMesh::AssignCoords()
 
     for(auto nodeit = ice_mesh->BeginNode(); nodeit != ice_mesh->EndNode(); ++nodeit)
     {
-        nodeit->RealArray(node_coords_tag)[0] = nodeit->Coords()[0];
-        nodeit->RealArray(node_coords_tag)[1] = nodeit->Coords()[1];
-        nodeit->RealArray(node_coords_tag)[2] = (mesh_info.surface_type == surfType::sphere)?nodeit->Coords()[2]:0.0;
+        if (nodeit->GetStatus() != Element::Ghost)
+        {
+            nodeit->RealArray(node_coords_tag)[0] = nodeit->Coords()[0];
+            nodeit->RealArray(node_coords_tag)[1] = nodeit->Coords()[1];
+            nodeit->RealArray(node_coords_tag)[2] = (mesh_info.surface_type == surfType::sphere)?nodeit->Coords()[2]:0.0;
+        }
     }
+    ice_mesh->ExchangeData(node_coords_tag, INMOST::NODE, 0);
 
     // edges
     INMOST::Tag edge_coords_tag = ice_mesh->CreateTag("model coords edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 3);
@@ -571,12 +590,16 @@ void IceMesh::AssignCoords()
 
     for(auto edgeit = ice_mesh->BeginFace(); edgeit != ice_mesh->EndFace(); ++edgeit)
     {
-        ElementArray<INMOST::Node> adj_nodes = edgeit->getNodes();
-        edgeit->RealArray(edge_coords_tag)[0] = 0.5*(adj_nodes[0].Coords()[0] + adj_nodes[1].Coords()[0]);
-        edgeit->RealArray(edge_coords_tag)[1] = 0.5*(adj_nodes[0].Coords()[1] + adj_nodes[1].Coords()[1]);
-        edgeit->RealArray(edge_coords_tag)[2] = (mesh_info.surface_type == surfType::sphere)?0.5*(adj_nodes[0].Coords()[2] +
-                                                                                                   adj_nodes[1].Coords()[2]):0.0;
+        if (edgeit->GetStatus() != Element::Ghost)
+        {
+            ElementArray<INMOST::Node> adj_nodes = edgeit->getNodes();
+            edgeit->RealArray(edge_coords_tag)[0] = 0.5*(adj_nodes[0].Coords()[0] + adj_nodes[1].Coords()[0]);
+            edgeit->RealArray(edge_coords_tag)[1] = 0.5*(adj_nodes[0].Coords()[1] + adj_nodes[1].Coords()[1]);
+            edgeit->RealArray(edge_coords_tag)[2] = (mesh_info.surface_type == surfType::sphere)?0.5*(adj_nodes[0].Coords()[2] +
+                                                                                                       adj_nodes[1].Coords()[2]):0.0;
+        }
     }
+    ice_mesh->ExchangeData(edge_coords_tag, INMOST::FACE, 0);
 
     // trians
     INMOST::Tag trian_coords_tag = ice_mesh->CreateTag("model coords trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
@@ -584,13 +607,17 @@ void IceMesh::AssignCoords()
 
     for(auto trianit = ice_mesh->BeginCell(); trianit != ice_mesh->EndCell(); ++trianit)
     {
-        ElementArray<INMOST::Node> adj_nodes = trianit->getNodes();
-        trianit->RealArray(trian_coords_tag)[0] = (adj_nodes[0].Coords()[0] + adj_nodes[1].Coords()[0] + adj_nodes[2].Coords()[0])/3.0;
-        trianit->RealArray(trian_coords_tag)[1] = (adj_nodes[0].Coords()[1] + adj_nodes[1].Coords()[1] + adj_nodes[2].Coords()[1])/3.0;
-        trianit->RealArray(trian_coords_tag)[2] = (mesh_info.surface_type == surfType::sphere)?(adj_nodes[0].Coords()[2] +
-                                                                                                 adj_nodes[1].Coords()[2] +
-                                                                                                 adj_nodes[2].Coords()[2])/3.0:0.0;
+        if (trianit->GetStatus() != Element::Ghost)
+        {
+            ElementArray<INMOST::Node> adj_nodes = trianit->getNodes();
+            trianit->RealArray(trian_coords_tag)[0] = (adj_nodes[0].Coords()[0] + adj_nodes[1].Coords()[0] + adj_nodes[2].Coords()[0])/3.0;
+            trianit->RealArray(trian_coords_tag)[1] = (adj_nodes[0].Coords()[1] + adj_nodes[1].Coords()[1] + adj_nodes[2].Coords()[1])/3.0;
+            trianit->RealArray(trian_coords_tag)[2] = (mesh_info.surface_type == surfType::sphere)?(adj_nodes[0].Coords()[2] +
+                                                                                                     adj_nodes[1].Coords()[2] +
+                                                                                                     adj_nodes[2].Coords()[2])/3.0:0.0;
+        }
     }
+    ice_mesh->ExchangeData(trian_coords_tag, INMOST::CELL, 0);
 
     BARRIER
 
@@ -602,17 +629,21 @@ void IceMesh::AssignCoords()
 
     for(auto nodeit = ice_mesh->BeginNode(); nodeit != ice_mesh->EndNode(); ++nodeit)
     {
-        double model_x = nodeit->RealArray(node_coords_tag)[0];
-        double model_y = nodeit->RealArray(node_coords_tag)[1];
-        double model_z = nodeit->RealArray(node_coords_tag)[2];
+        if (nodeit->GetStatus() != Element::Ghost)
+        {
+            double model_x = nodeit->RealArray(node_coords_tag)[0];
+            double model_y = nodeit->RealArray(node_coords_tag)[1];
+            double model_z = nodeit->RealArray(node_coords_tag)[2];
 
-        nodeit->RealArray(node_cart_tag)[0] = (mesh_info.surface_type == surfType::basin)?cos(model_x*(M_PI/180.0))*cos(model_y*(M_PI/180.0))
-                                                                                          :model_x;
-        nodeit->RealArray(node_cart_tag)[1] = (mesh_info.surface_type == surfType::basin)?sin(model_x*(M_PI/180.0))*cos(model_y*(M_PI/180.0))
-                                                                                          :model_y;
-        nodeit->RealArray(node_cart_tag)[2] = (mesh_info.surface_type == surfType::basin)?sin(model_y*(M_PI/180.0))
-                                                                                          :model_z;
+            nodeit->RealArray(node_cart_tag)[0] = (mesh_info.surface_type == surfType::basin)?cos(model_x*(M_PI/180.0))*cos(model_y*(M_PI/180.0))
+                                                                                              :model_x;
+            nodeit->RealArray(node_cart_tag)[1] = (mesh_info.surface_type == surfType::basin)?sin(model_x*(M_PI/180.0))*cos(model_y*(M_PI/180.0))
+                                                                                              :model_y;
+            nodeit->RealArray(node_cart_tag)[2] = (mesh_info.surface_type == surfType::basin)?sin(model_y*(M_PI/180.0))
+                                                                                              :model_z;
+        }
     }
+    ice_mesh->ExchangeData(node_cart_tag, INMOST::NODE, 0);
 
     // edges
     INMOST::Tag edge_cart_tag = ice_mesh->CreateTag("cart coords edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 3);
@@ -620,17 +651,21 @@ void IceMesh::AssignCoords()
 
     for(auto edgeit = ice_mesh->BeginFace(); edgeit != ice_mesh->EndFace(); ++edgeit)
     {
-        double model_x = edgeit->RealArray(edge_coords_tag)[0];
-        double model_y = edgeit->RealArray(edge_coords_tag)[1];
-        double model_z = edgeit->RealArray(edge_coords_tag)[2];
+        if (edgeit->GetStatus() != Element::Ghost)
+        {
+            double model_x = edgeit->RealArray(edge_coords_tag)[0];
+            double model_y = edgeit->RealArray(edge_coords_tag)[1];
+            double model_z = edgeit->RealArray(edge_coords_tag)[2];
 
-        edgeit->RealArray(edge_cart_tag)[0] = (mesh_info.surface_type == surfType::basin)?cos(model_x*(M_PI/180.0))*cos(model_y*(M_PI/180.0))
-                                                                                          :model_x;
-        edgeit->RealArray(edge_cart_tag)[1] = (mesh_info.surface_type == surfType::basin)?sin(model_x*(M_PI/180.0))*cos(model_y*(M_PI/180.0))
-                                                                                          :model_y;
-        edgeit->RealArray(edge_cart_tag)[2] = (mesh_info.surface_type == surfType::basin)?sin(model_y*(M_PI/180.0))
-                                                                                          :model_z;
+            edgeit->RealArray(edge_cart_tag)[0] = (mesh_info.surface_type == surfType::basin)?cos(model_x*(M_PI/180.0))*cos(model_y*(M_PI/180.0))
+                                                                                              :model_x;
+            edgeit->RealArray(edge_cart_tag)[1] = (mesh_info.surface_type == surfType::basin)?sin(model_x*(M_PI/180.0))*cos(model_y*(M_PI/180.0))
+                                                                                              :model_y;
+            edgeit->RealArray(edge_cart_tag)[2] = (mesh_info.surface_type == surfType::basin)?sin(model_y*(M_PI/180.0))
+                                                                                              :model_z;
+        }
     }
+    ice_mesh->ExchangeData(edge_cart_tag, INMOST::FACE, 0);
 
     // triangles
     INMOST::Tag trian_cart_tag = ice_mesh->CreateTag("cart coords trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
@@ -638,17 +673,21 @@ void IceMesh::AssignCoords()
 
     for(auto trianit = ice_mesh->BeginCell(); trianit != ice_mesh->EndCell(); ++trianit)
     {
-        double model_x = trianit->RealArray(trian_coords_tag)[0];
-        double model_y = trianit->RealArray(trian_coords_tag)[1];
-        double model_z = trianit->RealArray(trian_coords_tag)[2];
+        if (trianit->GetStatus() != Element::Ghost)
+        {
+            double model_x = trianit->RealArray(trian_coords_tag)[0];
+            double model_y = trianit->RealArray(trian_coords_tag)[1];
+            double model_z = trianit->RealArray(trian_coords_tag)[2];
 
-        trianit->RealArray(trian_cart_tag)[0] = (mesh_info.surface_type == surfType::basin)?cos(model_x*(M_PI/180.0))*cos(model_y*(M_PI/180.0))
-                                                                                          :model_x;
-        trianit->RealArray(trian_cart_tag)[1] = (mesh_info.surface_type == surfType::basin)?sin(model_x*(M_PI/180.0))*cos(model_y*(M_PI/180.0))
-                                                                                          :model_y;
-        trianit->RealArray(trian_cart_tag)[2] = (mesh_info.surface_type == surfType::basin)?sin(model_y*(M_PI/180.0))
-                                                                                          :model_z;
+            trianit->RealArray(trian_cart_tag)[0] = (mesh_info.surface_type == surfType::basin)?cos(model_x*(M_PI/180.0))*cos(model_y*(M_PI/180.0))
+                                                                                              :model_x;
+            trianit->RealArray(trian_cart_tag)[1] = (mesh_info.surface_type == surfType::basin)?sin(model_x*(M_PI/180.0))*cos(model_y*(M_PI/180.0))
+                                                                                              :model_y;
+            trianit->RealArray(trian_cart_tag)[2] = (mesh_info.surface_type == surfType::basin)?sin(model_y*(M_PI/180.0))
+                                                                                              :model_z;
+        }
     }
+    ice_mesh->ExchangeData(trian_cart_tag, INMOST::CELL, 0);
 
     BARRIER
 
@@ -660,54 +699,58 @@ void IceMesh::AssignCoords()
 
     for(auto nodeit = ice_mesh->BeginNode(); nodeit != ice_mesh->EndNode(); ++nodeit)
     {
-        if (mesh_info.surface_type == surfType::sphere)
+        if (nodeit->GetStatus() != Element::Ghost)
         {
-            double x = nodeit->RealArray(node_cart_tag)[0];
-            double y = nodeit->RealArray(node_cart_tag)[1];
-            double z = nodeit->RealArray(node_cart_tag)[2];
-
-            double r = 1;
-            double lat, lon;
-
-
-            if ((x >= 0) and (y >= 0))
+            if (mesh_info.surface_type == surfType::sphere)
             {
-                lat = std::asin(z/r);
-                lon = std::atan(y/x);
+                double x = nodeit->RealArray(node_cart_tag)[0];
+                double y = nodeit->RealArray(node_cart_tag)[1];
+                double z = nodeit->RealArray(node_cart_tag)[2];
+
+                double r = 1;
+                double lat, lon;
+
+
+                if ((x >= 0) and (y >= 0))
+                {
+                    lat = std::asin(z/r);
+                    lon = std::atan(y/x);
+                }
+                else if ((x >= 0) and (y <= 0))
+                {
+                    lat = std::asin(z/r);
+                    lon = 2*M_PI + std::atan(y/x);
+                }
+                else if ((x <= 0) and (y >= 0))
+                {
+                    lat = std::asin(z/r);
+                    lon = M_PI + std::atan(y/x);
+                }
+                else
+                {
+                    lat = std::asin(z/r);
+                    lon = M_PI + std::atan(y/x);
+                }
+
+                nodeit->RealArray(node_geo_tag)[0] = lon;
+                nodeit->RealArray(node_geo_tag)[1] = lat;
+                nodeit->RealArray(node_geo_tag)[2] = 1.0;  
             }
-            else if ((x >= 0) and (y <= 0))
+            else if (mesh_info.surface_type == surfType::basin)
             {
-                lat = std::asin(z/r);
-                lon = 2*M_PI + std::atan(y/x);
-            }
-            else if ((x <= 0) and (y >= 0))
-            {
-                lat = std::asin(z/r);
-                lon = M_PI + std::atan(y/x);
+                nodeit->RealArray(node_geo_tag)[0] = nodeit->RealArray(node_coords_tag)[0]*(M_PI/180.0);
+                nodeit->RealArray(node_geo_tag)[1] = nodeit->RealArray(node_coords_tag)[1]*(M_PI/180.0);
+                nodeit->RealArray(node_geo_tag)[2] = 1.0;
             }
             else
             {
-                lat = std::asin(z/r);
-                lon = M_PI + std::atan(y/x);
+                nodeit->RealArray(node_geo_tag)[0] = 0.0;
+                nodeit->RealArray(node_geo_tag)[1] = 0.0;
+                nodeit->RealArray(node_geo_tag)[2] = 0.0;
             }
-
-            nodeit->RealArray(node_geo_tag)[0] = lon;
-            nodeit->RealArray(node_geo_tag)[1] = lat;
-            nodeit->RealArray(node_geo_tag)[2] = 1.0;  
         }
-        else if (mesh_info.surface_type == surfType::basin)
-        {
-            nodeit->RealArray(node_geo_tag)[0] = nodeit->RealArray(node_coords_tag)[0]*(M_PI/180.0);
-            nodeit->RealArray(node_geo_tag)[1] = nodeit->RealArray(node_coords_tag)[1]*(M_PI/180.0);
-            nodeit->RealArray(node_geo_tag)[2] = 1.0;
-        }
-        else
-        {
-            nodeit->RealArray(node_geo_tag)[0] = 0.0;
-            nodeit->RealArray(node_geo_tag)[1] = 0.0;
-            nodeit->RealArray(node_geo_tag)[2] = 0.0;
-        }
-    }
+    }   
+    ice_mesh->ExchangeData(node_geo_tag, INMOST::NODE, 0);
 
     // edges
     INMOST::Tag edge_geo_tag = ice_mesh->CreateTag("geo coords edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 3);
@@ -715,54 +758,58 @@ void IceMesh::AssignCoords()
 
     for(auto edgeit = ice_mesh->BeginFace(); edgeit != ice_mesh->EndFace(); ++edgeit)
     {
-        if (mesh_info.surface_type == surfType::sphere)
+        if (edgeit->GetStatus() != Element::Ghost)
         {
-            double x = edgeit->RealArray(edge_cart_tag)[0];
-            double y = edgeit->RealArray(edge_cart_tag)[1];
-            double z = edgeit->RealArray(edge_cart_tag)[2];
-
-            double r = 1;
-            double lat, lon;
-
-
-            if ((x >= 0) and (y >= 0))
+            if (mesh_info.surface_type == surfType::sphere)
             {
-                lat = std::asin(z/r);
-                lon = std::atan(y/x);
+                double x = edgeit->RealArray(edge_cart_tag)[0];
+                double y = edgeit->RealArray(edge_cart_tag)[1];
+                double z = edgeit->RealArray(edge_cart_tag)[2];
+
+                double r = 1;
+                double lat, lon;
+
+
+                if ((x >= 0) and (y >= 0))
+                {
+                    lat = std::asin(z/r);
+                    lon = std::atan(y/x);
+                }
+                else if ((x >= 0) and (y <= 0))
+                {
+                    lat = std::asin(z/r);
+                    lon = 2*M_PI + std::atan(y/x);
+                }
+                else if ((x <= 0) and (y >= 0))
+                {
+                    lat = std::asin(z/r);
+                    lon = M_PI + std::atan(y/x);
+                }
+                else
+                {
+                    lat = std::asin(z/r);
+                    lon = M_PI + std::atan(y/x);
+                }
+
+                edgeit->RealArray(edge_geo_tag)[0] = lon;
+                edgeit->RealArray(edge_geo_tag)[1] = lat;
+                edgeit->RealArray(edge_geo_tag)[2] = 1.0;  
             }
-            else if ((x >= 0) and (y <= 0))
+            else if (mesh_info.surface_type == surfType::basin)
             {
-                lat = std::asin(z/r);
-                lon = 2*M_PI + std::atan(y/x);
-            }
-            else if ((x <= 0) and (y >= 0))
-            {
-                lat = std::asin(z/r);
-                lon = M_PI + std::atan(y/x);
+                edgeit->RealArray(edge_geo_tag)[0] = edgeit->RealArray(edge_coords_tag)[0]*M_PI/180.0;
+                edgeit->RealArray(edge_geo_tag)[1] = edgeit->RealArray(edge_coords_tag)[1]*M_PI/180.0;
+                edgeit->RealArray(edge_geo_tag)[2] = 1.0;
             }
             else
             {
-                lat = std::asin(z/r);
-                lon = M_PI + std::atan(y/x);
+                edgeit->RealArray(edge_geo_tag)[0] = 0.0;
+                edgeit->RealArray(edge_geo_tag)[1] = 0.0;
+                edgeit->RealArray(edge_geo_tag)[2] = 0.0;
             }
-
-            edgeit->RealArray(edge_geo_tag)[0] = lon;
-            edgeit->RealArray(edge_geo_tag)[1] = lat;
-            edgeit->RealArray(edge_geo_tag)[2] = 1.0;  
-        }
-        else if (mesh_info.surface_type == surfType::basin)
-        {
-            edgeit->RealArray(edge_geo_tag)[0] = edgeit->RealArray(edge_coords_tag)[0]*M_PI/180.0;
-            edgeit->RealArray(edge_geo_tag)[1] = edgeit->RealArray(edge_coords_tag)[1]*M_PI/180.0;
-            edgeit->RealArray(edge_geo_tag)[2] = 1.0;
-        }
-        else
-        {
-            edgeit->RealArray(edge_geo_tag)[0] = 0.0;
-            edgeit->RealArray(edge_geo_tag)[1] = 0.0;
-            edgeit->RealArray(edge_geo_tag)[2] = 0.0;
         }
     }
+    ice_mesh->ExchangeData(edge_geo_tag, INMOST::FACE, 0);
 
     // trians
     INMOST::Tag trian_geo_tag = ice_mesh->CreateTag("geo coords trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
@@ -770,54 +817,58 @@ void IceMesh::AssignCoords()
 
     for(auto trianit = ice_mesh->BeginCell(); trianit != ice_mesh->EndCell(); ++trianit)
     {
-        if (mesh_info.surface_type == surfType::sphere)
+        if (trianit->GetStatus() != Element::Ghost)
         {
-            double x = trianit->RealArray(trian_cart_tag)[0];
-            double y = trianit->RealArray(trian_cart_tag)[1];
-            double z = trianit->RealArray(trian_cart_tag)[2];
-
-            double r = 1;
-            double lat, lon;
-
-
-            if ((x >= 0) and (y >= 0))
+            if (mesh_info.surface_type == surfType::sphere)
             {
-                lat = std::asin(z/r);
-                lon = std::atan(y/x);
+                double x = trianit->RealArray(trian_cart_tag)[0];
+                double y = trianit->RealArray(trian_cart_tag)[1];
+                double z = trianit->RealArray(trian_cart_tag)[2];
+
+                double r = 1;
+                double lat, lon;
+
+
+                if ((x >= 0) and (y >= 0))
+                {
+                    lat = std::asin(z/r);
+                    lon = std::atan(y/x);
+                }
+                else if ((x >= 0) and (y <= 0))
+                {
+                    lat = std::asin(z/r);
+                    lon = 2*M_PI + std::atan(y/x);
+                }
+                else if ((x <= 0) and (y >= 0))
+                {
+                    lat = std::asin(z/r);
+                    lon = M_PI + std::atan(y/x);
+                }
+                else
+                {
+                    lat = std::asin(z/r);
+                    lon = M_PI + std::atan(y/x);
+                }
+
+                trianit->RealArray(trian_geo_tag)[0] = lon;
+                trianit->RealArray(trian_geo_tag)[1] = lat;
+                trianit->RealArray(trian_geo_tag)[2] = 1.0;  
             }
-            else if ((x >= 0) and (y <= 0))
+            else if (mesh_info.surface_type == surfType::basin)
             {
-                lat = std::asin(z/r);
-                lon = 2*M_PI + std::atan(y/x);
-            }
-            else if ((x <= 0) and (y >= 0))
-            {
-                lat = std::asin(z/r);
-                lon = M_PI + std::atan(y/x);
+                trianit->RealArray(trian_geo_tag)[0] = trianit->RealArray(trian_coords_tag)[0]*M_PI/180.0;
+                trianit->RealArray(trian_geo_tag)[1] = trianit->RealArray(trian_coords_tag)[1]*M_PI/180.0;
+                trianit->RealArray(trian_geo_tag)[2] = 1.0;
             }
             else
             {
-                lat = std::asin(z/r);
-                lon = M_PI + std::atan(y/x);
+                trianit->RealArray(trian_geo_tag)[0] = 0.0;
+                trianit->RealArray(trian_geo_tag)[1] = 0.0;
+                trianit->RealArray(trian_geo_tag)[2] = 0.0;
             }
-
-            trianit->RealArray(trian_geo_tag)[0] = lon;
-            trianit->RealArray(trian_geo_tag)[1] = lat;
-            trianit->RealArray(trian_geo_tag)[2] = 1.0;  
-        }
-        else if (mesh_info.surface_type == surfType::basin)
-        {
-            trianit->RealArray(trian_geo_tag)[0] = trianit->RealArray(trian_coords_tag)[0]*M_PI/180.0;
-            trianit->RealArray(trian_geo_tag)[1] = trianit->RealArray(trian_coords_tag)[1]*M_PI/180.0;
-            trianit->RealArray(trian_geo_tag)[2] = 1.0;
-        }
-        else
-        {
-            trianit->RealArray(trian_geo_tag)[0] = 0.0;
-            trianit->RealArray(trian_geo_tag)[1] = 0.0;
-            trianit->RealArray(trian_geo_tag)[2] = 0.0;
         }
     }
+    ice_mesh->ExchangeData(trian_geo_tag, INMOST::CELL, 0);
 
     BARRIER
 }

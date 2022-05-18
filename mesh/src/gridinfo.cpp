@@ -2,32 +2,6 @@
 
 using namespace SIMUG::mesh;
 
-void GridInfo::ExchangeAll(const unsigned char& GridElem)
-{
-    ice_mesh->ExchangeData(id, GridElem, 0);
-    ice_mesh->ExchangeData(id_no_bnd, GridElem, 0);
-    ice_mesh->ExchangeData(is_bnd, GridElem, 0);
-
-    for (auto [key, value]: coords)
-        ice_mesh->ExchangeData(value, GridElem, 0);
-    BARRIER
-}
-
-void NodeInfo::Exchange()
-{
-    ExchangeAll(INMOST::NODE);
-}
-
-void EdgeInfo::Exchange()
-{
-    ExchangeAll(INMOST::FACE);
-}
-
-void TrianInfo::Exchange()
-{
-    ExchangeAll(INMOST::CELL);
-}
-
 void NodeInfo::Mute()
 {
     ice_mesh->SetFileOption("Tag:id node", "nosave");
@@ -36,6 +10,18 @@ void NodeInfo::Mute()
     ice_mesh->SetFileOption("Tag:model coords node", "nosave");
     ice_mesh->SetFileOption("Tag:cart coords node", "nosave");
     ice_mesh->SetFileOption("Tag:geo coords node", "nosave");
+
+    ice_mesh->SetFileOption("Tag:geo basis x node", "nosave");
+    ice_mesh->SetFileOption("Tag:geo basis y node", "nosave");
+    ice_mesh->SetFileOption("Tag:geo basis z node", "nosave");
+
+    ice_mesh->SetFileOption("Tag:cart basis x node", "nosave");
+    ice_mesh->SetFileOption("Tag:cart basis y node", "nosave");
+    ice_mesh->SetFileOption("Tag:cart basis z node", "nosave");
+
+    ice_mesh->SetFileOption("Tag:geo to elem trans matr node", "nosave");
+    ice_mesh->SetFileOption("Tag:elem to geo trans matr node", "nosave");
+
     BARRIER
 }
 
@@ -47,6 +33,18 @@ void NodeInfo::UnMute()
     ice_mesh->SetFileOption("Tag:model coords node", "save");
     ice_mesh->SetFileOption("Tag:cart coords node", "save");
     ice_mesh->SetFileOption("Tag:geo coords node", "save");
+
+    ice_mesh->SetFileOption("Tag:geo basis x node", "save");
+    ice_mesh->SetFileOption("Tag:geo basis y node", "save");
+    ice_mesh->SetFileOption("Tag:geo basis z node", "save");
+
+    ice_mesh->SetFileOption("Tag:cart basis x node", "save");
+    ice_mesh->SetFileOption("Tag:cart basis y node", "save");
+    ice_mesh->SetFileOption("Tag:cart basis z node", "save");
+
+    ice_mesh->SetFileOption("Tag:geo to elem trans matr node", "save");
+    ice_mesh->SetFileOption("Tag:elem to geo trans matr node", "save");
+
     BARRIER
 }
 
@@ -58,6 +56,18 @@ void EdgeInfo::Mute()
     ice_mesh->SetFileOption("Tag:model coords edge", "nosave");
     ice_mesh->SetFileOption("Tag:cart coords edge", "nosave");
     ice_mesh->SetFileOption("Tag:geo coords edge", "nosave");
+
+    ice_mesh->SetFileOption("Tag:geo basis x edge", "nosave");
+    ice_mesh->SetFileOption("Tag:geo basis y edge", "nosave");
+    ice_mesh->SetFileOption("Tag:geo basis z edge", "nosave");
+
+    ice_mesh->SetFileOption("Tag:cart basis x edge", "nosave");
+    ice_mesh->SetFileOption("Tag:cart basis y edge", "nosave");
+    ice_mesh->SetFileOption("Tag:cart basis z edge", "nosave");
+
+    ice_mesh->SetFileOption("Tag:geo to elem trans matr edge", "nosave");
+    ice_mesh->SetFileOption("Tag:elem to geo trans matr edge", "nosave");
+
     BARRIER
 }
 
@@ -69,6 +79,18 @@ void EdgeInfo::UnMute()
     ice_mesh->SetFileOption("Tag:model coords edge", "save");
     ice_mesh->SetFileOption("Tag:cart coords edge", "save");
     ice_mesh->SetFileOption("Tag:geo coords edge", "save");
+
+    ice_mesh->SetFileOption("Tag:geo basis x edge", "save");
+    ice_mesh->SetFileOption("Tag:geo basis y edge", "save");
+    ice_mesh->SetFileOption("Tag:geo basis z edge", "save");
+
+    ice_mesh->SetFileOption("Tag:cart basis x edge", "save");
+    ice_mesh->SetFileOption("Tag:cart basis y edge", "save");
+    ice_mesh->SetFileOption("Tag:cart basis z edge", "save");
+
+    ice_mesh->SetFileOption("Tag:geo to elem trans matr edge", "save");
+    ice_mesh->SetFileOption("Tag:elem to geo trans matr edge", "save");
+
     BARRIER
 }
 
@@ -80,6 +102,18 @@ void TrianInfo::Mute()
     ice_mesh->SetFileOption("Tag:model coords trian", "nosave");
     ice_mesh->SetFileOption("Tag:cart coords trian", "nosave");
     ice_mesh->SetFileOption("Tag:geo coords trian", "nosave");
+
+    ice_mesh->SetFileOption("Tag:geo basis x trian", "nosave");
+    ice_mesh->SetFileOption("Tag:geo basis y trian", "nosave");
+    ice_mesh->SetFileOption("Tag:geo basis z trian", "nosave");
+
+    ice_mesh->SetFileOption("Tag:cart basis x trian", "nosave");
+    ice_mesh->SetFileOption("Tag:cart basis y trian", "nosave");
+    ice_mesh->SetFileOption("Tag:cart basis z trian", "nosave");
+
+    ice_mesh->SetFileOption("Tag:geo to elem trans matr trian", "nosave");
+    ice_mesh->SetFileOption("Tag:elem to geo trans matr trian", "nosave");
+
     BARRIER
 }
 
@@ -91,6 +125,18 @@ void TrianInfo::UnMute()
     ice_mesh->SetFileOption("Tag:model coords trian", "save");
     ice_mesh->SetFileOption("Tag:cart coords trian", "save");
     ice_mesh->SetFileOption("Tag:geo coords trian", "save");
+
+    ice_mesh->SetFileOption("Tag:geo basis x trian", "save");
+    ice_mesh->SetFileOption("Tag:geo basis y trian", "save");
+    ice_mesh->SetFileOption("Tag:geo basis z trian", "save");
+
+    ice_mesh->SetFileOption("Tag:cart basis x trian", "save");
+    ice_mesh->SetFileOption("Tag:cart basis y trian", "save");
+    ice_mesh->SetFileOption("Tag:cart basis z trian", "save");
+
+    ice_mesh->SetFileOption("Tag:geo to elem trans matr trian", "save");
+    ice_mesh->SetFileOption("Tag:elem to geo trans matr trian", "save");
+
     BARRIER
 }
 

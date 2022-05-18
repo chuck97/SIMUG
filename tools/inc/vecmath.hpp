@@ -25,6 +25,26 @@ namespace SIMUG
         return res;
     }
 
+    // matrix mult vector
+    template<typename T>
+    std::vector<T> operator* (const std::vector<std::vector<T>>& m, const std::vector<T>& v)
+    {
+        if (m.size() != v.size())
+            SIMUG_ERR("Can't multiply matrix on vector with different size!");
+
+        std::vector<T> res(v.size());
+
+        for (size_t i = 0; i < v.size(); ++i)
+        {
+            res[i] = 0.0;
+            for (size_t j = 0; j < v.size(); ++j)
+            {
+                res[i] += m[i][j]*v[j];
+            }
+        }
+        return res;
+    }
+
     //vector product
     template<typename T>
     std::vector<T> operator% (const std::vector<T>& v1, const std::vector<T>& v2)
@@ -264,6 +284,9 @@ namespace SIMUG
     {
         if (m.size() > 3)
             SIMUG_ERR("can compute inverse matrix only for 2x2 or 3x3 matricies!");
+        
+        if (fabs(det(m)) < REAL_MIN_ABS_VAL)
+            SIMUG_ERR("determinant of matrix is almost zero - can't inverse!");
 
         std::vector<std::vector<T>>  inv_m = m;
 
@@ -288,5 +311,19 @@ namespace SIMUG
             out << std::endl;
         }
         return out;
+    }
+
+    // matrix multiplication
+    template <typename T>
+    std::vector<std::vector<T>> operator*(const std::vector<std::vector<T>>& lhs, const std::vector<std::vector<T>>& rhs)
+    {
+        if (lhs.size() != rhs.size())
+            SIMUG_ERR("can't multiply square matricies with different sizes!");
+            
+        std::vector<std::vector<T>> res = lhs;
+        for(size_t i = 0; i < rhs.size(); ++i)
+            res[i] = transp(rhs)*lhs[i];
+        
+        return res;
     }
 }

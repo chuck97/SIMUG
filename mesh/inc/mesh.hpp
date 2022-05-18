@@ -73,21 +73,26 @@ namespace SIMUG::mesh
         INMOST::Tag id;                                         // global element id 
         INMOST::Tag id_no_bnd;                                  // global element id without bnd elements
         INMOST::Tag is_bnd;                                     // is node bnd (1 = true, 0 = false)
+        
         std::map<SIMUG::coord::coordType, INMOST::Tag> coords;  // coordinates of element centroid (model, geographical, cartesian)
+        
         std::vector<INMOST::Tag> geo_basis;                     // geographical basis vectors coordinates
         std::vector<INMOST::Tag> cart_basis;                    // local cartesian basis vectors coordinates
+        
         INMOST::Tag trans_matr_from_geo_to_elem;                // transition 2x2 matrix for vector/tensor coordinates while switching from geo to element basis
         INMOST::Tag trans_matr_from_elem_to_geo;                // transition 2x2 matrix for vector/tensor coordinates while switching from element to geo basis ( = trans_matr_from_geo_to_elem^-1)
 
+        virtual std::vector<INMOST::Tag>&  GetTransMatrToNode() {SIMUG_ERR("Current elent type doesn't have transition matrix to node!");};
+        virtual std::vector<INMOST::Tag>&  GetTransMatrToEdge() {SIMUG_ERR("Current elent type doesn't have transition matrix to edge!");};
+        virtual std::vector<INMOST::Tag>&  GetTransMatrToTrian(){SIMUG_ERR("Current elent type doesn't have transition matrix to triangle!");};
 
     public:
-        virtual void Exchange() = 0;
+
         virtual void Mute() = 0;
         virtual void UnMute() = 0;
 
     protected:
         INMOST::Mesh* ice_mesh;
-        void ExchangeAll(const unsigned char& GridElem);
 
     };
 
@@ -95,34 +100,48 @@ namespace SIMUG::mesh
     {
     public:
         NodeInfo(INMOST::Mesh* ice_mesh_): GridInfo(ice_mesh_) {};
+        std::vector<INMOST::Tag>&  GetTransMatrToEdge() {return trans_matr_to_edge;};
+        std::vector<INMOST::Tag>&  GetTransMatrToTrian() {return trans_matr_to_trian;};
 
     public:
-        void Exchange();
+
         void Mute();
         void UnMute();
+    
+    private:
+        std::vector<INMOST::Tag> trans_matr_to_edge;
+        std::vector<INMOST::Tag> trans_matr_to_trian;
     };
 
     class EdgeInfo : public GridInfo
     {
     public:
         EdgeInfo(INMOST::Mesh* ice_mesh_): GridInfo(ice_mesh_) {};
-    
+        std::vector<INMOST::Tag>&  GetTransMatrToNode() {return trans_matr_to_node;};
+        std::vector<INMOST::Tag>&  GetTransMatrToTrian() {return trans_matr_to_trian;};
+
     public:
-        void Exchange();
         void Mute();
         void UnMute();
-
+    
+    private:
+        std::vector<INMOST::Tag> trans_matr_to_node;
+        std::vector<INMOST::Tag> trans_matr_to_trian;
     };
 
     class TrianInfo : public GridInfo
     {
     public:
         TrianInfo(INMOST::Mesh* ice_mesh_): GridInfo(ice_mesh_) {};
-    
+        std::vector<INMOST::Tag>&  GetTransMatrToNode() {return trans_matr_to_node;};
+        std::vector<INMOST::Tag>&  GetTransMatrToEdge() {return trans_matr_to_edge;};
+
     public:
-        void Exchange();
         void Mute();
         void UnMute();
+    private:
+        std::vector<INMOST::Tag> trans_matr_to_node;
+        std::vector<INMOST::Tag> trans_matr_to_edge;
     };
 
     class IceMesh
@@ -218,6 +237,7 @@ namespace SIMUG::mesh
         void AssembleGeoElementBasis();
         void AssembleCartesianElementBasis();
         void AssembleGeoToElementTransitionMatricies();
+        void AssembleElementToElementTransitionMatricies();
 
     private:
 

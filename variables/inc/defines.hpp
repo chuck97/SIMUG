@@ -11,3 +11,9 @@
 #else
 #define SIMUG_ERR(message) {std::cerr << "Error: " << message  << std::endl; exit(1);}
 #endif
+
+#define MAX_NUM_ADJ_NODES 20
+#define MAX_NUM_ADJ_TRIANS 20
+#define MAX_NUM_ADJ_EDGES 20
+
+#define REAL_MIN_ABS_VAL 1e-30
