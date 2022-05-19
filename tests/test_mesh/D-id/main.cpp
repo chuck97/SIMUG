@@ -14,7 +14,7 @@
 #include <string>
 #include <iostream>
 
-#define MESH_PATH "../../../../SIMUG_v0/MESHES/pmf/Box_high_res.pmf"
+#define MESH_PATH "../../../../SIMUG_v0/MESHES/pmf/Box_low_res.pmf"
 
 using namespace INMOST;
 using namespace SIMUG::mesh;

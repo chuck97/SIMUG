@@ -15,7 +15,7 @@
 #include <string>
 #include <iostream>
 
-#define PLANE_PATH "../../../../SIMUG_v0/MESHES/pmf/Box_high_res.pmf"
+#define PLANE_PATH "../../../../SIMUG_v0/MESHES/pmf/Box_low_res.pmf"
 #define ARCTIC_PATH "../../../../SIMUG_v0/MESHES/pmf/Arctic.pmf"
 #define SPHERE_PATH "../../../../SIMUG_v0/MESHES/pmf/Sphere.pmf"
 
