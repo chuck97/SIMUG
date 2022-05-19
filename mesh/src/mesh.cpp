@@ -127,12 +127,24 @@ IceMesh::IceMesh(const std::string& path_to_file_,
     // assign prognostic model grid variables
     for (int lay = 0; lay < mesh_info.num_ice_layers; ++lay)
     {
-        prognostic_data[gridElemType::Node][lay] = make_shared<NodeData>(ice_mesh.get(), lay);
-        prognostic_data[gridElemType::Edge][lay] = make_shared<EdgeData>(ice_mesh.get(), lay);
-        prognostic_data[gridElemType::Trian][lay] = make_shared<TrianData>(ice_mesh.get(), lay);
-        prognostic_data[gridElemType::bndNode][lay] = make_shared<BndNodeData>(ice_mesh.get(), lay);
-        prognostic_data[gridElemType::bndEdge][lay] = make_shared<BndEdgeData>(ice_mesh.get(), lay);
-        prognostic_data[gridElemType::bndTrian][lay] = make_shared<BndTrianData>(ice_mesh.get(), lay);
+        if (lay == 0)
+        {
+            prognostic_data[gridElemType::Node][lay] = make_shared<NodeData>(ice_mesh.get());
+            prognostic_data[gridElemType::Edge][lay] = make_shared<EdgeData>(ice_mesh.get());
+            prognostic_data[gridElemType::Trian][lay] = make_shared<TrianData>(ice_mesh.get());
+            prognostic_data[gridElemType::bndNode][lay] = make_shared<BndNodeData>(ice_mesh.get());
+            prognostic_data[gridElemType::bndEdge][lay] = make_shared<BndEdgeData>(ice_mesh.get());
+            prognostic_data[gridElemType::bndTrian][lay] = make_shared<BndTrianData>(ice_mesh.get());
+        }
+        else
+        {
+            prognostic_data[gridElemType::Node][lay] = make_shared<NodeData>(ice_mesh.get(), lay);
+            prognostic_data[gridElemType::Edge][lay] = make_shared<EdgeData>(ice_mesh.get(), lay);
+            prognostic_data[gridElemType::Trian][lay] = make_shared<TrianData>(ice_mesh.get(), lay);
+            prognostic_data[gridElemType::bndNode][lay] = make_shared<BndNodeData>(ice_mesh.get(), lay);
+            prognostic_data[gridElemType::bndEdge][lay] = make_shared<BndEdgeData>(ice_mesh.get(), lay);
+            prognostic_data[gridElemType::bndTrian][lay] = make_shared<BndTrianData>(ice_mesh.get(), lay);
+        }
     }
     BARRIER
 

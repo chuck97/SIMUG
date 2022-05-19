@@ -15,9 +15,9 @@
 #include <string>
 #include <iostream>
 
-#define MESH_PATH "/home/users/spetrov/SIMUG/SIMUG_v0/MESHES/pmf/square8km.pmf"
-#define ARCTIC_PATH "/home/users/spetrov/SIMUG/SIMUG_v0/MESHES/pmf/Arctic.pmf"
-#define SPHERE_PATH "/home/users/spetrov/SIMUG/SIMUG_v0/MESHES/pmf/Sphere.pmf"
+#define PLANE_PATH "../../../../SIMUG_v0/MESHES/pmf/Box_high_res.pmf"
+#define ARCTIC_PATH "../../../../SIMUG_v0/MESHES/pmf/Arctic.pmf"
+#define SPHERE_PATH "../../../../SIMUG_v0/MESHES/pmf/Sphere.pmf"
 
 using namespace INMOST;
 using namespace SIMUG::mesh;
@@ -29,7 +29,7 @@ bool test_basis()
 
     // calculate angle between cart and geo normal vectors at every point for plane
     {
-    IceMesh mesh_plane(MESH_PATH, surfType::plane, gridType::Agrid);
+    IceMesh mesh_plane(PLANE_PATH, surfType::plane, gridType::Agrid);
     mesh_plane.GetProgData(gridElemType::Node, 0)->Create("angle node", 1, DATA_REAL);
 
     INMOST::Tag geo_basis_tag = mesh_plane.GetGridInfo(gridElemType::Node)->geo_basis[2];

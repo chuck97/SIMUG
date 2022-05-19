@@ -14,9 +14,7 @@
 #include <string>
 #include <iostream>
 
-#define MESH_PATH "/home/users/spetrov/SIMUG/SIMUG_v0/MESHES/pmf/square8km.pmf"
-#define ARCTIC_PATH "/home/users/spetrov/SIMUG/SIMUG_v0/MESHES/pmf/Arctic.pmf"
-#define SPHERE_PATH "/home/users/spetrov/SIMUG/SIMUG_v0/MESHES/pmf/Sphere.pmf"
+#define MESH_PATH "../../../../SIMUG_v0/MESHES/pmf/Box_high_res.pmf"
 
 using namespace INMOST;
 using namespace SIMUG::mesh;
