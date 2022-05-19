@@ -326,4 +326,20 @@ namespace SIMUG
         
         return res;
     }
+
+    // solve 2x2 or 3x3 linear system (matrix is stored as a vector of raws)
+    template <typename T>
+    std::vector<T> solve_linear_system(const std::vector<std::vector<T>>& lhs, const std::vector<T>& rhs)
+    {
+        if (lhs.size() != rhs.size())
+            SIMUG_ERR("can't solve system - LHS matrix and RHS vector should have the same size!");
+        
+        if ((lhs.size() > 3) or (lhs.size() < 2))
+            SIMUG_ERR("can't solve system  - can solve only 2x2 or 3x3 linear systems!");
+        
+        if (fabs(det(lhs)) < REAL_MIN_ABS_VAL)
+            SIMUG_ERR("can't solve system  - determinant of lhs is to low!");
+        
+        return (inv(lhs)*rhs);
+    }
 }
