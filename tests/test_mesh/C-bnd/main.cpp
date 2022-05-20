@@ -17,14 +17,14 @@
 #define MESH_PATH "../../../../SIMUG_v0/MESHES/pmf/Box_low_res.pmf"
 
 using namespace INMOST;
-using namespace SIMUG::mesh;
+using namespace SIMUG;
 using namespace std;
 
 bool test_bnd_selection()
 {
     IceMesh imesh(MESH_PATH,
-                 surfType::plane,
-                 gridType::Agrid);
+                  mesh::surfType::plane,
+                  mesh::gridType::Agrid);
 
     INMOST::Tag tag_bnd_nodes = imesh.GetMesh()->CreateTag("bnd_nodes", DATA_INTEGER, INMOST::NODE, INMOST::NODE, 1);
     INMOST::Tag tag_bnd_adj_trians = imesh.GetMesh()->CreateTag("adj_tr_for_bnd_edges", DATA_INTEGER, INMOST::CELL, INMOST::CELL, 1);

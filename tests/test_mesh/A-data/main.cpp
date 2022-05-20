@@ -17,7 +17,7 @@
 #define MESH_PATH "../../../../SIMUG_v0/MESHES/pmf/Box_low_res.pmf"
 
 using namespace INMOST;
-using namespace SIMUG::mesh;
+using namespace SIMUG;
 using namespace std;
 
 // Make mesh partition    
@@ -96,8 +96,8 @@ bool test_data()
     EdgeData edge_data(ice_mesh, 0);
     TrianData triangle_data(ice_mesh, 0);
 
-    node_data.Create(meshVar::mi, meshDim::scalar, INMOST::DATA_REAL);
-    node_data.Create("test variable", meshDim::vector, INMOST::DATA_INTEGER);
+    node_data.Create(mesh::meshVar::mi, mesh::meshDim::scalar, INMOST::DATA_REAL);
+    node_data.Create("test variable", mesh::meshDim::vector, INMOST::DATA_INTEGER);
     node_data.Create("test variable2", 5, INMOST::DATA_INTEGER);
     node_data.Create("test variable3", 10, INMOST::DATA_INTEGER);
     node_data.Create("test variable4", 15, INMOST::DATA_INTEGER);
@@ -105,10 +105,10 @@ bool test_data()
     ice_mesh->DeleteTag(node_data.Get("test variable"), INMOST::NODE);
     node_data.Delete("test variable3");
     node_data.Delete((std::vector<string>){"test variable4", "test variable5"});
-    node_data.Delete((std::vector<meshVar>){meshVar::mi});
+    node_data.Delete((std::vector<mesh::meshVar>){mesh::meshVar::mi});
 
-    edge_data.Create(meshVar::mi, meshDim::scalar, INMOST::DATA_REAL);
-    edge_data.Create("test variable", meshDim::vector, INMOST::DATA_INTEGER);
+    edge_data.Create(mesh::meshVar::mi, mesh::meshDim::scalar, INMOST::DATA_REAL);
+    edge_data.Create("test variable", mesh::meshDim::vector, INMOST::DATA_INTEGER);
     edge_data.Create("test variable2", 5, INMOST::DATA_INTEGER);
     edge_data.Create("test variable3", 10, INMOST::DATA_INTEGER);
     edge_data.Create("test variable4", 15, INMOST::DATA_INTEGER);
@@ -116,10 +116,10 @@ bool test_data()
     ice_mesh->DeleteTag(edge_data.Get("test variable"), INMOST::NODE);
     edge_data.Delete("test variable3");
     edge_data.Delete((std::vector<string>){"test variable4", "test variable5"});
-    edge_data.Delete((std::vector<meshVar>){meshVar::mi});
+    edge_data.Delete((std::vector<mesh::meshVar>){mesh::meshVar::mi});
 
-    triangle_data.Create(meshVar::mi, meshDim::scalar, INMOST::DATA_REAL);
-    triangle_data.Create("test variable", meshDim::vector, INMOST::DATA_INTEGER);
+    triangle_data.Create(mesh::meshVar::mi, mesh::meshDim::scalar, INMOST::DATA_REAL);
+    triangle_data.Create("test variable", mesh::meshDim::vector, INMOST::DATA_INTEGER);
     triangle_data.Create("test variable2", 5, INMOST::DATA_INTEGER);
     triangle_data.Create("test variable3", 10, INMOST::DATA_INTEGER);
     triangle_data.Create("test variable4", 15, INMOST::DATA_INTEGER);
@@ -127,7 +127,7 @@ bool test_data()
     ice_mesh->DeleteTag(triangle_data.Get("test variable"), INMOST::NODE);
     triangle_data.Delete("test variable3");
     triangle_data.Delete((std::vector<string>){"test variable4", "test variable5"});
-    triangle_data.Delete((std::vector<meshVar>){meshVar::mi});
+    triangle_data.Delete((std::vector<mesh::meshVar>){mesh::meshVar::mi});
 
     // to output faces
     ice_mesh->SetFileOption("VTK_GRID_DIMS", "2");

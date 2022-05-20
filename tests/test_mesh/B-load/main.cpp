@@ -17,14 +17,14 @@
 #define MESH_PATH "../../../../SIMUG_v0/MESHES/pmf/Box_low_res.pmf"
 
 using namespace INMOST;
-using namespace SIMUG::mesh;
+using namespace SIMUG;
 using namespace std;
 
 bool test_mesh_load()
 {
     IceMesh(MESH_PATH,
-            surfType::plane,
-            gridType::Agrid);
+            mesh::surfType::plane,
+            mesh::gridType::Agrid);
     
     return true;
 }

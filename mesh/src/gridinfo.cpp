@@ -1,6 +1,6 @@
 #include "mesh.hpp"
 
-using namespace SIMUG::mesh;
+using namespace SIMUG;
 
 void NodeInfo::Mute()
 {

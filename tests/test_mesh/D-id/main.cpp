@@ -17,14 +17,14 @@
 #define MESH_PATH "../../../../SIMUG_v0/MESHES/pmf/Box_low_res.pmf"
 
 using namespace INMOST;
-using namespace SIMUG::mesh;
+using namespace SIMUG;
 using namespace std;
 
 bool test_id()
 {
     SIMUG::Logger log(cout);
 
-    IceMesh imesh(MESH_PATH, surfType::plane, gridType::Agrid);
+    IceMesh imesh(MESH_PATH, mesh::surfType::plane, mesh::gridType::Agrid);
 
 
     for (int pr = 0; pr < imesh.GetMesh()->GetProcessorsNumber(); ++pr)

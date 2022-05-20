@@ -17,12 +17,12 @@
 #define MESH_PATH "../../../../SIMUG_v0/MESHES/pmf/Box_low_res.pmf"
 
 using namespace INMOST;
-using namespace SIMUG::mesh;
+using namespace SIMUG;
 using namespace std;
 
 bool test_prognostic_forcing()
 {
-    IceMesh mesh_plane(MESH_PATH, surfType::plane, gridType::Agrid, 5);
+    IceMesh mesh_plane(MESH_PATH, mesh::surfType::plane, mesh::gridType::Agrid, 5);
     mesh_plane.SaveVTU("mult_layers");
 
     return true;

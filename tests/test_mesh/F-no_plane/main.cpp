@@ -17,13 +17,13 @@
 #define SPHERE_PATH "../../../../SIMUG_v0/MESHES/pmf/Sphere.pmf"
 
 using namespace INMOST;
-using namespace SIMUG::mesh;
+using namespace SIMUG;
 using namespace std;
 
 bool test_not_plane()
 {
     //IceMesh mesh_arctic(ARCTIC_PATH, surfType::basin, gridType::Agrid);
-    IceMesh mesh_sphere(SPHERE_PATH, surfType::sphere, gridType::Agrid);
+    IceMesh mesh_sphere(SPHERE_PATH, mesh::surfType::sphere, mesh::gridType::Agrid);
 
     //if (mesh_arctic.GetMesh()->GetProcessorsNumber() > 1)
     //    mesh_arctic.SaveVTU("./arctic.pvtu");

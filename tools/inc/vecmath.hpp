@@ -45,7 +45,7 @@ namespace SIMUG
         return res;
     }
 
-    //vector product
+    // vector product
     template<typename T>
     std::vector<T> operator% (const std::vector<T>& v1, const std::vector<T>& v2)
     {
@@ -111,7 +111,7 @@ namespace SIMUG
         return res;
     }
 
-    // matrix mult number (matrix is storad as vector of raws)
+    // matrix mult number (matrix is stored as vector of raws)
     template<typename T>
     std::vector<std::vector<T>> operator* (const std::vector<std::vector<T>>& m, const T& num)
     {
@@ -299,8 +299,17 @@ namespace SIMUG
         }
         return inv_m*(1.0/det(m));
     }
+
+    // output operator for vector
+    template <typename T>
+    std::ostream& operator<< (std::ostream& out, const std::vector<T>& v)
+    {
+        for (int i = 0; i < v.size(); ++i)
+            out << v[i] << " ";
+        return out;
+    }
     
-    // output operator for matricies
+    // output operator for matrix
     template <typename T>
     std::ostream& operator<< (std::ostream& out, const std::vector<std::vector<T>>& m)
     {

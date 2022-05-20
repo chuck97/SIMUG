@@ -58,8 +58,9 @@ endif()
 # Add subdirectories
 add_subdirectory(variables)
 add_subdirectory(tools)
-#add_subdirectory(configuration)
 add_subdirectory(mesh)
+add_subdirectory(forcing)
+#add_subdirectory(configuration)
 
 
 if(COMPILE_TESTS)

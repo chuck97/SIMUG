@@ -17,7 +17,7 @@
 #define MESH_PATH "../../../../SIMUG_v0/MESHES/pmf/Box_low_res.pmf"
 
 using namespace INMOST;
-using namespace SIMUG::mesh;
+using namespace SIMUG;
 using namespace std;
 
 // Make mesh partition    
@@ -95,14 +95,14 @@ bool test_mute()
     EdgeData edge_data(ice_mesh,0);
     TrianData triangle_data(ice_mesh, 0);
 
-    node_data.Create(meshVar::mi, meshDim::scalar, INMOST::DATA_REAL);
+    node_data.Create(mesh::meshVar::mi, mesh::meshDim::scalar, INMOST::DATA_REAL);
 
 #ifdef USE_MPI
     ice_mesh->Save("./res_mute1.pvtu");
 #else
     ice_mesh->Save("./res_mute1.vtu");
 #endif
-    node_data.Mute(meshVar::mi);
+    node_data.Mute(mesh::meshVar::mi);
 
 #ifdef USE_MPI
     ice_mesh->Save("./res_mute2.pvtu");
@@ -110,7 +110,7 @@ bool test_mute()
     ice_mesh->Save("./res_mute2.vtu");
 #endif
 
-    node_data.Unmute(meshVar::mi);
+    node_data.Unmute(mesh::meshVar::mi);
 
 #ifdef USE_MPI
     ice_mesh->Save("./res_mute3.pvtu");

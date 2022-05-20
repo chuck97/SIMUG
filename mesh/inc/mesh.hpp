@@ -28,7 +28,7 @@
 //#include "model_config.hpp"
 //#include "mesh_config.hpp"
 
-namespace SIMUG::mesh
+namespace SIMUG
 {
     // general mesh information on processor
     struct MeshInfo
@@ -39,12 +39,12 @@ namespace SIMUG::mesh
             int id_max;
         };
 
-        surfType surface_type;
-        gridType grid_type;
+        mesh::surfType surface_type;
+        mesh::gridType grid_type;
         std::string output_folder;
         int num_ice_layers;
-        std::map<meshVar, gridElemType> prog_elems;
-        std::map<meshVar, gridElemType> forc_elems;
+        std::map<mesh::meshVar, mesh::gridElemType> prog_elems;
+        std::map<mesh::meshVar, mesh::gridElemType> forc_elems;
 
         int num_nodes;
         int num_edges;
@@ -74,7 +74,7 @@ namespace SIMUG::mesh
         INMOST::Tag id_no_bnd;                                  // global element id without bnd elements
         INMOST::Tag is_bnd;                                     // is node bnd (1 = true, 0 = false)
         
-        std::map<SIMUG::coord::coordType, INMOST::Tag> coords;  // coordinates of element centroid (model, geographical, cartesian)
+        std::map<coord::coordType, INMOST::Tag> coords;         // coordinates of element centroid (model, geographical, cartesian)
         
         std::vector<INMOST::Tag> geo_basis;                     // geographical basis vectors coordinates
         std::vector<INMOST::Tag> cart_basis;                    // local cartesian basis vectors coordinates
@@ -153,26 +153,26 @@ namespace SIMUG::mesh
         // construct manually with number of ice layers (with output folder)
         IceMesh(const std::string& path_to_file_,
                 const std::string& output_folder_,
-                const surfType& surf_type_,
-                const gridType& grid_type_,
+                const mesh::surfType& surf_type_,
+                const mesh::gridType& grid_type_,
                 const int& n_ice_layers_);
         
         // construct manually with number of ice layers (without output folder)
         IceMesh(const std::string& path_to_file_,
-                const surfType& surf_type_,
-                const gridType& grid_type_,
+                const mesh::surfType& surf_type_,
+                const mesh::gridType& grid_type_,
                 const int& n_ice_layers_);
 
         // construct manually with 1 ice layer (with output folder)
         IceMesh(const std::string& path_to_file_,
                 const std::string& output_folder_,
-                const surfType& surf_type_,
-                const gridType& grid_type_);
+                const mesh::surfType& surf_type_,
+                const mesh::gridType& grid_type_);
         
         // construct manually with 1 ice layer (without output folder)
         IceMesh(const std::string& path_to_file_,
-                const surfType& surf_type_,
-                const gridType& grid_type_);
+                const mesh::surfType& surf_type_,
+                const mesh::gridType& grid_type_);
 
             
 
@@ -183,14 +183,14 @@ namespace SIMUG::mesh
         inline INMOST::Mesh* GetMesh() {return ice_mesh.get();};
 
         // Get and Mute prognostic data
-        inline std::shared_ptr<GridData>& GetProgData(const gridElemType& gdtype, int layer) {return prognostic_data[gdtype][layer];};
-        inline const std::shared_ptr<GridData>& GetProgData(const gridElemType& gdtype, int layer) const {return prognostic_data.at(gdtype).at(layer);};
+        inline std::shared_ptr<GridData>& GetProgData(const mesh::gridElemType& gdtype, int layer) {return prognostic_data[gdtype][layer];};
+        inline const std::shared_ptr<GridData>& GetProgData(const mesh::gridElemType& gdtype, int layer) const {return prognostic_data.at(gdtype).at(layer);};
         inline void MuteProgData(int layer) {for (auto& [var, elem]: mesh_info.prog_elems){prognostic_data[elem][layer]->Mute(var);};};
         inline void MuteProgData() {for (int layer = 1; layer < mesh_info.num_ice_layers; ++layer){MuteProgData(layer);};};
 
         // Get and Mute forcing data
-        inline std::shared_ptr<GridData>& GetForcData(const gridElemType& gdtype) {return forcing_data[gdtype];};
-        inline const std::shared_ptr<GridData>& GetForcData(const gridElemType& gdtype) const {return forcing_data.at(gdtype);};
+        inline std::shared_ptr<GridData>& GetForcData(const mesh::gridElemType& gdtype) {return forcing_data[gdtype];};
+        inline const std::shared_ptr<GridData>& GetForcData(const mesh::gridElemType& gdtype) const {return forcing_data.at(gdtype);};
         void MuteForcData() {for (auto& [var, elem]: mesh_info.forc_elems){forcing_data[elem]->Mute(var);};};
 
         // Get mesh information (number of elements and local processor ids) 
@@ -198,8 +198,8 @@ namespace SIMUG::mesh
         inline const MeshInfo& GetMeshInfo() const {return mesh_info;};
 
         // Get mesh information (number of elements and local processor ids) 
-        inline std::shared_ptr<GridInfo>& GetGridInfo(const gridElemType& gdtype) {return grid_info[gdtype];}; 
-        inline const std::shared_ptr<GridInfo>& GetGridInfo(const gridElemType& gdtype) const {return grid_info.at(gdtype);};
+        inline std::shared_ptr<GridInfo>& GetGridInfo(const mesh::gridElemType& gdtype) {return grid_info[gdtype];}; 
+        inline const std::shared_ptr<GridInfo>& GetGridInfo(const mesh::gridElemType& gdtype) const {return grid_info.at(gdtype);};
     
         // save mesh with data to a file
         void SaveVTU(const std::string& meshname) const;
@@ -242,9 +242,9 @@ namespace SIMUG::mesh
     private:
 
         std::shared_ptr<INMOST::Mesh> ice_mesh;
-        std::map<gridElemType, LayersDataMap> prognostic_data;
-        std::map<gridElemType, std::shared_ptr<GridData>> forcing_data;
-        std::map<gridElemType, std::shared_ptr<GridInfo>> grid_info;
+        std::map<mesh::gridElemType, LayersDataMap> prognostic_data;
+        std::map<mesh::gridElemType, std::shared_ptr<GridData>> forcing_data;
+        std::map<mesh::gridElemType, std::shared_ptr<GridInfo>> grid_info;
         INMOST::ElementArray<INMOST::Node> bnd_nodes;
         INMOST::ElementArray<INMOST::Face> bnd_edges;
         INMOST::ElementArray<INMOST::Cell> bnd_trians;
