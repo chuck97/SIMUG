@@ -23,8 +23,8 @@ IceMesh::IceMesh(const std::string& path_to_file_,
 
     if (mesh_info.grid_type == mesh::gridType::Agrid)
     {
-        mesh_info.prog_elems = mesh::gridA_progElems;
-        mesh_info.forc_elems = mesh::gridA_forcElems;
+        mesh_info.multi_elems = mesh::gridA_multiElems;
+        mesh_info.single_elems = mesh::gridA_singleElems;
     }
     else if (mesh_info.grid_type == mesh::gridType::Bgrid)
     {
@@ -32,7 +32,8 @@ IceMesh::IceMesh(const std::string& path_to_file_,
     }
     else if (mesh_info.grid_type == mesh::gridType::Cgrid)
     {
-        SIMUG_ERR("C grid is not implemented yet");
+        mesh_info.multi_elems = mesh::gridC_multiElems;
+        mesh_info.single_elems = mesh::gridC_singleElems;
     }
     else
         SIMUG_ERR("Unknown type of grid! Possible options: Agrid, Bgrid, Cgrid");
@@ -128,28 +129,27 @@ IceMesh::IceMesh(const std::string& path_to_file_,
     {
         if (lay == 0)
         {
-            prognostic_data[mesh::gridElemType::Node][lay] = make_shared<NodeData>(ice_mesh.get());
-            prognostic_data[mesh::gridElemType::Edge][lay] = make_shared<EdgeData>(ice_mesh.get());
-            prognostic_data[mesh::gridElemType::Trian][lay] = make_shared<TrianData>(ice_mesh.get());
-            prognostic_data[mesh::gridElemType::bndNode][lay] = make_shared<BndNodeData>(ice_mesh.get());
-            prognostic_data[mesh::gridElemType::bndEdge][lay] = make_shared<BndEdgeData>(ice_mesh.get());
-            prognostic_data[mesh::gridElemType::bndTrian][lay] = make_shared<BndTrianData>(ice_mesh.get());
+            multi_data[mesh::gridElemType::Node][lay] = make_shared<NodeData>(ice_mesh.get());
+            multi_data[mesh::gridElemType::Edge][lay] = make_shared<EdgeData>(ice_mesh.get());
+            multi_data[mesh::gridElemType::Trian][lay] = make_shared<TrianData>(ice_mesh.get());
+            multi_data[mesh::gridElemType::bndNode][lay] = make_shared<BndNodeData>(ice_mesh.get());
+            multi_data[mesh::gridElemType::bndEdge][lay] = make_shared<BndEdgeData>(ice_mesh.get());
+            multi_data[mesh::gridElemType::bndTrian][lay] = make_shared<BndTrianData>(ice_mesh.get());
         }
         else
         {
-            prognostic_data[mesh::gridElemType::Node][lay] = make_shared<NodeData>(ice_mesh.get(), lay);
-            prognostic_data[mesh::gridElemType::Edge][lay] = make_shared<EdgeData>(ice_mesh.get(), lay);
-            prognostic_data[mesh::gridElemType::Trian][lay] = make_shared<TrianData>(ice_mesh.get(), lay);
-            prognostic_data[mesh::gridElemType::bndNode][lay] = make_shared<BndNodeData>(ice_mesh.get(), lay);
-            prognostic_data[mesh::gridElemType::bndEdge][lay] = make_shared<BndEdgeData>(ice_mesh.get(), lay);
-            prognostic_data[mesh::gridElemType::bndTrian][lay] = make_shared<BndTrianData>(ice_mesh.get(), lay);
+            multi_data[mesh::gridElemType::Node][lay] = make_shared<NodeData>(ice_mesh.get(), lay);
+            multi_data[mesh::gridElemType::Edge][lay] = make_shared<EdgeData>(ice_mesh.get(), lay);
+            multi_data[mesh::gridElemType::Trian][lay] = make_shared<TrianData>(ice_mesh.get(), lay);
+            multi_data[mesh::gridElemType::bndNode][lay] = make_shared<BndNodeData>(ice_mesh.get(), lay);
+            multi_data[mesh::gridElemType::bndEdge][lay] = make_shared<BndEdgeData>(ice_mesh.get(), lay);
+            multi_data[mesh::gridElemType::bndTrian][lay] = make_shared<BndTrianData>(ice_mesh.get(), lay);
         }
     }
     BARRIER
 
     mesh_timer.Launch();
     AssignPrognosticVariables();
-    MuteProgData();
     mesh_timer.Stop();
     duration = mesh_timer.GetMaxTime();
     mesh_timer.Reset();
@@ -158,12 +158,12 @@ IceMesh::IceMesh(const std::string& path_to_file_,
     BARRIER
 
     // assign forcing grid variables
-    forcing_data[mesh::gridElemType::Node] = make_shared<NodeData>(ice_mesh.get());
-    forcing_data[mesh::gridElemType::Edge] = make_shared<EdgeData>(ice_mesh.get());
-    forcing_data[mesh::gridElemType::Trian] = make_shared<TrianData>(ice_mesh.get());
-    forcing_data[mesh::gridElemType::bndNode] = make_shared<BndNodeData>(ice_mesh.get());
-    forcing_data[mesh::gridElemType::bndEdge] = make_shared<BndEdgeData>(ice_mesh.get());
-    forcing_data[mesh::gridElemType::bndTrian] = make_shared<BndTrianData>(ice_mesh.get());
+    single_data[mesh::gridElemType::Node] = make_shared<NodeData>(ice_mesh.get());
+    single_data[mesh::gridElemType::Edge] = make_shared<EdgeData>(ice_mesh.get());
+    single_data[mesh::gridElemType::Trian] = make_shared<TrianData>(ice_mesh.get());
+    single_data[mesh::gridElemType::bndNode] = make_shared<BndNodeData>(ice_mesh.get());
+    single_data[mesh::gridElemType::bndEdge] = make_shared<BndEdgeData>(ice_mesh.get());
+    single_data[mesh::gridElemType::bndTrian] = make_shared<BndTrianData>(ice_mesh.get());
     
     BARRIER
 
@@ -909,8 +909,8 @@ void IceMesh::AssignPrognosticVariables()
     // making all prognostic model grid variables
     for (int layer_n = 0; layer_n < mesh_info.num_ice_layers; ++layer_n)
     {
-        for (auto& [variable, element]: mesh_info.prog_elems)
-            prognostic_data[element][layer_n]->Create(variable, mesh::progDims.at(variable), INMOST::DATA_REAL);
+        for (auto& [variable, element]: mesh_info.multi_elems)
+            multi_data[element][layer_n]->Create(variable, mesh::multiDims.at(variable), INMOST::DATA_REAL);
     }
 
     BARRIER
@@ -919,8 +919,429 @@ void IceMesh::AssignPrognosticVariables()
 void IceMesh::AssignForcingVariables()
 {
     // making all forcing grid variables
-    for (auto& [variable, element]: mesh_info.forc_elems)
-        forcing_data[element]->Create(variable, mesh::forcDims.at(variable), INMOST::DATA_REAL);
+    for (auto& [variable, element]: mesh_info.single_elems)
+        single_data[element]->Create(variable, mesh::singleDims.at(variable), INMOST::DATA_REAL);
 
     BARRIER
 } 
+
+std::vector<double> IceMesh::VecTransition(const std::vector<double>& vec_coords, const INMOST::Node& node, const INMOST::Cell& trian)
+{
+    // get global id tag for trian 
+    INMOST::Tag trian_id = grid_info[mesh::gridElemType::Trian]->id;
+
+    //find trian number in current node numeration
+    ElementArray<INMOST::Cell> adj_trians = node.getCells();
+
+    int trian_num = -1;
+
+    for (size_t i = 0; i < adj_trians.size(); ++i)
+    {
+        if (adj_trians[i].Integer(trian_id) == trian.Integer(trian_id))
+        {
+            trian_num = i;
+            break;
+        }
+    }
+
+    if (trian_num == -1)
+    {
+        SIMUG_ERR("node and trian are not adjacent!");
+    }
+
+    //get transition matrix
+    INMOST::Tag matr_to_trian_tag = grid_info[mesh::gridElemType::Node]->GetTransMatrToTrian()[trian_num];
+
+    std::vector<std::vector<double>> trans_matr ={ 
+                                                    {node.RealArray(matr_to_trian_tag)[0], node.RealArray(matr_to_trian_tag)[1]},
+                                                    {node.RealArray(matr_to_trian_tag)[2], node.RealArray(matr_to_trian_tag)[3]}
+                                                 };
+    
+    return trans_matr*vec_coords;
+}
+
+std::vector<std::vector<double>> IceMesh::TensTransition(const std::vector<std::vector<double>>& tens_coords, const INMOST::Node& node, const INMOST::Cell& trian)
+{
+    // get global id tag for trian 
+    INMOST::Tag trian_id = grid_info[mesh::gridElemType::Trian]->id;
+
+    //find trian number in current node numeration
+    ElementArray<INMOST::Cell> adj_trians = node.getCells();
+
+    int trian_num = -1;
+
+    for (size_t i = 0; i < adj_trians.size(); ++i)
+    {
+        if (adj_trians[i].Integer(trian_id) == trian.Integer(trian_id))
+        {
+            trian_num = i;
+            break;
+        }
+    }
+
+    if (trian_num == -1)
+    {
+        SIMUG_ERR("node and trian are not adjacent!");
+    }
+
+    //get transition matrix
+    INMOST::Tag matr_to_trian_tag = grid_info[mesh::gridElemType::Node]->GetTransMatrToTrian()[trian_num];
+
+    std::vector<std::vector<double>> trans_matr = { 
+                                                    {node.RealArray(matr_to_trian_tag)[0], node.RealArray(matr_to_trian_tag)[1]},
+                                                    {node.RealArray(matr_to_trian_tag)[2], node.RealArray(matr_to_trian_tag)[3]}
+                                                  };
+
+    
+    return (trans_matr*tens_coords)*transp(trans_matr);
+}
+
+std::vector<double> IceMesh::VecTransition(const std::vector<double>& vec_coords, const INMOST::Cell& trian, const INMOST::Node& node)
+{
+    // get global id tag for node 
+    INMOST::Tag node_id = grid_info[mesh::gridElemType::Node]->id;
+
+    //find node number in current trian numeration
+    ElementArray<INMOST::Node> adj_nodes = trian.getNodes();
+
+    int node_num = -1;
+
+    for (size_t i = 0; i < adj_nodes.size(); ++i)
+    {
+        if (adj_nodes[i].Integer(node_id) == node.Integer(node_id))
+        {
+            node_num = i;
+            break;
+        }
+    }
+
+    if (node_num == -1)
+    {
+        SIMUG_ERR("node and trian are not adjacent!");
+    }
+
+    //get transition matrix
+    INMOST::Tag matr_to_node_tag = grid_info[mesh::gridElemType::Trian]->GetTransMatrToNode()[node_num];
+
+    std::vector<std::vector<double>> trans_matr ={ 
+                                                    {trian.RealArray(matr_to_node_tag)[0], trian.RealArray(matr_to_node_tag)[1]},
+                                                    {trian.RealArray(matr_to_node_tag)[2], trian.RealArray(matr_to_node_tag)[3]}
+                                                 };
+    
+    return trans_matr*vec_coords;
+}
+
+std::vector<std::vector<double>> IceMesh::TensTransition(const std::vector<std::vector<double>>& tens_coords, const INMOST::Cell& trian, const INMOST::Node& node)
+{
+    // get global id tag for node 
+    INMOST::Tag node_id = grid_info[mesh::gridElemType::Node]->id;
+
+    //find node number in current trian numeration
+    ElementArray<INMOST::Node> adj_nodes = trian.getNodes();
+
+    int node_num = -1;
+
+    for (size_t i = 0; i < adj_nodes.size(); ++i)
+    {
+        if (adj_nodes[i].Integer(node_id) == node.Integer(node_id))
+        {
+            node_num = i;
+            break;
+        }
+    }
+
+    if (node_num == -1)
+    {
+        SIMUG_ERR("node and trian are not adjacent!");
+    }
+
+    //get transition matrix
+    INMOST::Tag matr_to_node_tag = grid_info[mesh::gridElemType::Trian]->GetTransMatrToNode()[node_num];
+
+    std::vector<std::vector<double>> trans_matr ={ 
+                                                    {trian.RealArray(matr_to_node_tag)[0], trian.RealArray(matr_to_node_tag)[1]},
+                                                    {trian.RealArray(matr_to_node_tag)[2], trian.RealArray(matr_to_node_tag)[3]}
+                                                 };
+    
+    return (trans_matr*tens_coords)*transp(trans_matr);
+}
+
+std::vector<double> IceMesh::VecTransition(const std::vector<double>& vec_coords, const INMOST::Node& node, const INMOST::Face& edge)
+{
+    // get global id tag for edge 
+    INMOST::Tag edge_id = grid_info[mesh::gridElemType::Edge]->id;
+
+    // find edge number in current node numeration
+    ElementArray<INMOST::Face> adj_edges = node.getFaces();
+
+    int edge_num = -1;
+
+    for (size_t i = 0; i < adj_edges.size(); ++i)
+    {
+        if (adj_edges[i].Integer(edge_id) == edge.Integer(edge_id))
+        {
+            edge_num = i;
+            break;
+        }
+    }
+
+    if (edge_num == -1)
+    {
+        SIMUG_ERR("node and edge are not adjacent!");
+    }
+
+    //get transition matrix
+    INMOST::Tag matr_to_edge_tag = grid_info[mesh::gridElemType::Node]->GetTransMatrToEdge()[edge_num];
+
+    std::vector<std::vector<double>> trans_matr ={ 
+                                                    {node.RealArray(matr_to_edge_tag)[0], node.RealArray(matr_to_edge_tag)[1]},
+                                                    {node.RealArray(matr_to_edge_tag)[2], node.RealArray(matr_to_edge_tag)[3]}
+                                                 };
+    
+    return trans_matr*vec_coords;
+}
+
+std::vector<std::vector<double>> IceMesh::TensTransition(const std::vector<std::vector<double>>& tens_coords, const INMOST::Node& node, const INMOST::Face& edge)
+{
+    // get global id tag for edge 
+    INMOST::Tag edge_id = grid_info[mesh::gridElemType::Edge]->id;
+
+    // find edge number in current node numeration
+    ElementArray<INMOST::Face> adj_edges = node.getFaces();
+
+    int edge_num = -1;
+
+    for (size_t i = 0; i < adj_edges.size(); ++i)
+    {
+        if (adj_edges[i].Integer(edge_id) == edge.Integer(edge_id))
+        {
+            edge_num = i;
+            break;
+        }
+    }
+
+    if (edge_num == -1)
+    {
+        SIMUG_ERR("node and edge are not adjacent!");
+    }
+
+    //get transition matrix
+    INMOST::Tag matr_to_edge_tag = grid_info[mesh::gridElemType::Node]->GetTransMatrToEdge()[edge_num];
+
+    std::vector<std::vector<double>> trans_matr ={ 
+                                                    {node.RealArray(matr_to_edge_tag)[0], node.RealArray(matr_to_edge_tag)[1]},
+                                                    {node.RealArray(matr_to_edge_tag)[2], node.RealArray(matr_to_edge_tag)[3]}
+                                                 };
+    
+    return (trans_matr*tens_coords)*transp(trans_matr);
+}
+
+std::vector<double> IceMesh::VecTransition(const std::vector<double>& vec_coords, const INMOST::Face& edge, const INMOST::Node& node)
+{
+    // get global id tag for node 
+    INMOST::Tag node_id = grid_info[mesh::gridElemType::Node]->id;
+
+    // find edge number in current node numeration
+    ElementArray<INMOST::Node> adj_nodes = edge.getNodes();
+
+    int node_num = -1;
+
+    for (size_t i = 0; i < adj_nodes.size(); ++i)
+    {
+        if (adj_nodes[i].Integer(node_id) == node.Integer(node_id))
+        {
+            node_num = i;
+            break;
+        }
+    }
+
+    if (node_num == -1)
+    {
+        SIMUG_ERR("node and edge are not adjacent!");
+    }
+
+    //get transition matrix
+    INMOST::Tag matr_to_node_tag = grid_info[mesh::gridElemType::Edge]->GetTransMatrToNode()[node_num];
+
+    std::vector<std::vector<double>> trans_matr ={ 
+                                                    {edge.RealArray(matr_to_node_tag)[0], edge.RealArray(matr_to_node_tag)[1]},
+                                                    {edge.RealArray(matr_to_node_tag)[2], edge.RealArray(matr_to_node_tag)[3]}
+                                                 };
+    
+    return trans_matr*vec_coords;
+}
+
+std::vector<std::vector<double>> IceMesh::TensTransition(const std::vector<std::vector<double>>& tens_coords, const INMOST::Face& edge, const INMOST::Node& node)
+{
+    // get global id tag for node 
+    INMOST::Tag node_id = grid_info[mesh::gridElemType::Node]->id;
+
+    // find edge number in current node numeration
+    ElementArray<INMOST::Node> adj_nodes = edge.getNodes();
+
+    int node_num = -1;
+
+    for (size_t i = 0; i < adj_nodes.size(); ++i)
+    {
+        if (adj_nodes[i].Integer(node_id) == node.Integer(node_id))
+        {
+            node_num = i;
+            break;
+        }
+    }
+
+    if (node_num == -1)
+    {
+        SIMUG_ERR("node and edge are not adjacent!");
+    }
+
+    //get transition matrix
+    INMOST::Tag matr_to_node_tag = grid_info[mesh::gridElemType::Edge]->GetTransMatrToNode()[node_num];
+
+    std::vector<std::vector<double>> trans_matr ={ 
+                                                    {edge.RealArray(matr_to_node_tag)[0], edge.RealArray(matr_to_node_tag)[1]},
+                                                    {edge.RealArray(matr_to_node_tag)[2], edge.RealArray(matr_to_node_tag)[3]}
+                                                 };
+    
+    return (trans_matr*tens_coords)*transp(trans_matr);
+}
+
+std::vector<double> IceMesh::VecTransition(const std::vector<double>& vec_coords, const INMOST::Face& edge, const INMOST::Cell& trian)
+{
+    // get global id tag for trian 
+    INMOST::Tag trian_id = grid_info[mesh::gridElemType::Trian]->id;
+
+    //find trian number in current edge numeration
+    ElementArray<INMOST::Cell> adj_trians = edge.getCells();
+
+    int trian_num = -1;
+
+    for (size_t i = 0; i < adj_trians.size(); ++i)
+    {
+        if (adj_trians[i].Integer(trian_id) == trian.Integer(trian_id))
+        {
+            trian_num = i;
+            break;
+        }
+    }
+
+    if (trian_num == -1)
+    {
+        SIMUG_ERR("edge and trian are not adjacent!");
+    }
+
+    //get transition matrix
+    INMOST::Tag matr_to_trian_tag = grid_info[mesh::gridElemType::Edge]->GetTransMatrToTrian()[trian_num];
+
+    std::vector<std::vector<double>> trans_matr ={ 
+                                                    {edge.RealArray(matr_to_trian_tag)[0], edge.RealArray(matr_to_trian_tag)[1]},
+                                                    {edge.RealArray(matr_to_trian_tag)[2], edge.RealArray(matr_to_trian_tag)[3]}
+                                                 };
+    
+    return trans_matr*vec_coords;
+}
+
+std::vector<std::vector<double>> IceMesh::TensTransition(const std::vector<std::vector<double>>& tens_coords, const INMOST::Face& edge, const INMOST::Cell& trian)
+{
+    // get global id tag for trian 
+    INMOST::Tag trian_id = grid_info[mesh::gridElemType::Trian]->id;
+
+    //find trian number in current edge numeration
+    ElementArray<INMOST::Cell> adj_trians = edge.getCells();
+
+    int trian_num = -1;
+
+    for (size_t i = 0; i < adj_trians.size(); ++i)
+    {
+        if (adj_trians[i].Integer(trian_id) == trian.Integer(trian_id))
+        {
+            trian_num = i;
+            break;
+        }
+    }
+
+    if (trian_num == -1)
+    {
+        SIMUG_ERR("edge and trian are not adjacent!");
+    }
+
+    //get transition matrix
+    INMOST::Tag matr_to_trian_tag = grid_info[mesh::gridElemType::Edge]->GetTransMatrToTrian()[trian_num];
+
+    std::vector<std::vector<double>> trans_matr ={ 
+                                                    {edge.RealArray(matr_to_trian_tag)[0], edge.RealArray(matr_to_trian_tag)[1]},
+                                                    {edge.RealArray(matr_to_trian_tag)[2], edge.RealArray(matr_to_trian_tag)[3]}
+                                                 };
+    
+    return (trans_matr*tens_coords)*transp(trans_matr);
+}
+
+std::vector<double> IceMesh::VecTransition(const std::vector<double>& vec_coords, const INMOST::Cell& trian, const INMOST::Face& edge)
+{
+    // get global id tag for edge 
+    INMOST::Tag edge_id = grid_info[mesh::gridElemType::Edge]->id;
+
+    //find edge number in current trian numeration
+    ElementArray<INMOST::Face> adj_edges = trian.getFaces();
+
+    int edge_num = -1;
+
+    for (size_t i = 0; i < adj_edges.size(); ++i)
+    {
+        if (adj_edges[i].Integer(edge_id) == edge.Integer(edge_id))
+        {
+            edge_num = i;
+            break;
+        }
+    }
+
+    if (edge_num == -1)
+    {
+        SIMUG_ERR("edge and trian are not adjacent!");
+    }
+
+    //get transition matrix
+    INMOST::Tag matr_to_edge_tag = grid_info[mesh::gridElemType::Trian]->GetTransMatrToEdge()[edge_num];
+
+    std::vector<std::vector<double>> trans_matr ={ 
+                                                    {trian.RealArray(matr_to_edge_tag)[0], trian.RealArray(matr_to_edge_tag)[1]},
+                                                    {trian.RealArray(matr_to_edge_tag)[2], trian.RealArray(matr_to_edge_tag)[3]}
+                                                 };
+    
+    return trans_matr*vec_coords;
+}
+
+std::vector<std::vector<double>> IceMesh::TensTransition(const std::vector<std::vector<double>>& tens_coords, const INMOST::Cell& trian, const INMOST::Face& edge)
+{
+    // get global id tag for edge 
+    INMOST::Tag edge_id = grid_info[mesh::gridElemType::Edge]->id;
+
+    //find edge number in current trian numeration
+    ElementArray<INMOST::Face> adj_edges = trian.getFaces();
+
+    int edge_num = -1;
+
+    for (size_t i = 0; i < adj_edges.size(); ++i)
+    {
+        if (adj_edges[i].Integer(edge_id) == edge.Integer(edge_id))
+        {
+            edge_num = i;
+            break;
+        }
+    }
+
+    if (edge_num == -1)
+    {
+        SIMUG_ERR("edge and trian are not adjacent!");
+    }
+
+    //get transition matrix
+    INMOST::Tag matr_to_edge_tag = grid_info[mesh::gridElemType::Trian]->GetTransMatrToEdge()[edge_num];
+
+    std::vector<std::vector<double>> trans_matr ={ 
+                                                    {trian.RealArray(matr_to_edge_tag)[0], trian.RealArray(matr_to_edge_tag)[1]},
+                                                    {trian.RealArray(matr_to_edge_tag)[2], trian.RealArray(matr_to_edge_tag)[3]}
+                                                 };
+    
+    return (trans_matr*tens_coords)*transp(trans_matr);
+}

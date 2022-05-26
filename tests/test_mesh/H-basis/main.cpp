@@ -30,12 +30,12 @@ bool test_basis()
     // calculate angle between cart and geo normal vectors at every point for plane
     {
     IceMesh mesh_plane(PLANE_PATH, mesh::surfType::plane, mesh::gridType::Agrid);
-    mesh_plane.GetProgData(mesh::gridElemType::Node, 0)->Create("angle node", 1, DATA_REAL);
+    mesh_plane.GetDataMulti(mesh::gridElemType::Node, 0)->Create("angle node", 1, DATA_REAL);
 
     INMOST::Tag geo_basis_tag = mesh_plane.GetGridInfo(mesh::gridElemType::Node)->geo_basis[2];
     INMOST::Tag cart_basis_tag = mesh_plane.GetGridInfo(mesh::gridElemType::Node)->cart_basis[2];
 
-    INMOST::Tag angle_node_tag = mesh_plane.GetProgData(mesh::gridElemType::Node, 0)->Get("angle node");
+    INMOST::Tag angle_node_tag = mesh_plane.GetDataMulti(mesh::gridElemType::Node, 0)->Get("angle node");
 
     for (auto nodeit = mesh_plane.GetMesh()->BeginNode(); nodeit != mesh_plane.GetMesh()->EndNode(); ++nodeit)
     {
@@ -53,7 +53,7 @@ bool test_basis()
         }
 
     }
-    mesh_plane.GetProgData(mesh::gridElemType::Node, 0)->Exchange("angle node");
+    mesh_plane.GetDataMulti(mesh::gridElemType::Node, 0)->Exchange("angle node");
     mesh_plane.SaveVTU("plane");
 
     }
@@ -61,12 +61,12 @@ bool test_basis()
     // calculate angle between cart and geo normal vectors at every point for sphere
     {
     IceMesh mesh_sphere(SPHERE_PATH, mesh::surfType::sphere, mesh::gridType::Agrid);
-    mesh_sphere.GetProgData(mesh::gridElemType::Node, 0)->Create("angle node", 1, DATA_REAL);
+    mesh_sphere.GetDataMulti(mesh::gridElemType::Node, 0)->Create("angle node", 1, DATA_REAL);
 
     INMOST::Tag geo_basis_tag = mesh_sphere.GetGridInfo(mesh::gridElemType::Node)->geo_basis[2];
     INMOST::Tag cart_basis_tag = mesh_sphere.GetGridInfo(mesh::gridElemType::Node)->cart_basis[2];
 
-    INMOST::Tag angle_node_tag = mesh_sphere.GetProgData(mesh::gridElemType::Node, 0)->Get("angle node");
+    INMOST::Tag angle_node_tag = mesh_sphere.GetDataMulti(mesh::gridElemType::Node, 0)->Get("angle node");
 
     for (auto nodeit = mesh_sphere.GetMesh()->BeginNode(); nodeit != mesh_sphere.GetMesh()->EndNode(); ++nodeit)
     {
@@ -84,19 +84,19 @@ bool test_basis()
         }
 
     }
-    mesh_sphere.GetProgData(mesh::gridElemType::Node, 0)->Exchange("angle node");
+    mesh_sphere.GetDataMulti(mesh::gridElemType::Node, 0)->Exchange("angle node");
     mesh_sphere.SaveVTU("sphere");
     }
 
     // calculate angle between cart and geo normal vectors at every point for Arctic
     {
     IceMesh mesh_arctic(ARCTIC_PATH, mesh::surfType::basin, mesh::gridType::Agrid);
-    mesh_arctic.GetProgData(mesh::gridElemType::Node, 0)->Create("angle node", 1, DATA_REAL);
+    mesh_arctic.GetDataMulti(mesh::gridElemType::Node, 0)->Create("angle node", 1, DATA_REAL);
 
     INMOST::Tag geo_basis_tag = mesh_arctic.GetGridInfo(mesh::gridElemType::Node)->geo_basis[2];
     INMOST::Tag cart_basis_tag = mesh_arctic.GetGridInfo(mesh::gridElemType::Node)->cart_basis[2];
 
-    INMOST::Tag angle_node_tag = mesh_arctic.GetProgData(mesh::gridElemType::Node, 0)->Get("angle node");
+    INMOST::Tag angle_node_tag = mesh_arctic.GetDataMulti(mesh::gridElemType::Node, 0)->Get("angle node");
 
     for (auto nodeit = mesh_arctic.GetMesh()->BeginNode(); nodeit != mesh_arctic.GetMesh()->EndNode(); ++nodeit)
     {
@@ -115,7 +115,7 @@ bool test_basis()
         }
 
     }
-    mesh_arctic.GetProgData(mesh::gridElemType::Node, 0)->Exchange("angle node");
+    mesh_arctic.GetDataMulti(mesh::gridElemType::Node, 0)->Exchange("angle node");
     mesh_arctic.SaveVTU("arctic");
     }
     

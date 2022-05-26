@@ -43,8 +43,8 @@ namespace SIMUG
         mesh::gridType grid_type;
         std::string output_folder;
         int num_ice_layers;
-        std::map<mesh::meshVar, mesh::gridElemType> prog_elems;
-        std::map<mesh::meshVar, mesh::gridElemType> forc_elems;
+        std::map<mesh::meshVar, mesh::gridElemType> multi_elems;
+        std::map<mesh::meshVar, mesh::gridElemType> single_elems;
 
         int num_nodes;
         int num_edges;
@@ -82,9 +82,16 @@ namespace SIMUG
         INMOST::Tag trans_matr_from_geo_to_elem;                // transition 2x2 matrix for vector/tensor coordinates while switching from geo to element basis
         INMOST::Tag trans_matr_from_elem_to_geo;                // transition 2x2 matrix for vector/tensor coordinates while switching from element to geo basis ( = trans_matr_from_geo_to_elem^-1)
 
+        std::vector<double> VectorFromGeoToElem(const std::vector<double>& vec_geo_coords);
+        std::vector<double> VectorFromElemToGeo(const std::vector<double>& vec_elem_coords);
+
+        std::vector<double> TensorFromGeoToElem(const std::vector<double>& tens_geo_coords);
+        std::vector<double> TensorFromElemToGeo(const std::vector<double>& tens_elem_coords);
+
         virtual std::vector<INMOST::Tag>&  GetTransMatrToNode() {SIMUG_ERR("Current elent type doesn't have transition matrix to node!");};
         virtual std::vector<INMOST::Tag>&  GetTransMatrToEdge() {SIMUG_ERR("Current elent type doesn't have transition matrix to edge!");};
         virtual std::vector<INMOST::Tag>&  GetTransMatrToTrian(){SIMUG_ERR("Current elent type doesn't have transition matrix to triangle!");};
+        virtual std::vector<INMOST::Tag>&  GetNodeCoordsInTrianBasis() {SIMUG_ERR("Current elent type doesn't have node coords in triangular basis!");};
 
     public:
 
@@ -135,6 +142,7 @@ namespace SIMUG
         TrianInfo(INMOST::Mesh* ice_mesh_): GridInfo(ice_mesh_) {};
         std::vector<INMOST::Tag>&  GetTransMatrToNode() {return trans_matr_to_node;};
         std::vector<INMOST::Tag>&  GetTransMatrToEdge() {return trans_matr_to_edge;};
+        std::vector<INMOST::Tag>&  GetNodeCoordsInTrianBasis() {return node_coords_in_trian_basis;};
 
     public:
         void Mute();
@@ -142,7 +150,10 @@ namespace SIMUG
     private:
         std::vector<INMOST::Tag> trans_matr_to_node;
         std::vector<INMOST::Tag> trans_matr_to_edge;
+
+        std::vector<INMOST::Tag> node_coords_in_trian_basis;
     };
+
 
     class IceMesh
     {
@@ -183,15 +194,15 @@ namespace SIMUG
         inline INMOST::Mesh* GetMesh() {return ice_mesh.get();};
 
         // Get and Mute prognostic data
-        inline std::shared_ptr<GridData>& GetProgData(const mesh::gridElemType& gdtype, int layer) {return prognostic_data[gdtype][layer];};
-        inline const std::shared_ptr<GridData>& GetProgData(const mesh::gridElemType& gdtype, int layer) const {return prognostic_data.at(gdtype).at(layer);};
-        inline void MuteProgData(int layer) {for (auto& [var, elem]: mesh_info.prog_elems){prognostic_data[elem][layer]->Mute(var);};};
-        inline void MuteProgData() {for (int layer = 1; layer < mesh_info.num_ice_layers; ++layer){MuteProgData(layer);};};
+        inline std::shared_ptr<GridData>& GetDataMulti(const mesh::gridElemType& gdtype, int layer) {return multi_data[gdtype][layer];};
+        inline const std::shared_ptr<GridData>& GetDataMulti(const mesh::gridElemType& gdtype, int layer) const {return multi_data.at(gdtype).at(layer);};
+        inline void MuteDataMulti(int layer) {for (auto& [var, elem]: mesh_info.multi_elems){multi_data[elem][layer]->Mute(var);};};
+        inline void MuteDataMulti() {for (int layer = 1; layer < mesh_info.num_ice_layers; ++layer){MuteDataMulti(layer);};};
 
         // Get and Mute forcing data
-        inline std::shared_ptr<GridData>& GetForcData(const mesh::gridElemType& gdtype) {return forcing_data[gdtype];};
-        inline const std::shared_ptr<GridData>& GetForcData(const mesh::gridElemType& gdtype) const {return forcing_data.at(gdtype);};
-        void MuteForcData() {for (auto& [var, elem]: mesh_info.forc_elems){forcing_data[elem]->Mute(var);};};
+        inline std::shared_ptr<GridData>& GetDataSingle(const mesh::gridElemType& gdtype) {return single_data[gdtype];};
+        inline const std::shared_ptr<GridData>& GetDataSingle(const mesh::gridElemType& gdtype) const {return single_data.at(gdtype);};
+        void MuteDataSingle() {for (auto& [var, elem]: mesh_info.single_elems){single_data[elem]->Mute(var);};};
 
         // Get mesh information (number of elements and local processor ids) 
         inline MeshInfo& GetMeshInfo() {return mesh_info;}; 
@@ -216,6 +227,22 @@ namespace SIMUG
         INMOST::ElementArray<INMOST::Cell>& GetBndTrians() {return bnd_trians;};
         const INMOST::ElementArray<INMOST::Cell>& GetBndTrians() const {return bnd_trians;};
 
+        // vector transition functions
+        std::vector<double> VecTransition(const std::vector<double>& vec_coords, const INMOST::Node& node, const INMOST::Face& edge);
+        std::vector<double> VecTransition(const std::vector<double>& vec_coords, const INMOST::Node& node, const INMOST::Cell& trian);
+        std::vector<double> VecTransition(const std::vector<double>& vec_coords, const INMOST::Face& edge, const INMOST::Node& node);
+        std::vector<double> VecTransition(const std::vector<double>& vec_coords, const INMOST::Face& edge, const INMOST::Cell& trian);
+        std::vector<double> VecTransition(const std::vector<double>& vec_coords, const INMOST::Cell& trian, const INMOST::Node& node);
+        std::vector<double> VecTransition(const std::vector<double>& vec_coords, const INMOST::Cell& trian, const INMOST::Face& edge);
+
+        // tensor transition functions
+        std::vector<std::vector<double>> TensTransition(const std::vector<std::vector<double>>& tens_coords, const INMOST::Node& node, const INMOST::Face& edge);
+        std::vector<std::vector<double>> TensTransition(const std::vector<std::vector<double>>& tens_coords, const INMOST::Node& node, const INMOST::Cell& trian);
+        std::vector<std::vector<double>> TensTransition(const std::vector<std::vector<double>>& tens_coords, const INMOST::Face& edge, const INMOST::Node& node);
+        std::vector<std::vector<double>> TensTransition(const std::vector<std::vector<double>>& tens_coords, const INMOST::Face& edge, const INMOST::Cell& trian);
+        std::vector<std::vector<double>> TensTransition(const std::vector<std::vector<double>>& tens_coords, const INMOST::Cell& trian, const INMOST::Node& node);
+        std::vector<std::vector<double>> TensTransition(const std::vector<std::vector<double>>& tens_coords, const INMOST::Cell& trian, const INMOST::Face& edge);
+
         // Destructor that frees up the grid data
         //~IceMesh();   
 
@@ -238,12 +265,13 @@ namespace SIMUG
         void AssembleCartesianElementBasis();
         void AssembleGeoToElementTransitionMatricies();
         void AssembleElementToElementTransitionMatricies();
+        void ComputeNodeCoordsInTrianBasis();
 
     private:
 
         std::shared_ptr<INMOST::Mesh> ice_mesh;
-        std::map<mesh::gridElemType, LayersDataMap> prognostic_data;
-        std::map<mesh::gridElemType, std::shared_ptr<GridData>> forcing_data;
+        std::map<mesh::gridElemType, LayersDataMap> multi_data;
+        std::map<mesh::gridElemType, std::shared_ptr<GridData>> single_data;
         std::map<mesh::gridElemType, std::shared_ptr<GridInfo>> grid_info;
         INMOST::ElementArray<INMOST::Node> bnd_nodes;
         INMOST::ElementArray<INMOST::Face> bnd_edges;

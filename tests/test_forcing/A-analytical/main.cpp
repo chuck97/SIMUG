@@ -42,13 +42,13 @@ bool test_analytical_forcing()
     Forcing test_forcing(&mesh_plane);
 
     // set analytical mass
-    test_forcing.SetAnalytical(mesh::meshVar::mi, sin_mass);
+    test_forcing.SetAnalytical(mesh::meshVar::mi, 0, sin_mass);
 
     // update mass value according to analytical function
-    test_forcing.Update(mesh::meshVar::mi, coord::coordType::model, 0.0);
+    test_forcing.Update(mesh::meshVar::mi, 0, coord::coordType::model, 0.0);
 
     // create temporarily grid vector on triangles
-    mesh_plane.GetProgData(mesh::gridElemType::Trian, 0)->Create("velocity", 3, INMOST::DATA_REAL);
+    mesh_plane.GetDataSingle(mesh::gridElemType::Trian)->Create("velocity", 3, INMOST::DATA_REAL);
 
     // set analytical velocity
     test_forcing.SetAnalytical("velocity", mesh::gridElemType::Trian, sin_velocity);

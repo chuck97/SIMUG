@@ -552,14 +552,14 @@ void IceMesh::AssembleElementToElementTransitionMatricies()
     INMOST::Tag trian_id_tag = grid_info[mesh::gridElemType::Trian]->id;
 
     // get all transition matricies tags
-    std::vector<INMOST::Tag> matr_node_to_edge_tag = grid_info[mesh::gridElemType::Node]->GetTransMatrToEdge();
-    std::vector<INMOST::Tag> matr_node_to_trian_tag = grid_info[mesh::gridElemType::Node]->GetTransMatrToTrian();
+    std::vector<INMOST::Tag>& matr_node_to_edge_tag = grid_info[mesh::gridElemType::Node]->GetTransMatrToEdge();
+    std::vector<INMOST::Tag>& matr_node_to_trian_tag = grid_info[mesh::gridElemType::Node]->GetTransMatrToTrian();
 
-    std::vector<INMOST::Tag> matr_edge_to_node_tag = grid_info[mesh::gridElemType::Edge]->GetTransMatrToNode();
-    std::vector<INMOST::Tag> matr_edge_to_trian_tag = grid_info[mesh::gridElemType::Edge]->GetTransMatrToTrian();
+    std::vector<INMOST::Tag>& matr_edge_to_node_tag = grid_info[mesh::gridElemType::Edge]->GetTransMatrToNode();
+    std::vector<INMOST::Tag>& matr_edge_to_trian_tag = grid_info[mesh::gridElemType::Edge]->GetTransMatrToTrian();
 
-    std::vector<INMOST::Tag> matr_trian_to_node_tag = grid_info[mesh::gridElemType::Trian]->GetTransMatrToNode();
-    std::vector<INMOST::Tag> matr_trian_to_edge_tag = grid_info[mesh::gridElemType::Trian]->GetTransMatrToEdge();
+    std::vector<INMOST::Tag>& matr_trian_to_node_tag = grid_info[mesh::gridElemType::Trian]->GetTransMatrToNode();
+    std::vector<INMOST::Tag>& matr_trian_to_edge_tag = grid_info[mesh::gridElemType::Trian]->GetTransMatrToEdge();
 
     // create matricies tags for all elements and mute instantly
     for (int i = 0; i < MAX_NUM_ADJ_EDGES; ++i)
@@ -832,10 +832,101 @@ void IceMesh::AssembleElementToElementTransitionMatricies()
     BARRIER
 }
 
+void IceMesh::ComputeNodeCoordsInTrianBasis()
+{
+    // create tags for local node coords in trian basis
+    std::vector<INMOST::Tag>& node_coords_in_trian_basis_tags = grid_info[mesh::gridElemType::Trian]->GetNodeCoordsInTrianBasis();
+    for (int i = 0; i < 3; ++i)
+    {
+        node_coords_in_trian_basis_tags.push_back(ice_mesh->CreateTag("node coords in trian basis " + to_string(i), INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 2));
+        ice_mesh->SetFileOption((std::string)"Tag:" + (std::string)"node coords in trian basis " + to_string(i), "nosave");
+    }
+
+    // get cart coord tag for node
+    INMOST::Tag node_cart_coords_tag =  grid_info[mesh::gridElemType::Node]->coords[coord::coordType::cart];
+
+    // get trian basis tag for trian
+    std::vector<INMOST::Tag> trian_basis_tag = grid_info[mesh::gridElemType::Trian]->cart_basis;
+
+    // calculate node coords in trian basis
+    for (auto trianit = ice_mesh->BeginCell(); trianit != ice_mesh->EndCell(); ++trianit)
+    {
+        if (trianit->GetStatus() != Element::Ghost)
+        {
+            // get triangle basis for current triangle
+            std::vector<double> trian_basis_x = 
+            {
+                trianit->RealArray(trian_basis_tag[0])[0],
+                trianit->RealArray(trian_basis_tag[0])[1],
+                trianit->RealArray(trian_basis_tag[0])[2]
+            };
+
+            std::vector<double> trian_basis_y = 
+            {
+                trianit->RealArray(trian_basis_tag[1])[0],
+                trianit->RealArray(trian_basis_tag[1])[1],
+                trianit->RealArray(trian_basis_tag[1])[2]
+            };
+
+            // get cartesian coords of current triangle nodes
+            ElementArray<INMOST::Node> adj_nodes = trianit->getNodes();
+
+            std::vector<double> zero_node_coords = 
+            {
+                adj_nodes[0].RealArray(node_cart_coords_tag)[0],
+                adj_nodes[0].RealArray(node_cart_coords_tag)[1],
+                adj_nodes[0].RealArray(node_cart_coords_tag)[2]
+            };
+
+            std::vector<double> first_node_coords = 
+            {
+                adj_nodes[1].RealArray(node_cart_coords_tag)[0],
+                adj_nodes[1].RealArray(node_cart_coords_tag)[1],
+                adj_nodes[1].RealArray(node_cart_coords_tag)[2]
+            };
+
+            std::vector<double> second_node_coords = 
+            {
+                adj_nodes[2].RealArray(node_cart_coords_tag)[0],
+                adj_nodes[2].RealArray(node_cart_coords_tag)[1],
+                adj_nodes[2].RealArray(node_cart_coords_tag)[2]
+            };
+
+            // calculate centroid coords of current triangle
+            std::vector<double> centroid_coords = (zero_node_coords + first_node_coords + second_node_coords)*(1.0/3.0);
+
+            // calculate vectors from centroid to nodes
+            std::vector<double> v0 = zero_node_coords - centroid_coords;
+            std::vector<double> v1 = first_node_coords - centroid_coords;
+            std::vector<double> v2 = second_node_coords - centroid_coords;
+
+            // calculate node coordinates in triangle basis
+            std::vector<double> zero_node_coords_in_trian_basis = {v0*trian_basis_x, v0*trian_basis_y};
+            std::vector<double> first_node_coords_in_trian_basis = {v1*trian_basis_x, v1*trian_basis_y};
+            std::vector<double> second_node_coords_in_trian_basis = {v2*trian_basis_x, v2*trian_basis_y};
+
+            // save local node coords
+            trianit->RealArray(node_coords_in_trian_basis_tags[0])[0] = zero_node_coords_in_trian_basis[0];
+            trianit->RealArray(node_coords_in_trian_basis_tags[0])[1] = zero_node_coords_in_trian_basis[1];
+
+            trianit->RealArray(node_coords_in_trian_basis_tags[1])[0] = first_node_coords_in_trian_basis[0];
+            trianit->RealArray(node_coords_in_trian_basis_tags[1])[1] = first_node_coords_in_trian_basis[1];
+
+            trianit->RealArray(node_coords_in_trian_basis_tags[2])[0] = second_node_coords_in_trian_basis[0];
+            trianit->RealArray(node_coords_in_trian_basis_tags[2])[1] = second_node_coords_in_trian_basis[1];
+        }
+    }
+
+    // exchange computed data
+    for (int i = 0; i < 3; ++i)
+        ice_mesh->ExchangeData(node_coords_in_trian_basis_tags[i], INMOST::CELL, 0);
+}
+
 void IceMesh::AssembleBasisData()
 {
     AssembleGeoElementBasis();
     AssembleCartesianElementBasis();
     AssembleGeoToElementTransitionMatricies();
     AssembleElementToElementTransitionMatricies();
+    ComputeNodeCoordsInTrianBasis();
 }

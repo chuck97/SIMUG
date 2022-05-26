@@ -8,25 +8,8 @@ void Forcing::SetAnalytical(mesh::meshVar mesh_var,
                             FuncPtr func_ptr
                            )
 {
-    // figure out if it scalar of forcing variable 
-    if (mesh::progDims.count(mesh_var) == 1)
-    {
-        // setup expression
-        mesh->GetProgData(mesh->GetMeshInfo().prog_elems[mesh_var], layer)->GetExpr(mesh_var) = func_ptr;
-    }
-    else if (mesh::forcDims.count(mesh_var) == 1)
-    {
-        if (layer > 0)
-        {
-            SIMUG_ERR("forcing variables hawe only one layer!");
-        }
-        // setup expression
-        mesh->GetForcData(mesh->GetMeshInfo().forc_elems[mesh_var])->GetExpr(mesh_var) = func_ptr;
-    }
-    else
-    {
-        SIMUG_ERR("unknown mesh variable!");
-    }
+    // setup expression
+    mesh->GetDataMulti(mesh->GetMeshInfo().multi_elems[mesh_var], layer)->GetExpr(mesh_var) = func_ptr;
     BARRIER
 }
 
@@ -34,7 +17,7 @@ void Forcing::SetAnalytical(mesh::meshVar mesh_var,
                             FuncPtr func_ptr
                            )
 {
-    SetAnalytical(mesh_var, 0, func_ptr);
+    mesh->GetDataSingle(mesh->GetMeshInfo().single_elems[mesh_var])->GetExpr(mesh_var) = func_ptr;
 }
 
 void Forcing::SetAnalytical(const std::string& varname, 
@@ -44,13 +27,12 @@ void Forcing::SetAnalytical(const std::string& varname,
                             )
 {   
     // check that expression output size is equal to variable size
-    if(func_ptr({1.0, 1.0}, 1.0).size() != mesh->GetProgData(elem_type, layer)->GetSize(varname))
+    if(func_ptr({1.0, 1.0}, 1.0).size() != mesh->GetDataMulti(elem_type, layer)->GetSize(varname))
     {
         SIMUG_ERR("the output for expression should have the same size as variable!");
     }
 
-    mesh->GetProgData(elem_type, layer)->GetExpr(varname) = func_ptr;
-    
+    mesh->GetDataMulti(elem_type, layer)->GetExpr(varname) = func_ptr;
     BARRIER
 }
 
@@ -59,7 +41,13 @@ void Forcing::SetAnalytical(const std::string& varname,
                             FuncPtr func_ptr
                             )
 {
-    SetAnalytical(varname, elem_type, 0, func_ptr);
+    // check that expression output size is equal to variable size
+    if(func_ptr({1.0, 1.0}, 1.0).size() != mesh->GetDataSingle(elem_type)->GetSize(varname))
+    {
+        SIMUG_ERR("the output for expression should have the same size as variable!");
+    }
+
+    mesh->GetDataSingle(elem_type)->GetExpr(varname) = func_ptr;
     BARRIER
 }
 
@@ -243,51 +231,23 @@ void Forcing::Update(mesh::meshVar mesh_var,
                      coord::coordType coord_type,
                      double time)
 {
-    // figure out if it prognostic of forcing variable 
-    if (mesh::progDims.count(mesh_var) == 1)
+    // get element type
+    mesh::gridElemType elem_type = mesh->GetMeshInfo().multi_elems[mesh_var];
+
+    // get expression
+    std::optional<FuncPtr> expr_ptr = mesh->GetDataMulti(elem_type, layer)->GetExpr(mesh_var);
+
+    // check if expression assigned
+    if (!expr_ptr)
     {
-        // get element type
-        mesh::gridElemType elem_type = mesh->GetMeshInfo().prog_elems[mesh_var];
-
-        // get expression
-        std::optional<FuncPtr> expr_ptr = mesh->GetProgData(elem_type, layer)->GetExpr(mesh_var);
-
-        // check if expression assigned
-        if (!expr_ptr)
-        {
-            SIMUG_ERR("expression is not assigned - can not update mesh variable!");
-        }
-
-        // get variable tag
-        INMOST::Tag var_tag = mesh->GetProgData(elem_type, layer)->Get(mesh_var);
-
-        // update prognostic value 
-        UpdateVariable(var_tag, elem_type, coord_type, expr_ptr.value(), time);
+        SIMUG_ERR("expression is not assigned - can not update mesh variable!");
     }
-    else if (mesh::forcDims.count(mesh_var) == 1)
-    {
-        // get element type
-        mesh::gridElemType elem_type = mesh->GetMeshInfo().forc_elems[mesh_var];
 
-        // get expression
-        std::optional<FuncPtr> expr_ptr = mesh->GetForcData(elem_type)->GetExpr(mesh_var);
+    // get variable tag
+    INMOST::Tag var_tag = mesh->GetDataMulti(elem_type, layer)->Get(mesh_var);
 
-        // check if expression assigned
-        if (!expr_ptr)
-        {
-            SIMUG_ERR("expression is not assign - can not update mesh variable!");
-        }
-
-        // get variable tag
-        INMOST::Tag var_tag = mesh->GetForcData(elem_type)->Get(mesh_var);
-
-        // update forcing value 
-        UpdateVariable(var_tag, elem_type, coord_type, expr_ptr.value(), time);
-    }
-    else
-    {
-        SIMUG_ERR("unknown mesh variable!");
-    }
+    // update prognostic value 
+    UpdateVariable(var_tag, elem_type, coord_type, expr_ptr.value(), time);
     BARRIER
 }
 
@@ -295,7 +255,23 @@ void Forcing::Update(mesh::meshVar mesh_var,
                      coord::coordType coord_type,
                      double time)
 {
-    Update(mesh_var, 0, coord_type, time);
+    // get element type
+    mesh::gridElemType elem_type = mesh->GetMeshInfo().single_elems[mesh_var];
+
+    // get expression
+    std::optional<FuncPtr> expr_ptr = mesh->GetDataSingle(elem_type)->GetExpr(mesh_var);
+
+    // check if expression assigned
+    if (!expr_ptr)
+    {
+        SIMUG_ERR("expression is not assigned - can not update mesh variable!");
+    }
+
+    // get variable tag
+    INMOST::Tag var_tag = mesh->GetDataSingle(elem_type)->Get(mesh_var);
+
+    // update prognostic value 
+    UpdateVariable(var_tag, elem_type, coord_type, expr_ptr.value(), time);
     BARRIER
 }
 
@@ -306,7 +282,7 @@ void Forcing::Update(const std::string& varname,
                      double time)
 {
     // get expression
-    std::optional<FuncPtr> expr_ptr = mesh->GetProgData(elem_type, layer)->GetExpr(varname);
+    std::optional<FuncPtr> expr_ptr = mesh->GetDataMulti(elem_type, layer)->GetExpr(varname);
 
     // check if expression assigned
     if (!expr_ptr)
@@ -315,7 +291,7 @@ void Forcing::Update(const std::string& varname,
     }
 
     // get variable tag
-    INMOST::Tag var_tag = mesh->GetProgData(elem_type, layer)->Get(varname);
+    INMOST::Tag var_tag = mesh->GetDataMulti(elem_type, layer)->Get(varname);
 
     // update prognostic value 
     UpdateVariable(var_tag, elem_type, coord_type, expr_ptr.value(), time);
@@ -327,6 +303,19 @@ void Forcing::Update(const std::string& varname,
                      coord::coordType coord_type,
                      double time)
 {
-    Update(varname, elem_type, 0, coord_type, time);
+    // get expression
+    std::optional<FuncPtr> expr_ptr = mesh->GetDataSingle(elem_type)->GetExpr(varname);
+
+    // check if expression assigned
+    if (!expr_ptr)
+    {
+        SIMUG_ERR("expression is not assigned - can not update mesh variable!");
+    }
+
+    // get variable tag
+    INMOST::Tag var_tag = mesh->GetDataSingle(elem_type)->Get(varname);
+
+    // update prognostic value 
+    UpdateVariable(var_tag, elem_type, coord_type, expr_ptr.value(), time);
     BARRIER
 }
