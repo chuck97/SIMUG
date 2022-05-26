@@ -1345,3 +1345,75 @@ std::vector<std::vector<double>> IceMesh::TensTransition(const std::vector<std::
     
     return (trans_matr*tens_coords)*transp(trans_matr);
 }
+
+std::vector<double> IceMesh::VecTransitionToElemBasis(const std::vector<double>& vec_coords, const INMOST::Node& node)
+{
+    // get transition matrix tag
+    INMOST::Tag matr_to_node = grid_info[mesh::gridElemType::Node]->trans_matr_from_geo_to_elem;
+
+    // obtain transition matrix to element basis
+    std::vector<std::vector<double>> trans_matr = {{node.RealArray(matr_to_node)[0], node.RealArray(matr_to_node)[1]},
+                                                   {node.RealArray(matr_to_node)[2], node.RealArray(matr_to_node)[3]}
+                                                  };
+    return trans_matr*vec_coords;
+}
+
+std::vector<double> IceMesh::VecTransitionToElemBasis(const std::vector<double>& vec_coords, const INMOST::Face& edge)
+{
+    // get transition matrix tag
+    INMOST::Tag matr_to_edge = grid_info[mesh::gridElemType::Edge]->trans_matr_from_geo_to_elem;
+
+    // obtain transition matrix to element basis
+    std::vector<std::vector<double>> trans_matr = {{edge.RealArray(matr_to_edge)[0], edge.RealArray(matr_to_edge)[1]},
+                                                   {edge.RealArray(matr_to_edge)[2], edge.RealArray(matr_to_edge)[3]}
+                                                  };
+    return trans_matr*vec_coords;
+}
+
+std::vector<double> IceMesh::VecTransitionToElemBasis(const std::vector<double>& vec_coords, const INMOST::Cell& trian)
+{
+    // get transition matrix tag
+    INMOST::Tag matr_to_trian = grid_info[mesh::gridElemType::Trian]->trans_matr_from_geo_to_elem;
+
+    // obtain transition matrix to element basis
+    std::vector<std::vector<double>> trans_matr = {{trian.RealArray(matr_to_trian)[0], trian.RealArray(matr_to_trian)[1]},
+                                                   {trian.RealArray(matr_to_trian)[2], trian.RealArray(matr_to_trian)[3]}
+                                                  };
+    return trans_matr*vec_coords;
+}
+
+std::vector<double> IceMesh::VecTransitionToGeoBasis(const std::vector<double>& vec_coords, const INMOST::Node& node)
+{
+    // get transition matrix tag
+    INMOST::Tag matr_to_node = grid_info[mesh::gridElemType::Node]->trans_matr_from_elem_to_geo;
+
+    // obtain transition matrix to element basis
+    std::vector<std::vector<double>> trans_matr = {{node.RealArray(matr_to_node)[0], node.RealArray(matr_to_node)[1]},
+                                                   {node.RealArray(matr_to_node)[2], node.RealArray(matr_to_node)[3]}
+                                                  };
+    return trans_matr*vec_coords;
+}
+
+std::vector<double> IceMesh::VecTransitionToGeoBasis(const std::vector<double>& vec_coords, const INMOST::Face& edge)
+{
+    // get transition matrix tag
+    INMOST::Tag matr_to_edge = grid_info[mesh::gridElemType::Edge]->trans_matr_from_elem_to_geo;
+
+    // obtain transition matrix to element basis
+    std::vector<std::vector<double>> trans_matr = {{edge.RealArray(matr_to_edge)[0], edge.RealArray(matr_to_edge)[1]},
+                                                   {edge.RealArray(matr_to_edge)[2], edge.RealArray(matr_to_edge)[3]}
+                                                  };
+    return trans_matr*vec_coords;
+}
+
+std::vector<double> IceMesh::VecTransitionToGeoBasis(const std::vector<double>& vec_coords, const INMOST::Cell& trian)
+{
+    // get transition matrix tag
+    INMOST::Tag matr_to_trian = grid_info[mesh::gridElemType::Trian]->trans_matr_from_elem_to_geo;
+
+    // obtain transition matrix to element basis
+    std::vector<std::vector<double>> trans_matr = {{trian.RealArray(matr_to_trian)[0], trian.RealArray(matr_to_trian)[1]},
+                                                   {trian.RealArray(matr_to_trian)[2], trian.RealArray(matr_to_trian)[3]}
+                                                  };
+    return trans_matr*vec_coords;
+}

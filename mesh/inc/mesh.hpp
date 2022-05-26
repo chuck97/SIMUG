@@ -227,7 +227,7 @@ namespace SIMUG
         INMOST::ElementArray<INMOST::Cell>& GetBndTrians() {return bnd_trians;};
         const INMOST::ElementArray<INMOST::Cell>& GetBndTrians() const {return bnd_trians;};
 
-        // vector transition functions
+        // vector transition functions between element bases
         std::vector<double> VecTransition(const std::vector<double>& vec_coords, const INMOST::Node& node, const INMOST::Face& edge);
         std::vector<double> VecTransition(const std::vector<double>& vec_coords, const INMOST::Node& node, const INMOST::Cell& trian);
         std::vector<double> VecTransition(const std::vector<double>& vec_coords, const INMOST::Face& edge, const INMOST::Node& node);
@@ -235,13 +235,22 @@ namespace SIMUG
         std::vector<double> VecTransition(const std::vector<double>& vec_coords, const INMOST::Cell& trian, const INMOST::Node& node);
         std::vector<double> VecTransition(const std::vector<double>& vec_coords, const INMOST::Cell& trian, const INMOST::Face& edge);
 
-        // tensor transition functions
+        // tensor transition functions between element bases
         std::vector<std::vector<double>> TensTransition(const std::vector<std::vector<double>>& tens_coords, const INMOST::Node& node, const INMOST::Face& edge);
         std::vector<std::vector<double>> TensTransition(const std::vector<std::vector<double>>& tens_coords, const INMOST::Node& node, const INMOST::Cell& trian);
         std::vector<std::vector<double>> TensTransition(const std::vector<std::vector<double>>& tens_coords, const INMOST::Face& edge, const INMOST::Node& node);
         std::vector<std::vector<double>> TensTransition(const std::vector<std::vector<double>>& tens_coords, const INMOST::Face& edge, const INMOST::Cell& trian);
         std::vector<std::vector<double>> TensTransition(const std::vector<std::vector<double>>& tens_coords, const INMOST::Cell& trian, const INMOST::Node& node);
         std::vector<std::vector<double>> TensTransition(const std::vector<std::vector<double>>& tens_coords, const INMOST::Cell& trian, const INMOST::Face& edge);
+
+        // vector transition functions between geo and element basis
+        std::vector<double> VecTransitionToElemBasis(const std::vector<double>& vec_coords, const INMOST::Node& node);
+        std::vector<double> VecTransitionToElemBasis(const std::vector<double>& vec_coords, const INMOST::Face& edge);
+        std::vector<double> VecTransitionToElemBasis(const std::vector<double>& vec_coords, const INMOST::Cell& trian);
+
+        std::vector<double> VecTransitionToGeoBasis(const std::vector<double>& vec_coords, const INMOST::Node& node);
+        std::vector<double> VecTransitionToGeoBasis(const std::vector<double>& vec_coords, const INMOST::Face& edge);
+        std::vector<double> VecTransitionToGeoBasis(const std::vector<double>& vec_coords, const INMOST::Cell& trian);
 
         // Destructor that frees up the grid data
         //~IceMesh();   
