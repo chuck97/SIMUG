@@ -1,2 +1,2 @@
-add_subdirectory(A-CgridSphereAdvection)
+#add_subdirectory(A-CgridSphereAdvection)
 add_subdirectory(B-AgridSphereAdvection)

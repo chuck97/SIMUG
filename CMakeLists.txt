@@ -20,7 +20,7 @@ option(USE_MPI "Compile with MPI support" OFF)
 option(USE_PARTITIONER "Compile with partitioner" OFF)
 option(USE_SOLVER "Compile with solver" OFF)
 option(USE_FP64 "Use 64-bit floating-point types (usually on)" ON)
-option(COMPILE_TESTS "Compile tests" ON)
+option(COMPILE_TESTS "Compile tests" OFF)
 option(COMPILE_EXAMPLES "Compile examples" ON)
 
 if (USE_MPI)
@@ -56,7 +56,7 @@ endif()
 
 if (COMPILE_EXAMPLES)
   MESSAGE(STATUS "Examples compiling enabled")
-  #add_subdirectory(examples)
+  add_subdirectory(examples)
 endif()
 
 
@@ -66,7 +66,7 @@ add_subdirectory(variables)
 add_subdirectory(tools)
 add_subdirectory(mesh)
 add_subdirectory(forcing)
-#add_subdirectory(advection)
+add_subdirectory(advection)
 #add_subdirectory(configuration)
 
 

@@ -7,12 +7,14 @@ AgridAdvectionSolver::AgridAdvectionSolver(SIMUG::IceMesh* mesh_,
                                            double time_step_,
                                            velocity_tag vel_tag_,
                                            INMOST::Solver* slae_solver_,
-                                           adv::scheme adv_scheme_,
-                                           adv::filter adv_filter_,
+                                           adv::timeScheme adv_time_scheme_,
+                                           adv::spaceScheme adv_space_scheme_,
+                                           adv::advFilter adv_filter_,
                                            const std::vector<double>& params_):
             AdvectionSolver(mesh_, vel_tag_, time_step_),
             slae_solver(slae_solver_),
-            adv_scheme(adv_scheme_),
+            adv_time_scheme(adv_time_scheme_),
+            adv_space_scheme(adv_space_scheme_),
             adv_filter(adv_filter_),
             params(params_)
 {
@@ -25,14 +27,14 @@ AgridAdvectionSolver::AgridAdvectionSolver(SIMUG::IceMesh* mesh_,
     RHS.SetInterval(idmin, idmax);
 
     // setup LHS_low and RHS_low for Zalesak filter
-    if (adv_filter_ == adv::filter::Zalesak)
+    if (adv_filter == adv::advFilter::Zalesak)
     {
         LHS_low.SetInterval(idmin, idmax);
         RHS_low.SetInterval(idmin, idmax);
     }
 
     // initialize timer and logger
-    SIMUG::Logger adv_log(cout);
+    SIMUG::Logger adv_log(std::cout);
     SIMUG::Timer adv_timer;
     double duration;
 
@@ -40,21 +42,22 @@ AgridAdvectionSolver::AgridAdvectionSolver(SIMUG::IceMesh* mesh_,
     if (mesh->GetMesh()->GetProcessorRank()==0)
     {
         adv_log.Log("================== Advection solver initialization ==================\n");
-        adv_log.Log("Advection time scheme: " + adv::advschname.at(adv_scheme) + "\n");
-        adv_log.Log("Advection filter: " + adv::advfiltname.at(adv_filter) + "\n");
+        adv_log.Log("Advection time scheme: " + adv::advTimeSchemeName.at(adv_time_scheme) + "\n");
+        adv_log.Log("Advection space scheme: " + adv::advSpaceSchemeName.at(adv_space_scheme) + "\n");
+        adv_log.Log("Advection filter: " + adv::advFilterName.at(adv_filter) + "\n");
     }
     BARRIER
 
     // compute maximal Courant number
     adv_timer.Launch();
-    double max_courant = ComputeMaxCourant();
+    double max_courant = GetMaxCourant();
     adv_timer.Stop();
     duration = adv_timer.GetMaxTime();
     adv_timer.Reset();
 
     if (mesh->GetMesh()->GetProcessorRank()==0)
     {
-        adv_log.Log("Maximal Courant number: " + max_courant + " (" + to_string(duration) + " ms)\n");
+        adv_log.Log("Maximal Courant number: " + std::to_string(max_courant) + " (" + std::to_string(duration) + " ms)\n");
     }
 
     if (max_courant > 1.0)
@@ -65,6 +68,7 @@ AgridAdvectionSolver::AgridAdvectionSolver(SIMUG::IceMesh* mesh_,
         }
     }
     
+    /*
     // assemble LHS
     adv_timer.Launch();
     AssembleLHS();
@@ -76,6 +80,7 @@ AgridAdvectionSolver::AgridAdvectionSolver(SIMUG::IceMesh* mesh_,
     {
         adv_log.Log("LHS for advection assembled successfully! (" + to_string(duration) + " ms)\n");
     }
+    */
     BARRIER
 }
 
@@ -86,7 +91,7 @@ double AgridAdvectionSolver::GetMaxCourant()
 
     double max_courant = 0.0;
 
-    for (auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesj->GetMesh()->EndCell(); ++trianit)
+    for (auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit)
     {
         if (trianit->GetStatus() != Element::Ghost)
         {
@@ -119,9 +124,9 @@ double AgridAdvectionSolver::GetMaxCourant()
 
             double amax = std::max(std::max(a0, a1), a2);
 
-            double u0 = L2_norm_vec({adj_nodes[0].RealArray(vel_tag)[0], adj_nodes[0].RealArray(vel_tag)[1]});
-            double u1 = L2_norm_vec({adj_nodes[1].RealArray(vel_tag)[0], adj_nodes[1].RealArray(vel_tag)[1]});
-            double u2 = L2_norm_vec({adj_nodes[2].RealArray(vel_tag)[0], adj_nodes[2].RealArray(vel_tag)[1]});
+            double u0 = L2_norm_vec(std::vector<double>{adj_nodes[0].RealArray(vel_tag)[0], adj_nodes[0].RealArray(vel_tag)[1]});
+            double u1 = L2_norm_vec(std::vector<double>{adj_nodes[1].RealArray(vel_tag)[0], adj_nodes[1].RealArray(vel_tag)[1]});
+            double u2 = L2_norm_vec(std::vector<double>{adj_nodes[2].RealArray(vel_tag)[0], adj_nodes[2].RealArray(vel_tag)[1]});
 
             double umax = std::max(std::max(u0, u1), u2);
             double courant = umax*time_step/amax;
@@ -139,6 +144,70 @@ double AgridAdvectionSolver::GetMaxCourant()
     return max_courant_for_all;
 }
 
+double AgridAdvectionSolver::GetMaxUdivDx()
+{
+    // get cart coord tag for node
+    INMOST::Tag node_cart_coords_tag =  mesh->GetGridInfo(mesh::gridElemType::Node)->coords[coord::coordType::cart];
+
+    double max_u_div_dx = 0.0;
+
+    for (auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit)
+    {
+        if (trianit->GetStatus() != Element::Ghost)
+        {
+            ElementArray<INMOST::Node> adj_nodes = trianit->getNodes();
+
+            std::vector<double> zero_node_coords = 
+            {
+                adj_nodes[0].RealArray(node_cart_coords_tag)[0],
+                adj_nodes[0].RealArray(node_cart_coords_tag)[1],
+                adj_nodes[0].RealArray(node_cart_coords_tag)[2]
+            };
+
+            std::vector<double> first_node_coords = 
+            {
+                adj_nodes[1].RealArray(node_cart_coords_tag)[0],
+                adj_nodes[1].RealArray(node_cart_coords_tag)[1],
+                adj_nodes[1].RealArray(node_cart_coords_tag)[2]
+            };
+
+            std::vector<double> second_node_coords = 
+            {
+                adj_nodes[2].RealArray(node_cart_coords_tag)[0],
+                adj_nodes[2].RealArray(node_cart_coords_tag)[1],
+                adj_nodes[2].RealArray(node_cart_coords_tag)[2]
+            };
+
+            double a0 = L2_norm_vec(first_node_coords - zero_node_coords);
+            double a1 = L2_norm_vec(second_node_coords - zero_node_coords);
+            double a2 = L2_norm_vec(second_node_coords - first_node_coords);
+
+            double amax = std::max(std::max(a0, a1), a2);
+
+            double u0 = L2_norm_vec(std::vector<double>{adj_nodes[0].RealArray(vel_tag)[0], adj_nodes[0].RealArray(vel_tag)[1]});
+            double u1 = L2_norm_vec(std::vector<double>{adj_nodes[1].RealArray(vel_tag)[0], adj_nodes[1].RealArray(vel_tag)[1]});
+            double u2 = L2_norm_vec(std::vector<double>{adj_nodes[2].RealArray(vel_tag)[0], adj_nodes[2].RealArray(vel_tag)[1]});
+
+            double umax = std::max(std::max(u0, u1), u2);
+            double u_div_dx = umax/amax;
+
+            if (u_div_dx > max_u_div_dx)
+                max_u_div_dx = u_div_dx;
+        }
+    }
+    BARRIER
+        
+    // get max u_div_dx for all processors if MPI is used
+    double max_u_div_dx_for_all = max_u_div_dx;
+
+#ifdef USE_MPI
+    MPI_Allreduce(&max_u_div_dx, &max_u_div_dx_for_all, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+#endif
+
+    return max_u_div_dx_for_all;
+}
+
+/*
 void AgridAdvectionSolver::AssembleLHS()
 {
     // global node id tag
@@ -248,3 +317,4 @@ void AgridAdvectionSolver::AssembleLHS()
     BARRIER
     n.GetMesh()->DeleteTag(M_L_entire, NODE);
 }
+*/
