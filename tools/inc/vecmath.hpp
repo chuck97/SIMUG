@@ -79,7 +79,7 @@ namespace SIMUG
         std::vector<T> res = v1;
 
         for (size_t i = 0; i < v1.size(); ++i)
-            res[i] += v2[i];
+            res[i] = res[i] + v2.at(i);
 
         return res;
     }
@@ -94,7 +94,7 @@ namespace SIMUG
         std::vector<T> res = v1;
 
         for (size_t i = 0; i < v1.size(); ++i)
-            res[i] -= v2[i];
+            res[i] = res[i] - v2.at(i);
 
         return res;
     }
@@ -111,6 +111,13 @@ namespace SIMUG
         return res;
     }
 
+    // number mult vector
+    template<typename T>
+    std::vector<T> operator* (const T& num, const std::vector<T>& v)
+    {
+        return v*num;
+    }
+
     // matrix mult number (matrix is stored as vector of raws)
     template<typename T>
     std::vector<std::vector<T>> operator* (const std::vector<std::vector<T>>& m, const T& num)
@@ -121,6 +128,13 @@ namespace SIMUG
             res[i] = m[i]*num;
 
         return res;
+    }
+
+    // number mult matrix (matrix is stored as vector of raws)
+    template<typename T>
+    std::vector<std::vector<T>> operator* (const T& num, const std::vector<std::vector<T>>& m)
+    {
+        return m*num;
     }
 
     // L2-norm of vector

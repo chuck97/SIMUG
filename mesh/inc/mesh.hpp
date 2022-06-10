@@ -4,7 +4,6 @@
 #include <fstream>
 #include <map>
 #include <memory>
-#include <filesystem>
 #include <cmath>
 #include "inmost.h"
 
@@ -18,15 +17,17 @@
 #include "gridvars.hpp"
 #include "vecmath.hpp"
 
+#ifdef INTEL_COMPILER
+#include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
+#else
+#include <filesystem>
+namespace fs = std::filesystem;
+#endif
+
 #ifdef USE_MPI
 #include "mpi.h"
 #endif
-
-//#include "modvar.hpp"
-//#include "coordvar.hpp"
-//#include "basis.hpp"
-//#include "model_config.hpp"
-//#include "mesh_config.hpp"
 
 namespace SIMUG
 {
@@ -214,6 +215,7 @@ namespace SIMUG
     
         // save mesh with data to a file
         void SaveVTU(const std::string& meshname) const;
+        void SaveVTU(const std::string& meshname, int postscript) const;
 
         // get vector of bnd nodes on current processor
         inline INMOST::ElementArray<INMOST::Node>& GetBndNodes() {return bnd_nodes;};

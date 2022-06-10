@@ -51,8 +51,12 @@ IceMesh::IceMesh(const std::string& path_to_file_,
     Partitioner::Initialize(NULL, NULL);
 #endif
 
+#ifdef USE_SOLVER
+    Solver::Initialize(NULL, NULL, ""); 
+#endif
+
     // check the existance of mesh .pmf file
-    if (!std::filesystem::exists(path_to_file_))
+    if (!fs::exists(path_to_file_))
     {
         if (ice_mesh->GetProcessorRank()==0)
             SIMUG_ERR("ERROR! Mesh file \'" + path_to_file_ + "\' doesn't exist");
@@ -184,6 +188,10 @@ IceMesh::IceMesh(const std::string& path_to_file_,
     if (ice_mesh->GetProcessorRank()==0)
         mesh_log.Log("Assembling basis data successfully! (" + to_string(duration) + " ms)\n");
 
+    if (ice_mesh->GetProcessorRank()==0)
+    {
+        mesh_log.Log("=========================================================\n");
+    }
     BARRIER
 }
 
@@ -895,6 +903,32 @@ void IceMesh::SaveVTU(const std::string& meshname) const
 
     mesh_timer.Launch();
     no_spaces_meshname += (ice_mesh->GetProcessorsNumber() == 1) ? ".vtu": ".pvtu";
+    ice_mesh->Save(mesh_info.output_folder + no_spaces_meshname);
+    mesh_timer.Stop();
+    duration = mesh_timer.GetMaxTime();
+
+    if (ice_mesh->GetProcessorRank()==0)
+        mesh_log.Log("Mesh saved to \'" + mesh_info.output_folder + no_spaces_meshname + "\'! (" + to_string(duration) + " ms)\n");
+    BARRIER
+}
+
+void IceMesh::SaveVTU(const std::string& meshname, int postscript) const
+{
+    SIMUG::Logger mesh_log(cout);
+    SIMUG::Timer mesh_timer;
+    double duration;
+
+    std::string no_spaces_meshname = meshname;
+    SIMUG::tools::rtrim(no_spaces_meshname);
+
+    mesh_timer.Launch();
+    
+    std::stringstream ss;
+    ss << std::setfill('0') << std::setw(5) << postscript;
+    no_spaces_meshname += ss.str();
+
+    no_spaces_meshname += (ice_mesh->GetProcessorsNumber() == 1) ? ".vtu": ".pvtu";
+
     ice_mesh->Save(mesh_info.output_folder + no_spaces_meshname);
     mesh_timer.Stop();
     duration = mesh_timer.GetMaxTime();

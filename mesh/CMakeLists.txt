@@ -18,7 +18,10 @@ add_library(mesh STATIC
   )
 
 # link with external libraries
-target_link_libraries(mesh PUBLIC ${INMOST_LIBRARIES})
+target_link_libraries(mesh PUBLIC
+  ${INMOST_LIBRARIES}
+  stdc++fs
+)
 
 # link with internal libraries
 target_link_libraries(mesh PRIVATE 

@@ -31,10 +31,10 @@ std::vector<double> analytical_velocity(std::pair<double, double> coords, double
 bool test_transition()
 {
     IceMesh mesh_plane(PLANE_PATH, mesh::surfType::plane, mesh::gridType::Agrid);
+
     mesh_plane.GetDataSingle(mesh::gridElemType::Node)->Create("velocity node", 3, INMOST::DATA_REAL);
     mesh_plane.GetDataSingle(mesh::gridElemType::Edge)->Create("velocity edge", 3, INMOST::DATA_REAL);
     mesh_plane.GetDataSingle(mesh::gridElemType::Trian)->Create("velocity trian", 3, INMOST::DATA_REAL);
-    
 
     INMOST::Tag vel_node_tag = mesh_plane.GetDataSingle(mesh::gridElemType::Node)->Get("velocity node");
     INMOST::Tag vel_edge_tag = mesh_plane.GetDataSingle(mesh::gridElemType::Edge)->Get("velocity edge");
@@ -64,16 +64,16 @@ bool test_transition()
             trianit->RealArray(vel_trian_tag)[1] = vel_trian_coords[1];
             trianit->RealArray(vel_trian_tag)[2] = 0.0;
 
-            std::vector<double> vel_node_coords = mesh_plane.VecTransition({trianit->RealArray(vel_trian_tag)[0], trianit->RealArray(vel_trian_tag)[1]},
-                                                                                     trianit->getCells()[0], adj_nodes[0]);
-            adj_nodes[0].RealArray(vel_node_tag)[0] = vel_node_coords[0];
-            adj_nodes[0].RealArray(vel_node_tag)[1] = vel_node_coords[1];
-            adj_nodes[0].RealArray(vel_node_tag)[2] = 0.0;
+            //std::vector<double> vel_node_coords = mesh_plane.VecTransition({trianit->RealArray(vel_trian_tag)[0], trianit->RealArray(vel_trian_tag)[1]},
+                                                                                     //trianit->getCells()[0], adj_nodes[0]);
+            //adj_nodes[0].RealArray(vel_node_tag)[0] = vel_node_coords[0];
+            //adj_nodes[0].RealArray(vel_node_tag)[1] = vel_node_coords[1];
+            //adj_nodes[0].RealArray(vel_node_tag)[2] = 0.0;
         }
     }
     mesh_plane.GetDataSingle(mesh::gridElemType::Trian)->Exchange("velocity trian");
-    mesh_plane.GetDataSingle(mesh::gridElemType::Node)->Exchange("velocity node");
-
+    //mesh_plane.GetDataSingle(mesh::gridElemType::Node)->Exchange("velocity node");
+/*
     // trian <-> edge
     test_forcing.Update("velocity trian", mesh::gridElemType::Trian, coord::coordType::model, 0.0);
     for (auto edgeit = mesh_plane.GetMesh()->BeginFace(); edgeit != mesh_plane.GetMesh()->EndFace(); ++edgeit)
@@ -126,6 +126,36 @@ bool test_transition()
     }
     mesh_plane.GetDataSingle(mesh::gridElemType::Node)->Exchange("velocity node");
     mesh_plane.GetDataSingle(mesh::gridElemType::Edge)->Exchange("velocity edge");
+
+*/
+/*
+    mesh_plane.GetDataSingle(mesh::gridElemType::Node)->Create("number of adj trians", 1, INMOST::DATA_INTEGER);
+    mesh_plane.GetDataSingle(mesh::gridElemType::Trian)->Create("number of adj nodes", 1, INMOST::DATA_INTEGER);
+    mesh_plane.GetDataSingle(mesh::gridElemType::Node)->Create("is ghost node", 1, INMOST::DATA_INTEGER);
+    mesh_plane.GetDataSingle(mesh::gridElemType::Trian)->Create("is ghost trian", 1, INMOST::DATA_INTEGER);
+
+    INMOST::Tag n_adj_tr = mesh_plane.GetDataSingle(mesh::gridElemType::Node)->Get("number of adj trians");
+    INMOST::Tag n_adj_nd = mesh_plane.GetDataSingle(mesh::gridElemType::Trian)->Get("number of adj nodes");
+    INMOST::Tag is_ghost_nd = mesh_plane.GetDataSingle(mesh::gridElemType::Node)->Get("is ghost node");
+    INMOST::Tag is_ghost_tr = mesh_plane.GetDataSingle(mesh::gridElemType::Trian)->Get("is ghost trian");
+
+    for (auto trianit = mesh_plane.GetMesh()->BeginCell(); trianit != mesh_plane.GetMesh()->EndCell(); ++trianit)
+    {
+        ElementArray<INMOST::Node> adj_nodes = trianit->getNodes();
+        trianit->Integer(n_adj_nd) = adj_nodes.size();
+        if (trianit->GetStatus() == Element::Ghost)
+            trianit->Integer(is_ghost_tr) = 1;
+    }
+
+    for (auto nodeit = mesh_plane.GetMesh()->BeginNode(); nodeit != mesh_plane.GetMesh()->EndNode(); ++nodeit)
+    {
+        ElementArray<INMOST::Cell> adj_trians = nodeit->getCells();
+        nodeit->Integer(n_adj_tr) = adj_trians.size();
+        if (nodeit->GetStatus() == Element::Ghost)
+            nodeit->Integer(is_ghost_nd) = 1;
+    }
+*/
+    
 
     mesh_plane.SaveVTU("plane");
     

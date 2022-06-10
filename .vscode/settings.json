@@ -35,6 +35,8 @@
         "tuple": "cpp",
         "typeinfo": "cpp",
         "utility": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "iomanip": "cpp",
+        "filesystem": "cpp"
     }
 }

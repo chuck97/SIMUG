@@ -69,12 +69,12 @@ std::vector<double> reversible_velocity(std::pair<double, double> coords, double
     double u = VELOCITY_SCALE_FACTOR*
                    std::sin(lon/2.0)*std::sin(lon/2.0)* 
                    std::sin(lat*2.0)*
-                   std::cos(M_PI*time/FINAL_TIME);
+                   std::cos(M_PI*time/(FINAL_TIME));
 
     double v = (VELOCITY_SCALE_FACTOR/2.0)*
                std::sin(lon)* 
                std::cos(lat)*
-               std::cos(M_PI*time/FINAL_TIME);
+               std::cos(M_PI*time/(FINAL_TIME));
 
     return {u, v};
 }
@@ -108,22 +108,19 @@ int main(int argc, char* argv[])
     // forcing initialization
     Forcing test_forcing(&mesh_sphere);
 
- 
     // assign initial scalar and velocity field 
     test_forcing.SetAnalytical(mesh::meshVar::mi, 0, init_mass_gaussian);
     test_forcing.Update(mesh::meshVar::mi, 0, coord::coordType::geo, 0.0);
     test_forcing.SetAnalytical(mesh::meshVar::ui, reversible_velocity);
     test_forcing.Update(mesh::meshVar::ui, coord::coordType::geo, 0.0);
 
-
-    // initialize SLAE solver
-    INMOST::Solver slae_solver("inner_ilu2"); 
-    slae_solver.SetParameter("absolute_tolerance", "1e-9");
-
     // get mass and velocity tag
     INMOST::Tag mass_tag = mesh_sphere.GetDataMulti(mesh::gridElemType::Node, 0)->Get(mesh::meshVar::mi);
     INMOST::Tag vel_tag = mesh_sphere.GetDataSingle(mesh::gridElemType::Node)->Get(mesh::meshVar::ui);
 
+    // initialize SLAE solver
+    INMOST::Solver slae_solver("inner_ilu2"); 
+    slae_solver.SetParameter("absolute_tolerance", "1e-9");
 
     // initialize advection solver
     AgridAdvectionSolver advection(&mesh_sphere,
@@ -153,32 +150,38 @@ int main(int argc, char* argv[])
     // log Courant number, time step and number of steps
     if (mesh_sphere.GetMesh()->GetProcessorRank() == 0)
     {
-        logger.Log("Courant number: " + std::to_string(check_courant) + "\n");
-        logger.Log("Time step: " + std::to_string(time_step) + "\n");
+        logger.Log("Courant number: " + std::to_string(check_courant) +"\n");
+        logger.Log("Time step: " + std::to_string(time_step) + " s\n");
         logger.Log("Number of steps: " + std::to_string(n_steps) + "\n");
     }
     BARRIER
 
     // write initial state to file
-    std::stringstream ss;
-    ss << std::setfill('0') << std::setw(5) << 0;
-    mesh_sphere.SaveVTU("AgridAdvectionSphere" + ss.str());
+    mesh_sphere.SaveVTU("AgridAdvectionSphere", 0);
 
-/*
     // time stepping
-    for (size_t stepnum = 0; stepnum < n_steps; ++stepnum)
+    double current_time = 0.0;
+    
+    for (size_t stepnum = 1; stepnum < n_steps; ++stepnum)
     {   
-        
-        test_forcing.Update(mesh::meshVar::ui, coord::coordType::geo, current_time);
-        advection.TransportScalars();
+        // update time
         current_time += time_step;
+
+        // update forcing
+        test_forcing.Update(mesh::meshVar::ui, coord::coordType::geo, current_time);
+
+        // transport scalars
+        advection.TransportScalars();
         
-        std::stringstream ss;
-        ss << std::setfill('0') << std::setw(5) << stepnum;
-
-        mesh_sphere.SaveVTU("advection_test" + ss.str());
-
+        // write output to file
+        if (stepnum % 10 == 0)
+        {
+            if (mesh_sphere.GetMesh()->GetProcessorRank() == 0)
+                logger.Log("Step: " + std::to_string(stepnum) +"\n");
+                
+            mesh_sphere.SaveVTU("AgridAdvectionSphere", stepnum);
+        }
+        BARRIER
     }
-*/
 	return 0;
 }

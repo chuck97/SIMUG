@@ -11,7 +11,12 @@ add_definitions(${INMOST_DEFINITIONS})
 
 # Make library from sources
 add_library(advection STATIC 
+  src/function.cpp
+  src/numerical.cpp
+  src/local_assembling.cpp
+  src/advection.cpp
   src/agrid_advection.cpp
+  
 # src/cgrid_advection.cpp
   )
 

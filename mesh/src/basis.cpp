@@ -750,17 +750,17 @@ void IceMesh::AssembleElementToElementTransitionMatricies()
     }
 
     // exchange assembled data
-    for (int i = 0; i < MAX_NUM_ADJ_TRIANS; ++i)
-        ice_mesh->ExchangeData(matr_node_to_trian_tag[i], INMOST::NODE, 0);
-        
-    for (int i = 0; i < 2; ++i)
-        ice_mesh->ExchangeData(matr_edge_to_trian_tag[i], INMOST::FACE, 0);
-        
-    for (int i = 0; i < 3; ++i)
-        ice_mesh->ExchangeData(matr_trian_to_node_tag[i], INMOST::CELL, 0);
-
-    for (int i = 0; i < 3; ++i)
-        ice_mesh->ExchangeData(matr_trian_to_edge_tag[i], INMOST::CELL, 0);
+    //for (int i = 0; i < MAX_NUM_ADJ_TRIANS; ++i)
+    //    ice_mesh->ExchangeData(matr_node_to_trian_tag[i], INMOST::NODE, 0);
+    //    
+    //for (int i = 0; i < 2; ++i)
+    //    ice_mesh->ExchangeData(matr_edge_to_trian_tag[i], INMOST::FACE, 0);
+    //    
+    //for (int i = 0; i < 3; ++i)
+    //    ice_mesh->ExchangeData(matr_trian_to_node_tag[i], INMOST::CELL, 0);
+    //
+    //for (int i = 0; i < 3; ++i)
+    //    ice_mesh->ExchangeData(matr_trian_to_edge_tag[i], INMOST::CELL, 0);
 
     BARRIER
     
@@ -823,11 +823,11 @@ void IceMesh::AssembleElementToElementTransitionMatricies()
     }
 
     //exchange assembled data
-    for (int i = 0; i < MAX_NUM_ADJ_EDGES; ++i)
-        ice_mesh->ExchangeData(matr_node_to_edge_tag[i], INMOST::NODE, 0);
-
-    for (int i = 0; i < 3; ++i)
-        ice_mesh->ExchangeData(matr_edge_to_node_tag[i], INMOST::FACE, 0);
+    //for (int i = 0; i < MAX_NUM_ADJ_EDGES; ++i)
+    //    ice_mesh->ExchangeData(matr_node_to_edge_tag[i], INMOST::NODE, 0);
+    //
+    //for (int i = 0; i < 3; ++i)
+    //    ice_mesh->ExchangeData(matr_edge_to_node_tag[i], INMOST::FACE, 0);
        
     BARRIER
 }

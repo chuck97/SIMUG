@@ -18,10 +18,16 @@ endif()
 # options
 option(USE_MPI "Compile with MPI support" OFF)
 option(USE_PARTITIONER "Compile with partitioner" OFF)
-option(USE_SOLVER "Compile with solver" OFF)
+option(USE_SOLVER "Compile with solver" ON)
 option(USE_FP64 "Use 64-bit floating-point types (usually on)" ON)
 option(COMPILE_TESTS "Compile tests" OFF)
 option(COMPILE_EXAMPLES "Compile examples" ON)
+option(INTEL_COMPILER "Intel compiler" OFF)
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
+  MESSAGE(STATUS "Intel compiler")
+  add_definitions(-DINTEL_COMPILER)
+endif()
 
 if (USE_MPI)
   MESSAGE(STATUS "MPI enabled")
@@ -51,11 +57,11 @@ if (USE_FP64)
 endif()
 
 if (COMPILE_TESTS)
-  MESSAGE(STATUS "Test compiling enabled")
+  MESSAGE(STATUS "Test compiling ENABLED")
 endif()
 
 if (COMPILE_EXAMPLES)
-  MESSAGE(STATUS "Examples compiling enabled")
+  MESSAGE(STATUS "Examples compiling ENABLED")
   add_subdirectory(examples)
 endif()
 
