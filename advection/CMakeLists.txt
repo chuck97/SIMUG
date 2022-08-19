@@ -16,8 +16,7 @@ add_library(advection STATIC
   src/local_assembling.cpp
   src/advection.cpp
   src/agrid_advection.cpp
-  
-# src/cgrid_advection.cpp
+  src/cgrid_advection.cpp
   )
 
 # link with external libraries

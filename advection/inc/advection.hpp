@@ -9,7 +9,6 @@ namespace SIMUG
 {
     class AdvectionSolver
     {
-
     // special type binding for scalar and vector tags
     public:
         typedef INMOST::Tag scalar_tag;
@@ -17,13 +16,12 @@ namespace SIMUG
 
     // constructor
     public:
-        inline AdvectionSolver(SIMUG::IceMesh* mesh_,
-                               velocity_tag vel_tag_,
-                               double time_step_):
-            mesh(mesh_),
-            vel_tag(vel_tag_),
-            time_step(time_step_)
-        {};
+        AdvectionSolver(SIMUG::IceMesh* mesh_,
+                        double time_step_,
+                        velocity_tag vel_tag_,
+                        SIMUG::adv::timeScheme adv_time_scheme_,
+                        SIMUG::adv::spaceScheme adv_space_scheme_,
+                        SIMUG::adv::advFilter adv_filter_);
         
     // tags management and manual setting the time step
     public:
@@ -57,8 +55,14 @@ namespace SIMUG
     // configuration parameters
     protected:
         SIMUG::IceMesh* mesh;
-        velocity_tag vel_tag;
         double time_step;
+        velocity_tag vel_tag;
+        adv::timeScheme adv_time_scheme;
+        adv::spaceScheme adv_space_scheme;
+        adv::advFilter adv_filter;
+    
+    // list of transorting scalars
+    protected:
         std::vector<scalar_tag> scal_tags;
     };
 
@@ -94,9 +98,6 @@ namespace SIMUG
     // configuration parameters
     private:
         INMOST::Solver* slae_solver;
-        adv::timeScheme adv_time_scheme;
-        adv::spaceScheme adv_space_scheme;
-        adv::advFilter adv_filter;
         std::vector<double> params;
     
     // auxilary data for filter
@@ -120,17 +121,39 @@ namespace SIMUG
 
     };
 
-/*
     class CgridAdvectionSolver : public AdvectionSolver
     {
+    // constructor
     public:
-        inline CgridAdvectionSolver(SIMUG::IceMesh* mesh_,
-                                    double time_step_):
-            AdvectionSolver(mesh_, time_step_)
-        {};
+        CgridAdvectionSolver(SIMUG::IceMesh* mesh_,
+                             double time_step_,
+                             velocity_tag vel_tag_,
+                             SIMUG::adv::timeScheme adv_time_scheme_,
+                             SIMUG::adv::spaceScheme adv_space_scheme_,
+                             SIMUG::adv::advFilter adv_filter_,
+                             const std::vector<double>& params_);
+    
+    // auxilary functions for Courant number calculation
+    public:
+        double GetMaxUdivDx() override;
+        double GetMaxCourant() override;
 
+    // main evaluate function
     private:
         void Evaluate(velocity_tag vel_tag, scalar_tag scal_tag) override;
+
+    // rhs for every triangle (sum of fluxes) and other auxilary data/functions
+    private:
+        INMOST::Tag triangle_rhs_tag;
+        INMOST::Tag temp_tag; 
+        std::vector<double> params;
+        void ComputeRHS(INMOST::Tag scalar_tag);
+    
+    // time for profiling
+    private:
+        void PrintProfiling() override;
+        double limiter_time = 0.0;
+        double flux_computation_time = 0.0;
+        double step_computation_time = 0.0;
     };
-*/
 }

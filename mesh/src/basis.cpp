@@ -11,8 +11,6 @@ void IceMesh::AssembleGeoElementBasis()
     INMOST::Tag node_geo_basis_y_tag = ice_mesh->CreateTag("geo basis y node", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 3);
     INMOST::Tag node_geo_basis_z_tag = ice_mesh->CreateTag("geo basis z node", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 3);
 
-    grid_info[mesh::gridElemType::Node]->geo_basis = {node_geo_basis_x_tag, node_geo_basis_y_tag, node_geo_basis_z_tag};
-
     for(auto nodeit = ice_mesh->BeginNode(); nodeit != ice_mesh->EndNode(); ++nodeit)
     {
         if (nodeit->GetStatus() != Element::Ghost)
@@ -43,12 +41,12 @@ void IceMesh::AssembleGeoElementBasis()
     ice_mesh->ExchangeData(node_geo_basis_y_tag, INMOST::NODE, 0);
     ice_mesh->ExchangeData(node_geo_basis_z_tag, INMOST::NODE, 0);
 
+    grid_info[mesh::gridElemType::Node]->geo_basis = {node_geo_basis_x_tag, node_geo_basis_y_tag, node_geo_basis_z_tag};
+
     // ## edges ##
     INMOST::Tag edge_geo_basis_x_tag = ice_mesh->CreateTag("geo basis x edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 3);
     INMOST::Tag edge_geo_basis_y_tag = ice_mesh->CreateTag("geo basis y edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 3);
     INMOST::Tag edge_geo_basis_z_tag = ice_mesh->CreateTag("geo basis z edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 3);
-
-    grid_info[mesh::gridElemType::Edge]->geo_basis = {edge_geo_basis_x_tag, edge_geo_basis_y_tag, edge_geo_basis_z_tag};
 
     for(auto edgeit = ice_mesh->BeginFace(); edgeit != ice_mesh->EndFace(); ++edgeit)
     {
@@ -80,12 +78,13 @@ void IceMesh::AssembleGeoElementBasis()
     ice_mesh->ExchangeData(edge_geo_basis_y_tag, INMOST::FACE, 0);
     ice_mesh->ExchangeData(edge_geo_basis_z_tag, INMOST::FACE, 0);
 
+    grid_info[mesh::gridElemType::Edge]->geo_basis = {edge_geo_basis_x_tag, edge_geo_basis_y_tag, edge_geo_basis_z_tag};
+
     // ## trians ##
     INMOST::Tag trian_geo_basis_x_tag = ice_mesh->CreateTag("geo basis x trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
     INMOST::Tag trian_geo_basis_y_tag = ice_mesh->CreateTag("geo basis y trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
     INMOST::Tag trian_geo_basis_z_tag = ice_mesh->CreateTag("geo basis z trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
 
-    grid_info[mesh::gridElemType::Trian]->geo_basis = {trian_geo_basis_x_tag, trian_geo_basis_y_tag, trian_geo_basis_z_tag};
 
     for(auto trianit = ice_mesh->BeginCell(); trianit != ice_mesh->EndCell(); ++trianit)
     {
@@ -117,6 +116,8 @@ void IceMesh::AssembleGeoElementBasis()
     ice_mesh->ExchangeData(trian_geo_basis_y_tag, INMOST::CELL, 0);
     ice_mesh->ExchangeData(trian_geo_basis_z_tag, INMOST::CELL, 0);
 
+    grid_info[mesh::gridElemType::Trian]->geo_basis = {trian_geo_basis_x_tag, trian_geo_basis_y_tag, trian_geo_basis_z_tag};
+
     BARRIER
 }
 
@@ -126,8 +127,6 @@ void IceMesh::AssembleCartesianElementBasis()
     INMOST::Tag trian_cart_basis_x_tag = ice_mesh->CreateTag("cart basis x trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
     INMOST::Tag trian_cart_basis_y_tag = ice_mesh->CreateTag("cart basis y trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
     INMOST::Tag trian_cart_basis_z_tag = ice_mesh->CreateTag("cart basis z trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
-
-    grid_info[mesh::gridElemType::Trian]->cart_basis = {trian_cart_basis_x_tag, trian_cart_basis_y_tag, trian_cart_basis_z_tag};
 
     for(auto trianit = ice_mesh->BeginCell(); trianit != ice_mesh->EndCell(); ++trianit)
     {
@@ -199,14 +198,14 @@ void IceMesh::AssembleCartesianElementBasis()
     ice_mesh->ExchangeData(trian_cart_basis_y_tag, INMOST::CELL, 0);
     ice_mesh->ExchangeData(trian_cart_basis_z_tag, INMOST::CELL, 0);
 
+    grid_info[mesh::gridElemType::Trian]->cart_basis = {trian_cart_basis_x_tag, trian_cart_basis_y_tag, trian_cart_basis_z_tag};
+
     BARRIER
 
     // ## edges ##
     INMOST::Tag edge_cart_basis_x_tag = ice_mesh->CreateTag("cart basis x edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 3);
     INMOST::Tag edge_cart_basis_y_tag = ice_mesh->CreateTag("cart basis y edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 3);
     INMOST::Tag edge_cart_basis_z_tag = ice_mesh->CreateTag("cart basis z edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 3);
-
-    grid_info[mesh::gridElemType::Edge]->cart_basis = {edge_cart_basis_x_tag, edge_cart_basis_y_tag, edge_cart_basis_z_tag};
 
     for (auto edgeit = ice_mesh->BeginFace(); edgeit != ice_mesh->EndFace(); ++edgeit)
     {
@@ -242,7 +241,6 @@ void IceMesh::AssembleCartesianElementBasis()
                                                     {node_coords[6], node_coords[7], node_coords[8]});
 
                 // gain unit normal of current trian
-                INMOST::Tag tr_cart_basis_tag = grid_info[mesh::gridElemType::Trian]->cart_basis[2];
                 std::vector<double> basis_k_tr = {adj_trians[tr_num].RealArray(trian_cart_basis_z_tag)[0],
                                                   adj_trians[tr_num].RealArray(trian_cart_basis_z_tag)[1],
                                                   adj_trians[tr_num].RealArray(trian_cart_basis_z_tag)[2]};
@@ -294,14 +292,14 @@ void IceMesh::AssembleCartesianElementBasis()
     ice_mesh->ExchangeData(edge_cart_basis_y_tag, INMOST::FACE, 0);
     ice_mesh->ExchangeData(edge_cart_basis_z_tag, INMOST::FACE, 0);
 
+    grid_info[mesh::gridElemType::Edge]->cart_basis = {edge_cart_basis_x_tag, edge_cart_basis_y_tag, edge_cart_basis_z_tag};
+
     BARRIER
     
     // ## nodes ##
     INMOST::Tag node_cart_basis_x_tag = ice_mesh->CreateTag("cart basis x node", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 3);
     INMOST::Tag node_cart_basis_y_tag = ice_mesh->CreateTag("cart basis y node", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 3);
     INMOST::Tag node_cart_basis_z_tag = ice_mesh->CreateTag("cart basis z node", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 3);
-
-    grid_info[mesh::gridElemType::Node]->cart_basis = {node_cart_basis_x_tag, node_cart_basis_y_tag, node_cart_basis_z_tag};
 
     for (auto nodeit = ice_mesh->BeginNode(); nodeit != ice_mesh->EndNode(); ++nodeit)
     {
@@ -374,6 +372,8 @@ void IceMesh::AssembleCartesianElementBasis()
     ice_mesh->ExchangeData(node_cart_basis_x_tag, INMOST::NODE, 0);
     ice_mesh->ExchangeData(node_cart_basis_y_tag, INMOST::NODE, 0);
     ice_mesh->ExchangeData(node_cart_basis_z_tag, INMOST::NODE, 0);
+
+    grid_info[mesh::gridElemType::Node]->cart_basis = {node_cart_basis_x_tag, node_cart_basis_y_tag, node_cart_basis_z_tag};
 
     BARRIER
 }
@@ -463,7 +463,7 @@ void IceMesh::AssembleGeoToElementTransitionMatricies()
 
             // assemble 2x2 forward and backward transition matrics
             std::vector<std::vector<double>> forward_matr = {{basis_geo_x*basis_cart_x, basis_geo_x*basis_cart_y},
-                                                            {basis_geo_y*basis_cart_x, basis_geo_y*basis_cart_y}};
+                                                             {basis_geo_y*basis_cart_x, basis_geo_y*basis_cart_y}};
 
             std::vector<std::vector<double>> inverse_matr = inv(forward_matr);
 
@@ -922,6 +922,141 @@ void IceMesh::ComputeNodeCoordsInTrianBasis()
         ice_mesh->ExchangeData(node_coords_in_trian_basis_tags[i], INMOST::CELL, 0);
 }
 
+void IceMesh::ComputeIfXedgeBasisIsNormalToTrian()
+{
+    std::vector<INMOST::Tag>& is_x_edge_basis_normal_vec_tags = grid_info[mesh::gridElemType::Trian]->GetIsXedgeBasisIsNormal();
+
+    for (int i = 0; i < 3; ++i)
+    {
+        is_x_edge_basis_normal_vec_tags.push_back(ice_mesh->CreateTag("is_x_edge_basis_normal_vec " + to_string(i), INMOST::DATA_INTEGER, INMOST::CELL, INMOST::NONE, 1));
+        //ice_mesh->SetFileOption((std::string)"Tag:" + (std::string)"is_x_edge_basis_normal_vec " + to_string(i), "nosave");
+    }
+
+    // iterate over triangles
+    for (auto trianit = ice_mesh->BeginCell(); trianit != ice_mesh->EndCell(); ++trianit)
+    {
+        if (trianit->GetStatus() != Element::Ghost)
+        {
+            // get edges of triangle
+            ElementArray<INMOST::Face> adj_edges = trianit->getFaces();
+
+            // get nodes of triangle
+            ElementArray<INMOST::Node> adj_nodes = trianit->getNodes();
+
+            // iterate over adj edges
+            for (int ed_num = 0; ed_num < 3; ++ed_num)
+            {
+                // get nodes of current edge
+                ElementArray<INMOST::Node> adj_nodes_for_edge = adj_edges[ed_num].getNodes();
+
+                // get coords of current edge x basis vector
+                std::vector<double> ed_basis_x_vec =
+                {
+                    adj_edges[ed_num].RealArray(grid_info[mesh::gridElemType::Edge]->cart_basis[0])[0],
+                    adj_edges[ed_num].RealArray(grid_info[mesh::gridElemType::Edge]->cart_basis[0])[1],
+                    adj_edges[ed_num].RealArray(grid_info[mesh::gridElemType::Edge]->cart_basis[0])[2]
+                };
+
+                // get Cartesian coordinates of node in current edge (as end of test vector)
+                std::vector<double> end_of_test_vec = 
+                {
+                    adj_nodes_for_edge[0].RealArray(grid_info[mesh::gridElemType::Node]->coords[coord::coordType::cart])[0],
+                    adj_nodes_for_edge[0].RealArray(grid_info[mesh::gridElemType::Node]->coords[coord::coordType::cart])[1],
+                    adj_nodes_for_edge[0].RealArray(grid_info[mesh::gridElemType::Node]->coords[coord::coordType::cart])[2]
+                };
+
+                // get Cartesian coordinates of node outside current edge (as start of test vector)
+                std::vector<double> start_of_test_vec;
+                
+                for (int i = 0; i < 3; ++i)
+                {
+                    if (adj_nodes_for_edge[0].Integer(grid_info[mesh::gridElemType::Node]->id) != adj_nodes[i].Integer(grid_info[mesh::gridElemType::Node]->id) &&
+                        adj_nodes_for_edge[1].Integer(grid_info[mesh::gridElemType::Node]->id) != adj_nodes[i].Integer(grid_info[mesh::gridElemType::Node]->id))
+                    {
+                        start_of_test_vec = 
+                        {
+                            adj_nodes[i].RealArray(grid_info[mesh::gridElemType::Node]->coords[coord::coordType::cart])[0],
+                            adj_nodes[i].RealArray(grid_info[mesh::gridElemType::Node]->coords[coord::coordType::cart])[1],
+                            adj_nodes[i].RealArray(grid_info[mesh::gridElemType::Node]->coords[coord::coordType::cart])[2]
+                        };
+                        break;
+                    }
+                }
+
+                // make test vector that directs outside of triangle 
+                std::vector<double> test_vec = end_of_test_vec - start_of_test_vec;
+                test_vec = test_vec*(1.0/L2_norm_vec(test_vec));
+                
+                // figure out if test vector points to the same direction as edge x basis vector
+                trianit->Integer(is_x_edge_basis_normal_vec_tags[ed_num]) = (test_vec*ed_basis_x_vec > 0.0) ? 1 : 0;
+            }
+        }
+    }
+
+    // exchange data
+    for (int i = 0; i < 3; ++i)
+        ice_mesh->ExchangeData(is_x_edge_basis_normal_vec_tags[i], INMOST::CELL, 0);
+}
+
+void IceMesh::ComputeElementsCartesianSize()
+{
+    // the Cartesian size of every triangle is 0.0
+    grid_info[mesh::gridElemType::Node]->GetCartesianSize() = ice_mesh->CreateTag("node cart size ", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 1);
+    ice_mesh->SetFileOption((std::string)"Tag:" + (std::string)"node cart size ", "nosave");
+
+    // compute the Cartesian length of all edges
+    grid_info[mesh::gridElemType::Edge]->GetCartesianSize() = ice_mesh->CreateTag("edge cart size ", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 1);
+    ice_mesh->SetFileOption((std::string)"Tag:" + (std::string)"edge cart size ", "nosave");
+
+    for (auto edgeit = ice_mesh->BeginFace(); edgeit != ice_mesh->EndFace(); ++edgeit)
+    {
+        if (edgeit->GetStatus() != Element::Ghost)
+        {
+            // get adjacent nodes
+            ElementArray<INMOST::Node> adj_nodes = edgeit->getNodes();
+
+            // compute edge coords
+            std::vector<double> edge_coords = 
+            {
+                adj_nodes[1]->RealArray(grid_info[mesh::gridElemType::Node]->coords[coord::coordType::cart])[0] - adj_nodes[0]->RealArray(grid_info[mesh::gridElemType::Node]->coords[coord::coordType::cart])[0],
+                adj_nodes[1]->RealArray(grid_info[mesh::gridElemType::Node]->coords[coord::coordType::cart])[1] - adj_nodes[0]->RealArray(grid_info[mesh::gridElemType::Node]->coords[coord::coordType::cart])[1], 
+                adj_nodes[1]->RealArray(grid_info[mesh::gridElemType::Node]->coords[coord::coordType::cart])[2] - adj_nodes[0]->RealArray(grid_info[mesh::gridElemType::Node]->coords[coord::coordType::cart])[2]
+            };
+
+            edgeit->Real(grid_info[mesh::gridElemType::Edge]->GetCartesianSize()) = L2_norm_vec(edge_coords);
+        }
+    }
+    // exchange data
+    ice_mesh->ExchangeData(grid_info[mesh::gridElemType::Edge]->GetCartesianSize(), INMOST::FACE, 0);
+
+    // compute Cartesian area of all triangles
+    grid_info[mesh::gridElemType::Trian]->GetCartesianSize() = ice_mesh->CreateTag("trian cart size ", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 1);
+    //ice_mesh->SetFileOption((std::string)"Tag:" + (std::string)"trian cart size ", "nosave");
+    
+    for (auto trianit = ice_mesh->BeginCell(); trianit != ice_mesh->EndCell(); ++trianit)
+    {
+        if (trianit->GetStatus() != Element::Ghost)
+        {
+            // get adjacent edges
+            ElementArray<INMOST::Face> adj_edges = trianit->getFaces();
+
+            // get edge lengths
+            std::vector<double> edge_lengths = 
+            {
+                adj_edges[0]->Real(grid_info[mesh::gridElemType::Edge]->GetCartesianSize()),
+                adj_edges[1]->Real(grid_info[mesh::gridElemType::Edge]->GetCartesianSize()),
+                adj_edges[2]->Real(grid_info[mesh::gridElemType::Edge]->GetCartesianSize())
+            };
+            
+            // compute semi-perimeter
+            double p = 0.5*(edge_lengths[0] + edge_lengths[1] + edge_lengths[2]);
+            trianit->Real(grid_info[mesh::gridElemType::Trian]->GetCartesianSize()) = std::sqrt(p*(p - edge_lengths[0])*(p - edge_lengths[1])*(p - edge_lengths[2]));
+        }
+    }
+    // exchange data
+    ice_mesh->ExchangeData(grid_info[mesh::gridElemType::Trian]->GetCartesianSize(), INMOST::CELL, 0);
+}
+
 void IceMesh::AssembleBasisData()
 {
     AssembleGeoElementBasis();
@@ -929,4 +1064,6 @@ void IceMesh::AssembleBasisData()
     AssembleGeoToElementTransitionMatricies();
     AssembleElementToElementTransitionMatricies();
     ComputeNodeCoordsInTrianBasis();
+    ComputeIfXedgeBasisIsNormalToTrian();
+    ComputeElementsCartesianSize();
 }

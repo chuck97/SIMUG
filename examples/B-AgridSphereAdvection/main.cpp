@@ -61,6 +61,18 @@ std::vector<double> init_mass_gaussian(std::pair<double, double> coords, double 
     return {h0 + h1};
 }
 
+// to do
+/*
+std::vector<double> init_mass_cylinder(std::pair<double, double> coords, double time)
+{
+    double lon = coords.first;
+    double lat = coords.second;
+
+    
+    return {h0 + h1};
+}
+*/
+
 std::vector<double> reversible_velocity(std::pair<double, double> coords, double time)
 {
     double lon = coords.first;
@@ -127,7 +139,7 @@ int main(int argc, char* argv[])
                                    1.0, 
                                    vel_tag,
                                    &slae_solver,
-                                   adv::timeScheme::TG2,
+                                   adv::timeScheme::TTG4,
                                    adv::spaceScheme::CFE,
                                    adv::advFilter::none,
                                    {});

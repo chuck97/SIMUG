@@ -93,11 +93,13 @@ namespace SIMUG
         virtual std::vector<INMOST::Tag>&  GetTransMatrToEdge() {SIMUG_ERR("Current elent type doesn't have transition matrix to edge!");};
         virtual std::vector<INMOST::Tag>&  GetTransMatrToTrian(){SIMUG_ERR("Current elent type doesn't have transition matrix to triangle!");};
         virtual std::vector<INMOST::Tag>&  GetNodeCoordsInTrianBasis() {SIMUG_ERR("Current elent type doesn't have node coords in triangular basis!");};
+        virtual std::vector<INMOST::Tag>& GetIsXedgeBasisIsNormal() {SIMUG_ERR("Current elent type doesn't contain information about normal!");};
 
     public:
 
         virtual void Mute() = 0;
         virtual void UnMute() = 0;
+        virtual INMOST::Tag& GetCartesianSize() = 0;
 
     protected:
         INMOST::Mesh* ice_mesh;
@@ -110,6 +112,7 @@ namespace SIMUG
         NodeInfo(INMOST::Mesh* ice_mesh_): GridInfo(ice_mesh_) {};
         std::vector<INMOST::Tag>&  GetTransMatrToEdge() {return trans_matr_to_edge;};
         std::vector<INMOST::Tag>&  GetTransMatrToTrian() {return trans_matr_to_trian;};
+        INMOST::Tag&  GetCartesianSize() {return node_cart_size;};
 
     public:
 
@@ -119,6 +122,7 @@ namespace SIMUG
     private:
         std::vector<INMOST::Tag> trans_matr_to_edge;
         std::vector<INMOST::Tag> trans_matr_to_trian;
+        INMOST::Tag node_cart_size;
     };
 
     class EdgeInfo : public GridInfo
@@ -127,6 +131,7 @@ namespace SIMUG
         EdgeInfo(INMOST::Mesh* ice_mesh_): GridInfo(ice_mesh_) {};
         std::vector<INMOST::Tag>&  GetTransMatrToNode() {return trans_matr_to_node;};
         std::vector<INMOST::Tag>&  GetTransMatrToTrian() {return trans_matr_to_trian;};
+        INMOST::Tag&  GetCartesianSize() {return edge_cart_size;};
 
     public:
         void Mute();
@@ -135,6 +140,7 @@ namespace SIMUG
     private:
         std::vector<INMOST::Tag> trans_matr_to_node;
         std::vector<INMOST::Tag> trans_matr_to_trian;
+        INMOST::Tag edge_cart_size;
     };
 
     class TrianInfo : public GridInfo
@@ -144,6 +150,8 @@ namespace SIMUG
         std::vector<INMOST::Tag>&  GetTransMatrToNode() {return trans_matr_to_node;};
         std::vector<INMOST::Tag>&  GetTransMatrToEdge() {return trans_matr_to_edge;};
         std::vector<INMOST::Tag>&  GetNodeCoordsInTrianBasis() {return node_coords_in_trian_basis;};
+        std::vector<INMOST::Tag>& GetIsXedgeBasisIsNormal() {return is_x_edge_basis_normal_vec;};
+        INMOST::Tag&  GetCartesianSize() {return trian_cart_size;};
 
     public:
         void Mute();
@@ -153,6 +161,8 @@ namespace SIMUG
         std::vector<INMOST::Tag> trans_matr_to_edge;
 
         std::vector<INMOST::Tag> node_coords_in_trian_basis;
+        std::vector<INMOST::Tag> is_x_edge_basis_normal_vec;
+        INMOST::Tag trian_cart_size;
     };
 
 
@@ -277,6 +287,8 @@ namespace SIMUG
         void AssembleGeoToElementTransitionMatricies();
         void AssembleElementToElementTransitionMatricies();
         void ComputeNodeCoordsInTrianBasis();
+        void ComputeIfXedgeBasisIsNormalToTrian();
+        void ComputeElementsCartesianSize();
 
     private:
 

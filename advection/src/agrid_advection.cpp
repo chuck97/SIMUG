@@ -11,27 +11,14 @@ AgridAdvectionSolver::AgridAdvectionSolver(SIMUG::IceMesh* mesh_,
                                            adv::spaceScheme adv_space_scheme_,
                                            adv::advFilter adv_filter_,
                                            const std::vector<double>& params_):
-            AdvectionSolver(mesh_, vel_tag_, time_step_),
+            AdvectionSolver(mesh_, time_step_, vel_tag_, adv_time_scheme_, adv_space_scheme_, adv_filter_),
             slae_solver(slae_solver_),
-            adv_time_scheme(adv_time_scheme_),
-            adv_space_scheme(adv_space_scheme_),
-            adv_filter(adv_filter_),
             params(params_)
 {
     // initialize timer and logger
     SIMUG::Logger adv_log(std::cout);
     SIMUG::Timer adv_timer;
     double duration;
-
-    // log constructor
-    if (mesh->GetMesh()->GetProcessorRank()==0)
-    {
-        adv_log.Log("================== Advection solver initialization ==================\n");
-        adv_log.Log("Advection time scheme: " + adv::advTimeSchemeName.at(adv_time_scheme) + "\n");
-        adv_log.Log("Advection space scheme: " + adv::advSpaceSchemeName.at(adv_space_scheme) + "\n");
-        adv_log.Log("Advection filter: " + adv::advFilterName.at(adv_filter) + "\n");
-    }
-    BARRIER
 
     // compute maximal Courant number
     adv_timer.Launch();
@@ -46,6 +33,7 @@ AgridAdvectionSolver::AgridAdvectionSolver(SIMUG::IceMesh* mesh_,
         if (max_courant > 1.0)
             adv_log.Log("Courant number is greater than 1.0 - advection scheme may be unstable!\n");
     }
+    BARRIER
     
     // assemble LHS and setup linear solver
     adv_timer.Launch();
@@ -654,9 +642,8 @@ void AgridAdvectionSolver::Evaluate(velocity_tag vel_tag, scalar_tag scal_tag)
     BARRIER
 
     /*
-    
     // Calculate low order solution if FCT is used
-    if (params.is_fct)
+    if (adv_filter == adv::advFilter::Zalesak)
     {
         // make old MASS vector and tmp vectors
         Sparse::Vector MASS, tmp_vec_1, tmp_vec_2, tmp_vec_3;
@@ -666,9 +653,7 @@ void AgridAdvectionSolver::Evaluate(velocity_tag vel_tag, scalar_tag scal_tag)
         tmp_vec_3.SetInterval(idmin, idmax);
 
         // fill mass vector
-        for( Mesh::iteratorNode nodeit = n.GetMesh()->BeginNode();
-             nodeit != n.GetMesh()->EndNode();
-             ++nodeit)
+        for( auto nodeit = mesh->GetMesh()->BeginNode(); nodeit != mesh->GetMesh()->EndNode(); ++nodeit)
         {
             if(nodeit->GetStatus() != Element::Ghost)
             {
