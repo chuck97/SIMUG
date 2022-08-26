@@ -144,9 +144,25 @@ namespace SIMUG
 
     // rhs for every triangle (sum of fluxes) and other auxilary data/functions
     private:
-        INMOST::Tag triangle_rhs_tag;
-        INMOST::Tag temp_tag; 
+    // comon data
+        INMOST::Tag triangle_rhs_tag; 
+        INMOST::Tag temp_scal_tag;
+        INMOST::Tag node_scal_tag;
+        INMOST::Tag trian_rev_dist_tags;
+        INMOST::Tag node_sum_rev_dist_tag;
+        INMOST::Tag opposite_node_for_edge_tags;
+
+    // MUSCL data
+        INMOST::Tag gradient_trian_tag;
+        INMOST::Tag edge_distance_vector_tags;
+
         std::vector<double> params;
+        void ComputeTrianDistances();
+        void ComputeOppositeNodes();
+        void ComputeGradientPreparation();
+        void InterpolateScalarNodes(INMOST::Tag trian_scalar_tag, INMOST::Tag node_scalar_tag);
+        void ComputeTrianGradients(INMOST::Tag node_scalar_tag, INMOST::Tag trian_grad_tag);
+        void ComputeEdgeDistanceVectors();
         void ComputeRHS(INMOST::Tag scalar_tag);
     
     // time for profiling

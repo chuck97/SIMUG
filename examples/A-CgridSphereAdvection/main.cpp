@@ -124,9 +124,9 @@ int main(int argc, char* argv[])
     CgridAdvectionSolver advection(&mesh_sphere,
                                    1.0,
                                    vel_tag,
-                                   adv::timeScheme::Euler,
-                                   adv::spaceScheme::FVupwind,
-                                   adv::advFilter::none,
+                                   adv::timeScheme::TRK2,
+                                   adv::spaceScheme::MUST,
+                                   adv::advFilter::Minmod,
                                    {});
 
     // add mass scalar for advection

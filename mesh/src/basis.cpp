@@ -669,7 +669,7 @@ void IceMesh::AssembleElementToElementTransitionMatricies()
 
         for (size_t i = 0; i < 3; ++i)
         {
-            // get full basis of cerrente edge
+            // get full basis of current edge
             std::vector<double> edge_basis_x = {adj_edges[i].RealArray(cart_basis_edge_tag[0])[0],
                                                 adj_edges[i].RealArray(cart_basis_edge_tag[0])[1],
                                                 adj_edges[i].RealArray(cart_basis_edge_tag[0])[2]};
@@ -692,6 +692,7 @@ void IceMesh::AssembleElementToElementTransitionMatricies()
             std::vector<double> trian_basis_y_old = trian_to_edge_3d*std::vector<double>{0.0, 1.0, 0.0};
             std::vector<double> trian_basis_z_old = trian_to_edge_3d*std::vector<double>{0.0, 0.0, 1.0};
 
+
             // compute rotation angle
             double ang_rot = angle_vecs(edge_basis_z, trian_basis_z);
 
@@ -710,7 +711,8 @@ void IceMesh::AssembleElementToElementTransitionMatricies()
 
             std::vector<std::vector<double>> rotation_3d;
 
-            if (trian_basis_z_new_pos*edge_basis_z <= trian_basis_z_new_neg*edge_basis_z)
+            if (angle_vecs(trian_basis_z_new_pos, std::vector<double>{0.0, 0.0, 1.0}) <=
+                angle_vecs(trian_basis_z_new_neg, std::vector<double>{0.0, 0.0, 1.0}))
                 rotation_3d = rotation_3d_pos;
             else
                 rotation_3d = rotation_3d_neg;
@@ -720,8 +722,8 @@ void IceMesh::AssembleElementToElementTransitionMatricies()
             std::vector<double> trian_basis_y_new = rotation_3d*trian_basis_y_old;
 
             // finally assemble "trian <-> edge" transition matricies
-            std::vector<std::vector<double>> trian_to_edge_matrix = {{edge_basis_x*trian_basis_x_new, edge_basis_x*trian_basis_y_new},
-                                                                     {edge_basis_y*trian_basis_x_new, edge_basis_y*trian_basis_y_new}};
+            std::vector<std::vector<double>> trian_to_edge_matrix = {{std::vector<double>{1.0, 0.0, 0.0}*trian_basis_x_new, std::vector<double>{1.0, 0.0, 0.0}*trian_basis_y_new},
+                                                                     {std::vector<double>{0.0, 1.0, 0.0}*trian_basis_x_new, std::vector<double>{0.0, 1.0, 0.0}*trian_basis_y_new}};
 
             std::vector<std::vector<double>> edge_to_trian_matrix = inv(trian_to_edge_matrix);
 
@@ -929,7 +931,7 @@ void IceMesh::ComputeIfXedgeBasisIsNormalToTrian()
     for (int i = 0; i < 3; ++i)
     {
         is_x_edge_basis_normal_vec_tags.push_back(ice_mesh->CreateTag("is_x_edge_basis_normal_vec " + to_string(i), INMOST::DATA_INTEGER, INMOST::CELL, INMOST::NONE, 1));
-        //ice_mesh->SetFileOption((std::string)"Tag:" + (std::string)"is_x_edge_basis_normal_vec " + to_string(i), "nosave");
+        ice_mesh->SetFileOption((std::string)"Tag:" + (std::string)"is_x_edge_basis_normal_vec " + to_string(i), "nosave");
     }
 
     // iterate over triangles

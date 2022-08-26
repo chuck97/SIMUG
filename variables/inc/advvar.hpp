@@ -22,7 +22,8 @@ namespace SIMUG::adv
     {
         CFE,
         FVupwind,
-        MUST
+        MUST,
+        MUSCL
     };
 
     // advection filter type
@@ -30,7 +31,10 @@ namespace SIMUG::adv
     {
         none,
         Zalesak,
-        MUSTfilter
+        Minmod,
+        VanLeer,
+        Superbee,
+        BarthJesperson
     };
 
     // is advection time scheme single step
@@ -52,22 +56,26 @@ namespace SIMUG::adv
         {TTG3,   "Two-step step Taylor-Galerkin of 3rd order on time (TTG3)"},
         {TTG4,   "Two-step step Taylor-Galerkin of 4th order on time (TTG4)"},
         {Euler,  "One-step Euler scheme of 1st order on time (Euler)"       },
-        {TRK2,   "Two-step Runge-Kutta scheme of 2nd order on time (TRK2)"  }
+        {TRK2,   "Two-step Runge-Kutta scheme of 2nd order on time (TRK2)"  },
     };
 
     // advection space scheme type -> name
     static std::map<spaceScheme, std::string> advSpaceSchemeName =
     {
-        {CFE,      "Continous finite element scheme of 2nd order in space (CFE)" },
-        {FVupwind, "Finite volume upwind scheme of 1st order in space (FVupwind)"},
-        {MUST,     "Finite volume monotonic upwind scheme of 2nd order in space (MUST)"},
+        {CFE,      "Continous finite element scheme of 2nd order in space (CFE)"                           },
+        {FVupwind, "Finite volume upwind scheme of 1st order in space (FVupwind)"                          },
+        {MUST,     "Finite volume Monotonic Upwind Scheme for Triangles of 2nd order in space (MUST)"      },
+        {MUSCL,    "Monotonic Upstream-Centered Scheme for Conservation Laws of 2nd order in space (MUSCL)"}
     };
 
     // advection scheme filter -> name
     static std::map<advFilter, std::string> advFilterName =
     {
-        {none,       "none"                                     },
-        {Zalesak,    "Zalesak flux-correction filter (Zalesak)" },
-        {MUSTfilter, "MUST flux filter (MUSTfilter)"            }
+        {none,           "none"                                     },
+        {Zalesak,        "Zalesak flux-correction filter (Zalesak)" },
+        {Minmod,         "Minmod antidiffusive filter"              },
+        {VanLeer,        "van Leer antidiffusive filter"            },
+        {Superbee,       "Superbee antidiffusive filter"            },
+        {BarthJesperson, "Barth-Jesperson antidiffusive filter"     }
     };
 };  
