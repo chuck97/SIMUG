@@ -44,11 +44,13 @@ CgridAdvectionSolver::CgridAdvectionSolver(SIMUG::IceMesh *mesh_,
         trian_rev_dist_tags = mesh->GetMesh()->CreateTag("trian_rev_dist_tags", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
         node_sum_rev_dist_tag = mesh->GetMesh()->CreateTag("node_sum_rev_dist_tag", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 1);
         opposite_node_for_edge_tags = mesh->GetMesh()->CreateTag("opposite_node_for_edge_tags", INMOST::DATA_INTEGER, INMOST::CELL, INMOST::NONE, 3);
+        phi_tags = mesh->GetMesh()->CreateTag("phi_tags", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
 
         mesh->GetMesh()->SetFileOption("Tag:node_scal_tag", "nosave");
         mesh->GetMesh()->SetFileOption("Tag:trian_rev_dist_tags", "nosave");
         mesh->GetMesh()->SetFileOption("Tag:node_sum_rev_dist_tag", "nosave");
         mesh->GetMesh()->SetFileOption("Tag:opposite_node_for_edge_tags", "nosave");
+        //mesh->GetMesh()->SetFileOption("Tag:phi_tags", "nosave");
 
         // compute triangles reversed distances
         adv_timer.Launch();
@@ -81,11 +83,19 @@ CgridAdvectionSolver::CgridAdvectionSolver(SIMUG::IceMesh *mesh_,
         node_sum_rev_dist_tag = mesh->GetMesh()->CreateTag("node_sum_rev_dist_tag", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 1);
         gradient_trian_tag = mesh->GetMesh()->CreateTag("gradient_trian_tag", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 2);
         edge_distance_vector_tags = mesh->GetMesh()->CreateTag("edge_distance_vector_tags", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 6);
+        adj_trian_baric_dist_vec_tags = mesh->GetMesh()->CreateTag("adj_trian_baric_dist_vec_tags", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 6);
+        r_factor_tags = mesh->GetMesh()->CreateTag("r_factor_tags", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
+        phi_tags = mesh->GetMesh()->CreateTag("phi_tags", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
+        trian_sc_diff = mesh->GetMesh()->CreateTag("trian_sc_diff", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
 
-        mesh->GetMesh()->SetFileOption("Tag:node_scal_tag", "nosave");
+        //mesh->GetMesh()->SetFileOption("Tag:node_scal_tag", "nosave");
         mesh->GetMesh()->SetFileOption("Tag:trian_rev_dist_tags", "nosave");
-        mesh->GetMesh()->SetFileOption("Tag:gradient_trian_tag", "nosave");
+        //mesh->GetMesh()->SetFileOption("Tag:gradient_trian_tag", "nosave");
         mesh->GetMesh()->SetFileOption("Tag:edge_distance_vector_tags", "nosave");
+        //mesh->GetMesh()->SetFileOption("Tag:adj_trian_baric_dist_vec_tags", "nosave");
+        //mesh->GetMesh()->SetFileOption("Tag:r_factor_tags", "nosave");
+        //mesh->GetMesh()->SetFileOption("Tag:phi_tags", "nosave");
+        //mesh->GetMesh()->SetFileOption("Tag:trian_sc_diff", "nosave");
 
         // compute triangles reversed distances
         adv_timer.Launch();
@@ -109,6 +119,18 @@ CgridAdvectionSolver::CgridAdvectionSolver(SIMUG::IceMesh *mesh_,
         if (mesh->GetMesh()->GetProcessorRank() == 0)
         {
             adv_log.Log("Computation of distance vectors from baricenter to edge center for triangles: OK (" + std::to_string(duration) + " ms)\n");
+        }
+
+        // compute adj trians baricenter distances
+        adv_timer.Launch();
+        ComputeAdjTrianBaricenterDistanceVectors();
+        adv_timer.Stop();
+        duration = adv_timer.GetMaxTime();
+        adv_timer.Reset();
+
+        if (mesh->GetMesh()->GetProcessorRank() == 0)
+        {
+            adv_log.Log("Computation of adjacent triangles baricenter distance vectors: OK (" + std::to_string(duration) + " ms)\n");
         }
     }
     else
@@ -477,7 +499,7 @@ void CgridAdvectionSolver::ComputeEdgeDistanceVectors()
                     edge_node_indexes = {0, 1};
                 }
 
-                std::vector<double> edge_center_coords = (node_coords[edge_node_indexes.first] + node_coords[edge_node_indexes.second])* 0.5;
+                std::vector<double> edge_center_coords = (node_coords[edge_node_indexes.first] + node_coords[edge_node_indexes.second])*0.5;
 
                 trianit->RealArray(edge_distance_vector_tags)[2*ed_num + 0] = (edge_center_coords - baricenter_coords)[0];
                 trianit->RealArray(edge_distance_vector_tags)[2*ed_num + 1] = (edge_center_coords - baricenter_coords)[1];
@@ -485,6 +507,254 @@ void CgridAdvectionSolver::ComputeEdgeDistanceVectors()
         }
     }
     mesh->GetMesh()->ExchangeData(edge_distance_vector_tags, INMOST::CELL, 0);
+}
+
+double CgridAdvectionSolver::ApplyFilter(adv::advFilter adv_filt, double r_factor)
+{
+    if (adv_filt == adv::advFilter::none)
+    {
+        return 1.0;
+    }
+    else if (adv_filt == adv::advFilter::Minmod)
+    {
+        return std::max(0.0, std::min(1.0, r_factor));
+    }
+    else if (adv_filt == adv::advFilter::VanLeer)
+    {
+        return (r_factor + std::abs(r_factor))/(1.0 + std::abs(r_factor));
+    }
+    else if (adv_filt == adv::advFilter::Superbee)
+    {
+        return std::max(std::max(0.0, std::min(1.0, 2.0*r_factor)), std::min(2.0, r_factor));
+    }
+    else if (adv_filt == adv::advFilter::BarthJesperson)
+    {
+        return 0.5*(r_factor + 1.0)*std::min(std::min(1.0, (4.0*r_factor)/(r_factor+1.0)), std::min(1.0, 4.0/(r_factor + 1.0)));
+    }
+    else 
+    {
+        SIMUG_ERR("unknown type of advection filter!");
+    }
+    return 1.0;
+}
+
+void CgridAdvectionSolver::ComputeAdjTrianBaricenterDistanceVectors()
+{
+    // get triangle id tag
+    INMOST::Tag trian_id_tag = mesh->GetGridInfo(mesh::gridElemType::Trian)->id;
+    
+    // get node id tag
+    INMOST::Tag node_id_tag = mesh->GetGridInfo(mesh::gridElemType::Node)->id;
+
+    // get edge id tag
+    INMOST::Tag edge_id_tag = mesh->GetGridInfo(mesh::gridElemType::Edge)->id;
+
+    // tag for node coordinates (in trian basis)
+    std::vector<INMOST::Tag> node_coords_in_trian_basis_tags = mesh->GetGridInfo(mesh::gridElemType::Trian)->GetNodeCoordsInTrianBasis();
+
+    // iterate over triangles
+    for (auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit)
+    {
+        if (trianit->GetStatus() != Element::Ghost)
+        {
+            // get node coords of triangle in trian basis
+            std::vector<std::vector<double>> node_coords = 
+            {
+                {trianit->RealArray(node_coords_in_trian_basis_tags[0])[0], trianit->RealArray(node_coords_in_trian_basis_tags[0])[1]},
+                {trianit->RealArray(node_coords_in_trian_basis_tags[1])[0], trianit->RealArray(node_coords_in_trian_basis_tags[1])[1]},
+                {trianit->RealArray(node_coords_in_trian_basis_tags[2])[0], trianit->RealArray(node_coords_in_trian_basis_tags[2])[1]}
+            };
+
+            // compute baricenter coords in trian basis
+            std::vector<double> baricenter_coords = (node_coords[0] + node_coords[1] + node_coords[2])*(1.0/3.0);
+
+            // get edges and nodes for current triangle
+            ElementArray<INMOST::Face> adj_edges = trianit->getFaces();
+            ElementArray<INMOST::Node> adj_nodes = trianit->getNodes();
+
+            // iterate over adj edges
+            for (int ed_num = 0; ed_num < 3; ++ ed_num)
+            {
+                // find current edge center coords in trian basis
+                int wrong_node_index = 0;
+
+                for (int i = 0; i < 3; ++i)
+                {
+                    if ((adj_nodes[i].Integer(node_id_tag) != adj_edges[ed_num].getNodes()[0].Integer(node_id_tag)) &&
+                        (adj_nodes[i].Integer(node_id_tag) != adj_edges[ed_num].getNodes()[1].Integer(node_id_tag)))
+                    {
+                        wrong_node_index = i;
+                        break;
+                    }
+                }
+
+                std::pair<int, int> edge_node_indexes = {0, 0};
+                
+                if (wrong_node_index == 0)
+                {
+                    edge_node_indexes = {1, 2};
+                }
+                else if (wrong_node_index == 1)
+                {
+                    edge_node_indexes = {0, 2};
+                }
+                else
+                {
+                    edge_node_indexes = {0, 1};
+                }
+
+                std::vector<double> edge_center_coords = (node_coords[edge_node_indexes.first] + node_coords[edge_node_indexes.second])*0.5;
+
+                // assemble vector from edge center to baricenter in trian basis
+                std::vector<double> vec_edge_to_bari_trian = baricenter_coords - edge_center_coords;
+
+                // move vector coords to edge basis
+                std::vector<double> vec_edge_to_bari_edge = mesh->VecTransition(vec_edge_to_bari_trian, trianit->getCells()[0], adj_edges[ed_num]);
+
+                // get adjacent triangle for current edge if it exists
+                INMOST::Cell adj_trian;
+
+                if (adj_edges[ed_num].getCells().size() != 2)
+                {
+                    continue;
+                }
+                else
+                {
+                    // get adjacent triangle
+                    adj_trian = (trianit->Integer(trian_id_tag) == adj_edges[ed_num].getCells()[0]->Integer(trian_id_tag))
+                                ? adj_edges[ed_num].getCells()[1]
+                                : adj_edges[ed_num].getCells()[0];
+                }
+
+                // get nodes of adjacent triangle
+                ElementArray<INMOST::Node> adj_nodes_adj =  adj_trian.getNodes();
+
+                // get the node coordinates of adjacent triangle (in basis of this triangle)
+                std::vector<std::vector<double>> node_coords_adj_trian = 
+                {
+                    {adj_trian.RealArray(node_coords_in_trian_basis_tags[0])[0], adj_trian.RealArray(node_coords_in_trian_basis_tags[0])[1]},
+                    {adj_trian.RealArray(node_coords_in_trian_basis_tags[1])[0], adj_trian.RealArray(node_coords_in_trian_basis_tags[1])[1]},
+                    {adj_trian.RealArray(node_coords_in_trian_basis_tags[2])[0], adj_trian.RealArray(node_coords_in_trian_basis_tags[2])[1]}
+                };
+
+                // calculate the baricenter of adjacent triangle
+                std::vector<double> baricenter_coords_adj = (node_coords_adj_trian[0] + node_coords_adj_trian[1] + node_coords_adj_trian[2])*(1.0/3.0);
+
+                // find current edge center coords in adj trian basis
+                int wrong_node_index_adj = 0;
+
+                for (int i = 0; i < 3; ++i)
+                {
+                    if ((adj_nodes_adj[i].Integer(node_id_tag) != adj_edges[ed_num].getNodes()[0].Integer(node_id_tag)) &&
+                        (adj_nodes_adj[i].Integer(node_id_tag) != adj_edges[ed_num].getNodes()[1].Integer(node_id_tag)))
+                    {
+                        wrong_node_index_adj = i;
+                        break;
+                    }
+                }
+
+                std::pair<int, int> edge_node_indexes_adj = {0, 0};
+                
+                if (wrong_node_index_adj == 0)
+                {
+                    edge_node_indexes_adj = {1 , 2};
+                }
+                else if (wrong_node_index_adj == 1)
+                {
+                    edge_node_indexes_adj = {0, 2};
+                }
+                else
+                {
+                    edge_node_indexes_adj = {0, 1};
+                }
+
+                std::vector<double> edge_center_coords_adj = (node_coords_adj_trian[edge_node_indexes_adj.first] + node_coords_adj_trian[edge_node_indexes_adj.second])*0.5;
+
+                // assemble vector from edge center to baricenter of adj trian in adj trian basis
+                std::vector<double> vec_edge_to_bari_trian_adj = baricenter_coords_adj - edge_center_coords_adj;
+
+                // move vector coords to edge basis
+                std::vector<double> vec_edge_to_bari_edge_adj = mesh->VecTransition(vec_edge_to_bari_trian_adj, adj_trian, adj_edges[ed_num]);
+
+                // finally compute the baricenter difference vector in edge basis
+                std::vector<double> bari_diff_vec = vec_edge_to_bari_edge_adj - vec_edge_to_bari_edge;
+
+                // store computed values
+                trianit->RealArray(adj_trian_baric_dist_vec_tags)[2*ed_num + 0] = bari_diff_vec[0];
+                trianit->RealArray(adj_trian_baric_dist_vec_tags)[2*ed_num + 1] = bari_diff_vec[1];
+            }
+        }
+    }
+    mesh->GetMesh()->ExchangeData(adj_trian_baric_dist_vec_tags, INMOST::CELL, 0);
+}
+
+
+void CgridAdvectionSolver::ComputeMUSCLrfactors(adv::advFilter adv_filt, scalar_tag scal_tag)
+{
+    if (adv_filt != adv::advFilter::none)
+    {
+        // get triangle id tag
+        INMOST::Tag trian_id_tag = mesh->GetGridInfo(mesh::gridElemType::Trian)->id;
+
+        // iterate over triangles
+        for (auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit)
+        {
+            if (trianit->GetStatus() != Element::Ghost)
+            {
+                // get the gradient vector on trian
+                std::vector<double> trian_grad = 
+                {
+                    trianit->RealArray(gradient_trian_tag)[0],
+                    trianit->RealArray(gradient_trian_tag)[1]
+                };
+
+                // get edges of trian
+                ElementArray<INMOST::Face> adj_edges = trianit->getFaces();
+                
+                // iterate over edges
+                for (int ed_num = 0; ed_num < 3; ++ed_num)
+                {
+                    // get the baricenter difference vector for current edge
+                    std::vector<double> bari_diff_vec = 
+                    {
+                        trianit->RealArray(adj_trian_baric_dist_vec_tags)[2*ed_num + 0],
+                        trianit->RealArray(adj_trian_baric_dist_vec_tags)[2*ed_num + 1]
+                    };
+
+                    // move gradient vector to current edge basis
+                    std::vector<double> edge_grad = mesh->VecTransition(trian_grad, trianit->getCells()[0], adj_edges[ed_num]);
+
+                    // get the adjacent trian
+                    INMOST::Cell adj_trian;
+
+                    if (adj_edges[ed_num].getCells().size() != 2)
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        // get adjacent triangle
+                        adj_trian = (trianit->Integer(trian_id_tag) == adj_edges[ed_num].getCells()[0]->Integer(trian_id_tag))
+                                    ? adj_edges[ed_num].getCells()[1]
+                                    : adj_edges[ed_num].getCells()[0];
+                    }
+                    
+                    // compute and store r_value for current edge
+                    if (std::abs(adj_trian.Real(scal_tag) - trianit->Real(scal_tag)) < 1e-5)
+                    {
+                        trianit->RealArray(r_factor_tags)[ed_num] = 1000.0;
+                    }
+                    else
+                    {
+                        trianit->RealArray(r_factor_tags)[ed_num] = 2.0*(edge_grad*bari_diff_vec))/(adj_trian.Real(scal_tag) - trianit->Real(scal_tag)) - 1.0;
+                    }
+                    trianit->RealArray(trian_sc_diff)[ed_num] = adj_trian.Real(scal_tag) - trianit->Real(scal_tag);
+                }
+            }
+        }
+        mesh->GetMesh()->ExchangeData(r_factor_tags, INMOST::CELL, 0);
+        mesh->GetMesh()->ExchangeData(trian_sc_diff, INMOST::CELL, 0);
+    }
 }
 
 void CgridAdvectionSolver::ComputeRHS(INMOST::Tag scalar_tag)
@@ -640,21 +910,32 @@ void CgridAdvectionSolver::ComputeRHS(INMOST::Tag scalar_tag)
 
                     double phi = 1.0;
 
-                    if (adv_filter == adv::advFilter::Minmod)
+                    // compute r-factor if limiter is used and apply filter
+                    if (adv_filter != adv::advFilter::none)
                     {
+                        // get opposite triangle
                         INMOST::Cell opposite_trian = (normal_edge_velocity_component > 0.0) ? adj_trian : trianit->getCells()[0];
 
-                        if(fabs(increment) < REAL_MIN_ABS_VAL)
+                        double r_factor = 0.0;
+
+                        if (std::abs(opposite_trian->Real(scalar_tag) - calc_trian->Real(scalar_tag)) < 1e-5)
                         {
-                            phi = 0.0;
+                            phi = 1.0;
+                            calc_trian.RealArray(phi_tags)[ed_num] = phi;
+                        }
+                        else if (std::abs(increment) < 1e-5)
+                        {
+                            phi = 1.0;
+                            calc_trian.RealArray(phi_tags)[ed_num] = phi;
                         }
                         else
                         {
-                            // compute gradient on calc trian 
-                            double r = (opposite_trian->Real(scalar_tag) - calc_trian->Real(scalar_tag))/increment;
-                            phi = std::max(0.0, std::min(1.0, r));
-                        } 
-                    }
+                            // compute r-factor for current edge
+                            r_factor = (opposite_trian->Real(scalar_tag) - calc_trian->Real(scalar_tag))/increment;
+                            phi = ApplyFilter(adv_filter, r_factor);
+                            calc_trian.RealArray(phi_tags)[ed_num] = phi;
+                        }
+                    } 
                     
                     // find scalar value at the center of the edge
                     double scal_edge = calc_trian.Real(scalar_tag) + 0.5*phi*increment;
@@ -680,6 +961,9 @@ void CgridAdvectionSolver::ComputeRHS(INMOST::Tag scalar_tag)
 
         // compute trian gradients (in trian basis) using Gauss theorem
         ComputeTrianGradients(node_scal_tag, gradient_trian_tag);
+        
+        // compute MUSCL rfactors
+        ComputeMUSCLrfactors(adv_filter, scalar_tag);
 
         // iterate over triangles
         for (auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit)
@@ -695,7 +979,7 @@ void CgridAdvectionSolver::ComputeRHS(INMOST::Tag scalar_tag)
                 for (size_t ed_num = 0; ed_num < 3; ++ed_num)
                 {
                     
-                    // get the adjacent triangle it it exists
+                    // get the adjacent triangle if it exists
                     INMOST::Cell adj_trian;
 
                     if (adj_edges[ed_num].getCells().size() != 2)
@@ -764,8 +1048,19 @@ void CgridAdvectionSolver::ComputeRHS(INMOST::Tag scalar_tag)
                         calc_trian.RealArray(edge_distance_vector_tags)[edg_index*2 + 1]
                     };
 
+                    double phi = 1.0;
+
+                    // apply filter
+                    if (adv_filter != adv::advFilter::none)
+                    {
+                        // get r value for current edge in calc trian and compute filter value
+                        double r_factor = calc_trian.RealArray(r_factor_tags)[edg_index];   
+                        phi = ApplyFilter(adv_filter, r_factor);
+                        trianit->RealArray(phi_tags)[ed_num] = phi;
+                    } 
+
                     // compute edge scalar value for current edge
-                    double edge_scalar = calc_trian.Real(scalar_tag) + grad_trian*vec_to_edge;
+                    double edge_scalar = calc_trian.Real(scalar_tag) + 0.5*phi*(grad_trian*vec_to_edge);
 
                     // compute simple FV upwind rhs for triangle with edge scalar value
                     current_trian_rhs += edge_scalar*normal_edge_velocity_component*edge_len;
@@ -826,9 +1121,6 @@ void CgridAdvectionSolver::Evaluate(velocity_tag vel_tag, scalar_tag scal_tag)
     }
     else if (adv_time_scheme == adv::timeScheme::TRK2)
     {
-        // create tag for temp scalar
-        mesh->GetDataSingle(mesh::gridElemType::Trian)->Create("temp scalar", 1, INMOST::DATA_REAL);
-
         // calculate rhs for every triangle (first step)
         adv_timer.Launch();
         ComputeRHS(scal_tag);
@@ -888,9 +1180,6 @@ void CgridAdvectionSolver::Evaluate(velocity_tag vel_tag, scalar_tag scal_tag)
         duration = adv_timer.GetMaxTime();
         step_computation_time += duration;
         adv_timer.Reset();
-
-        // delete tag for temp scalar
-        mesh->GetDataSingle(mesh::gridElemType::Trian)->Delete("temp scalar");
     }
     else
     {

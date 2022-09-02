@@ -155,6 +155,10 @@ namespace SIMUG
     // MUSCL data
         INMOST::Tag gradient_trian_tag;
         INMOST::Tag edge_distance_vector_tags;
+        INMOST::Tag adj_trian_baric_dist_vec_tags;
+        INMOST::Tag r_factor_tags;
+        INMOST::Tag phi_tags;
+        INMOST::Tag trian_sc_diff;
 
         std::vector<double> params;
         void ComputeTrianDistances();
@@ -163,6 +167,9 @@ namespace SIMUG
         void InterpolateScalarNodes(INMOST::Tag trian_scalar_tag, INMOST::Tag node_scalar_tag);
         void ComputeTrianGradients(INMOST::Tag node_scalar_tag, INMOST::Tag trian_grad_tag);
         void ComputeEdgeDistanceVectors();
+        void ComputeAdjTrianBaricenterDistanceVectors();
+        void ComputeMUSCLrfactors(adv::advFilter adv_filt, scalar_tag scal_tag);
+        double ApplyFilter(adv::advFilter adv_filt, double r_factor);
         void ComputeRHS(INMOST::Tag scalar_tag);
     
     // time for profiling

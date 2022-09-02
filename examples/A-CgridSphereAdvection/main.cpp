@@ -61,6 +61,54 @@ std::vector<double> init_mass_gaussian(std::pair<double, double> coords, double 
     return {h0 + h1};
 }
 
+std::vector<double> init_mass_slotted_cylinders(std::pair<double, double> coords, double time)
+{
+    double lon = coords.first;
+    double lat = coords.second;
+
+    double first_center_lon = 3*M_PI/4.0;
+    double first_center_lat = 0.0;
+
+    double second_center_lon = 5*M_PI/4.0;
+    double second_center_lat = 0.0;
+
+    double background = 0.0;
+    double scale_factor = 1.0;
+    double radius = 0.5;
+
+    double r1 = std::acos(std::sin(first_center_lat)*std::sin(lat) +
+                          std::cos(first_center_lat)*std::cos(lat)*
+                          std::cos(lon - first_center_lon));
+        
+    double r2 = std::acos(std::sin(second_center_lat)*std::sin(lat) +
+                          std::cos(second_center_lat)*std::cos(lat)*
+                          std::cos(lon - second_center_lon));
+
+                          
+
+    if (((r1 <= radius) and
+         (std::abs(lon - first_center_lon) >= radius/6.0)) or
+         ((r2 <= radius) and
+         (std::abs(lon - second_center_lon) >= radius/6.0)))
+    {
+        return {scale_factor};
+    }
+    else if (((r1 <= radius) and
+             ((std::abs(lon - first_center_lon) < radius/6.0))
+             and ((lat - first_center_lat) < -(5.0/12.0)*radius)) or
+             ((r2 <= radius) and
+             ((std::abs(lon - second_center_lon) < radius/6.0))
+             and ((lat - second_center_lat) > (5.0/12.0)*radius)))
+    {
+        return {scale_factor};
+    }
+    else
+    {
+        return {background};
+    }
+    return {0.0};
+}
+
 std::vector<double> reversible_velocity(std::pair<double, double> coords, double time)
 {
     double lon = coords.first;
@@ -110,7 +158,7 @@ int main(int argc, char* argv[])
 
     
     // assign initial scalar and velocity field 
-    test_forcing.SetAnalytical(mesh::meshVar::mi, 0, init_mass_gaussian);
+    test_forcing.SetAnalytical(mesh::meshVar::mi, 0, init_mass_slotted_cylinders);
     test_forcing.Update(mesh::meshVar::mi, 0, coord::coordType::geo, 0.0);
     test_forcing.SetAnalytical(mesh::meshVar::ui, reversible_velocity);
     test_forcing.Update(mesh::meshVar::ui, coord::coordType::geo, 0.0);
@@ -124,9 +172,9 @@ int main(int argc, char* argv[])
     CgridAdvectionSolver advection(&mesh_sphere,
                                    1.0,
                                    vel_tag,
-                                   adv::timeScheme::TRK2,
-                                   adv::spaceScheme::MUST,
-                                   adv::advFilter::Minmod,
+                                   adv::timeScheme::Euler,
+                                   adv::spaceScheme::MUSCL,
+                                   adv::advFilter::Superbee,
                                    {});
 
     // add mass scalar for advection
@@ -171,7 +219,7 @@ int main(int argc, char* argv[])
         advection.TransportScalars();
         
         // write output to file
-        if (stepnum % 10 == 0)
+        if (stepnum % 1 == 0)
         {
             if (mesh_sphere.GetMesh()->GetProcessorRank() == 0)
                 logger.Log("Step: " + std::to_string(stepnum) +"\n");

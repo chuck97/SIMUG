@@ -299,7 +299,7 @@ namespace SIMUG
         if (m.size() > 3)
             SIMUG_ERR("can compute inverse matrix only for 2x2 or 3x3 matricies!");
         
-        if (fabs(det(m)) < REAL_MIN_ABS_VAL)
+        if (std::abs(det(m)) < REAL_MIN_ABS_VAL)
             SIMUG_ERR("determinant of matrix is almost zero - can't inverse!");
 
         std::vector<std::vector<T>>  inv_m = m;
@@ -360,7 +360,7 @@ namespace SIMUG
         if ((lhs.size() > 3) or (lhs.size() < 2))
             SIMUG_ERR("can't solve system  - can solve only 2x2 or 3x3 linear systems!");
         
-        if (fabs(det(lhs)) < REAL_MIN_ABS_VAL)
+        if (std::abs(det(lhs)) < REAL_MIN_ABS_VAL)
             SIMUG_ERR("can't solve system  - determinant of lhs is to low!");
         
         return (inv(lhs)*rhs);
