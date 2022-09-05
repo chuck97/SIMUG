@@ -139,7 +139,7 @@ int main(int argc, char* argv[])
                                    1.0, 
                                    vel_tag,
                                    &slae_solver,
-                                   adv::timeScheme::TG2,
+                                   adv::timeScheme::TTG4,
                                    adv::spaceScheme::CFE,
                                    adv::advFilter::none,
                                    {});

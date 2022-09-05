@@ -568,6 +568,7 @@ void AgridAdvectionSolver::AssembleSingleStepRHS(velocity_tag vel_tag, scalar_ta
 
 void AgridAdvectionSolver::AssembleDoubleStepRHS(velocity_tag vel_tag, scalar_tag scal_tag, scalar_tag scal_half_tag,  StepNumber step_num)
 {
+    /*
     // node id tag
     INMOST::Tag node_id = mesh->GetGridInfo(mesh::gridElemType::Node)->id;
 
@@ -695,6 +696,163 @@ void AgridAdvectionSolver::AssembleDoubleStepRHS(velocity_tag vel_tag, scalar_ta
         }
     }
     BARRIER
+    */
+
+    // node id tag
+    INMOST::Tag node_id_tag = mesh->GetGridInfo(mesh::gridElemType::Node)->id;
+
+    for(auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit) 
+    {
+        // get adj nodes
+        ElementArray<INMOST::Node> adj_nodes = trianit->getNodes();
+
+        // get velocity values of trian
+        std::vector<std::vector<double>> local_vel_geo = 
+        {
+            {adj_nodes[0].RealArray(vel_tag)[0], adj_nodes[0].RealArray(vel_tag)[1]},
+            {adj_nodes[1].RealArray(vel_tag)[0], adj_nodes[1].RealArray(vel_tag)[1]},
+            {adj_nodes[2].RealArray(vel_tag)[0], adj_nodes[2].RealArray(vel_tag)[1]}
+        };
+
+        // move velocity components to nodal basis
+        std::vector<std::vector<double>> local_vel_nodal = 
+        {
+            mesh->VecTransitionToElemBasis({local_vel_geo[0][0], local_vel_geo[0][1]}, adj_nodes[0]),
+            mesh->VecTransitionToElemBasis({local_vel_geo[1][0], local_vel_geo[1][1]}, adj_nodes[1]),
+            mesh->VecTransitionToElemBasis({local_vel_geo[2][0], local_vel_geo[2][1]}, adj_nodes[2])
+        };
+
+        // move velocity components to trian basis
+        std::vector<std::vector<double>> local_vel_trian = 
+        {
+            mesh->VecTransition({local_vel_nodal[0][0], local_vel_nodal[0][1]}, adj_nodes[0], trianit->getCells()[0]),
+            mesh->VecTransition({local_vel_nodal[1][0], local_vel_nodal[1][1]}, adj_nodes[1], trianit->getCells()[0]),
+            mesh->VecTransition({local_vel_nodal[2][0], local_vel_nodal[2][1]}, adj_nodes[2], trianit->getCells()[0])
+        };
+
+        // get u and v components separately
+        std::vector<double> u_components = 
+        {
+            local_vel_trian[0][0],
+            local_vel_trian[1][0],
+            local_vel_trian[2][0]
+        };
+
+        std::vector<double> v_components = 
+        {
+            local_vel_trian[0][1],
+            local_vel_trian[1][1],
+            local_vel_trian[2][1]
+        };
+
+        // get scalar values on trian nodes
+        std::vector<double> local_scal_trian = 
+        {
+            adj_nodes[0].Real(scal_tag),
+            adj_nodes[1].Real(scal_tag),
+            adj_nodes[2].Real(scal_tag)
+        };
+
+        // get scalar values on trian nodes from previous pseudostep
+        std::vector<double> local_scal_half_trian;
+        if (step_num == StepNumber::second)
+        {
+            local_scal_half_trian = 
+            {
+                adj_nodes[0].Real(scal_half_tag),
+                adj_nodes[1].Real(scal_half_tag),
+                adj_nodes[2].Real(scal_half_tag)
+            };
+        }
+
+        // get the Jacobian matrix info
+        std::vector<double> Jacobi_info_vec = 
+        {
+            trianit->RealArray(Jacobi_info_tag)[0],
+            trianit->RealArray(Jacobi_info_tag)[1],
+            trianit->RealArray(Jacobi_info_tag)[2],
+            trianit->RealArray(Jacobi_info_tag)[3],
+            trianit->RealArray(Jacobi_info_tag)[4]
+        };
+
+        // assemble local RHS vector of size 3
+        std::vector<double> localRHS;
+
+        // assemble local mass matrix
+        auto local_mass_matrix = FastLocalMassMatrixAssembling(reference_trian_mass_matrix,
+                                                               Jacobi_info_vec);
+
+        // assemble local first derivative matrix
+        auto local_first_der_matrix = FastLocalFirstDerivMatrixAssembling(reference_trian_first_deriv_matricies,
+                                                                          u_components,
+                                                                          v_components,
+                                                                          Jacobi_info_vec);
+
+        std::vector<std::vector<double>> local_second_der_matrix;
+
+        if (adv_time_scheme != adv::timeScheme::TTG2)
+        {
+            local_second_der_matrix = FastLocalSecondDerivMatrixAssembling(reference_trian_second_deriv_matricies,
+                                                                           u_components,
+                                                                           v_components,
+                                                                           Jacobi_info_vec);
+        }
+
+        // assemble local RHS vector
+        if (adv_time_scheme == adv::timeScheme::TTG2)
+        {
+            if (step_num == StepNumber::first)
+            {
+                localRHS = (local_mass_matrix + 0.5*time_step*local_first_der_matrix)*local_scal_trian;
+            }
+            else
+            {
+                localRHS = local_mass_matrix*local_scal_trian + time_step*local_first_der_matrix*local_scal_half_trian;
+            }
+        }
+        else if (adv_time_scheme == adv::timeScheme::TTG3)
+        {
+            if (step_num == StepNumber::first)
+            {
+                localRHS = (local_mass_matrix + (1.0/3.0)*time_step*local_first_der_matrix - (1.0/9.0)*time_step*time_step*local_second_der_matrix)*local_scal_trian;
+            }
+            else
+            {
+                localRHS = local_mass_matrix*local_scal_trian + time_step*local_first_der_matrix*local_scal_trian - 0.5*time_step*time_step*local_second_der_matrix*local_scal_half_trian;
+            }
+        }
+        else if (adv_time_scheme == adv::timeScheme::TTG4)
+        {
+            double alpha = 0.1409714;
+            double beta = 0.1160538;
+            double gamma = 0.3590284;
+
+            if (step_num == StepNumber::first)
+            {
+                localRHS = (local_mass_matrix + alpha*time_step*local_first_der_matrix - beta*time_step*time_step*local_second_der_matrix)*local_scal_trian;
+            }
+            else
+            {
+                localRHS = local_mass_matrix*local_scal_trian + time_step*local_first_der_matrix*local_scal_half_trian - gamma*time_step*time_step*local_second_der_matrix*local_scal_half_trian;
+            }
+        }
+        else
+        {
+            SIMUG_ERR("Only avalible double step solvers: TTG2, TTG3, TTG4");
+        }
+
+
+        // assemble global RHS vector
+        for (int i = 0; i < 3; ++i)
+        {
+            if(adj_nodes[i].GetStatus() != Element::Ghost)
+            {
+                RHS[adj_nodes[i].Integer(node_id_tag)] += localRHS[i];
+            }
+        }
+    }   
+    BARRIER
+
 }
 
 void AgridAdvectionSolver::Evaluate(velocity_tag vel_tag, scalar_tag scal_tag)
@@ -789,8 +947,8 @@ void AgridAdvectionSolver::Evaluate(velocity_tag vel_tag, scalar_tag scal_tag)
         RHS_assembling_time += duration;
         adv_timer.Reset();
         
+        // solve new SLAE
         adv_timer.Launch();
-        // solve new slae
         slae_solver->Solve(RHS, SOL);
         adv_timer.Stop();
         duration = adv_timer.GetMaxTime();
