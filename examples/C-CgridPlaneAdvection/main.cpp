@@ -117,7 +117,7 @@ int main(int argc, char* argv[])
     CgridAdvectionSolver advection(&mesh_plane,
                                    1.0,
                                    vel_tag,
-                                   adv::timeScheme::Euler,
+                                   adv::timeScheme::TRK2,
                                    adv::spaceScheme::MUSCL,
                                    adv::advFilter::Minmod,
                                    {});
@@ -164,7 +164,7 @@ int main(int argc, char* argv[])
         advection.TransportScalars();
         
         // write output to file
-        if (stepnum % 1 == 0)
+        if ((stepnum % 10 == 0) or (stepnum == (n_steps-1)))
         {
             if (mesh_plane.GetMesh()->GetProcessorRank() == 0)
                 logger.Log("Step: " + std::to_string(stepnum) +"\n");

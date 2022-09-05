@@ -46,4 +46,27 @@ namespace SIMUG
                                                         const std::vector<double>& localmass_half,
                                                         double time_step,
                                                         int step);
+
+    using Vec2d = std::vector<std::vector<double>>;
+    using Vec3d = std::vector<std::vector<std::vector<double>>>;
+    using Vec4d = std::vector<std::vector<std::vector<std::vector<double>>>>;
+
+    Vec2d LocaReferenceMassMatrixAssembling();
+    std::pair<Vec3d, Vec3d> LocaReferenceFirstDerivativesMatrixAssembling();
+    std::vector<Vec4d> LocaReferenceSecondDerivativesMatrixAssembling();
+
+    Vec2d FastLocalMassMatrixAssembling(const Vec2d& mass_tensor,
+                                        const std::vector<double>& Jacobi_info_vec);
+
+    Vec2d FastLocalFirstDerivMatrixAssembling(const std::pair<Vec3d, Vec3d>& first_deriv_tensors,
+                                              const std::vector<double>& u_components,
+                                              const std::vector<double>& v_components,
+                                              const std::vector<double>& Jacobi_info_vec);
+
+    Vec2d FastLocalSecondDerivMatrixAssembling(const std::vector<Vec4d>& second_deriv_tensors,
+                                               const std::vector<double>& u_components,
+                                               const std::vector<double>& v_components,
+                                               const std::vector<double>& Jacobi_info_vec);
+    
+
 }

@@ -45,6 +45,31 @@ AgridAdvectionSolver::AgridAdvectionSolver(SIMUG::IceMesh* mesh_,
     if (mesh->GetMesh()->GetProcessorRank()==0)
         adv_log.Log("LHS for advection assembled successfully! (" + std::to_string(duration) + " ms)\n");
 
+    // assemble local matricies on reference triangle
+    adv_timer.Launch();
+    reference_trian_mass_matrix = LocaReferenceMassMatrixAssembling();
+    reference_trian_first_deriv_matricies = LocaReferenceFirstDerivativesMatrixAssembling();
+    reference_trian_second_deriv_matricies = LocaReferenceSecondDerivativesMatrixAssembling();
+    adv_timer.Stop();
+    duration = adv_timer.GetMaxTime();
+    adv_timer.Reset();
+
+    if (mesh->GetMesh()->GetProcessorRank()==0)
+        adv_log.Log("Matricies on reference triangle assembled successfully! (" + std::to_string(duration) + " ms)\n");
+
+    // compute Jacobian and inverse Jacobi matrix on every triangle
+    Jacobi_info_tag = mesh->GetMesh()->CreateTag("Jacobi_info_tag", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 5);
+    mesh->GetMesh()->SetFileOption("Tag:Jacobi_info_tag", "nosave");
+    
+    adv_timer.Launch();
+    ComputeJacobiInfo(Jacobi_info_tag);
+    adv_timer.Stop();
+    duration = adv_timer.GetMaxTime();
+    adv_timer.Reset();
+
+    if (mesh->GetMesh()->GetProcessorRank()==0)
+        adv_log.Log("Jacobian matrix computation performed successfully! (" + std::to_string(duration) + " ms)\n");
+
     if (mesh->GetMesh()->GetProcessorRank()==0)
         adv_log.Log("=====================================================================\n");
     BARRIER
@@ -171,6 +196,48 @@ double AgridAdvectionSolver::GetMaxUdivDx()
 #endif
 
     return max_u_div_dx_for_all;
+}
+
+void AgridAdvectionSolver::ComputeJacobiInfo(INMOST::Tag jacobi_tag)
+{
+    // get tag for node coordinates in triangle basis
+    std::vector<INMOST::Tag> node_coords_in_trian_basis_tags = mesh->GetGridInfo(mesh::gridElemType::Trian)->GetNodeCoordsInTrianBasis();
+
+    // iterate over triangles
+    for (auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit)
+    {
+        if (trianit->GetStatus() != Element::Ghost)
+        {
+            // get node coords of triangle in trian basis
+            std::vector<std::vector<double>> node_coords = 
+            {
+                {trianit->RealArray(node_coords_in_trian_basis_tags[0])[0], trianit->RealArray(node_coords_in_trian_basis_tags[0])[1]},
+                {trianit->RealArray(node_coords_in_trian_basis_tags[1])[0], trianit->RealArray(node_coords_in_trian_basis_tags[1])[1]},
+                {trianit->RealArray(node_coords_in_trian_basis_tags[2])[0], trianit->RealArray(node_coords_in_trian_basis_tags[2])[1]}
+            };
+
+            // compute Jacobi matrix
+            std::vector<std::vector<double>> Jac =
+            {
+                {(node_coords[2][0] - node_coords[0][0]), (node_coords[1][0] - node_coords[0][0])},
+                {(node_coords[2][1] - node_coords[0][1]), (node_coords[1][1] - node_coords[0][1])}
+            };
+
+            // compute inverse Jacobi matrix
+            std::vector<std::vector<double>> Jac_inv = inv(Jac);
+
+            // compute absolute value of Jacobian
+            double abs_Jacobian = std::abs(det(Jac));
+
+            // store data
+            trianit->RealArray(jacobi_tag)[0] = Jac_inv[0][0];
+            trianit->RealArray(jacobi_tag)[1] = Jac_inv[0][1];
+            trianit->RealArray(jacobi_tag)[2] = Jac_inv[1][0];
+            trianit->RealArray(jacobi_tag)[3] = Jac_inv[1][1];
+            trianit->RealArray(jacobi_tag)[4] = abs_Jacobian;
+        }
+    }
+    mesh->GetMesh()->ExchangeData(jacobi_tag, INMOST::CELL, 0);
 }
 
 void AgridAdvectionSolver::AssembleLHS()
@@ -312,9 +379,10 @@ void AgridAdvectionSolver::AssembleLHS()
 
 void AgridAdvectionSolver::AssembleSingleStepRHS(velocity_tag vel_tag, scalar_tag scal_tag)
 {
-
+/*    
     // node id tag
     INMOST::Tag node_id_tag = mesh->GetGridInfo(mesh::gridElemType::Node)->id;
+
 
     // tag for node coords in local trian basis
     std::vector<INMOST::Tag> node_coords_in_trian_basis_tags = mesh->GetGridInfo(mesh::gridElemType::Trian)->GetNodeCoordsInTrianBasis();
@@ -373,6 +441,113 @@ void AgridAdvectionSolver::AssembleSingleStepRHS(velocity_tag vel_tag, scalar_ta
                                              local_vel_trian,
                                              local_scal_trian,
                                              time_step);
+        }
+        else
+        {
+            SIMUG_ERR("Only avalible single step solvers: TG2");
+        }
+
+        // assemble global RHS vector
+        for (int i = 0; i < 3; ++i)
+        {
+            if(adj_nodes[i].GetStatus() != Element::Ghost)
+            {
+                RHS[adj_nodes[i].Integer(node_id_tag)] += localRHS[i];
+            }
+        }
+    }   
+    BARRIER
+*/
+
+    // node id tag
+    INMOST::Tag node_id_tag = mesh->GetGridInfo(mesh::gridElemType::Node)->id;
+
+    for(auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit) 
+    {
+        // get adj nodes
+        ElementArray<INMOST::Node> adj_nodes = trianit->getNodes();
+
+        // get velocity values of trian
+        std::vector<std::vector<double>> local_vel_geo = 
+        {
+            {adj_nodes[0].RealArray(vel_tag)[0], adj_nodes[0].RealArray(vel_tag)[1]},
+            {adj_nodes[1].RealArray(vel_tag)[0], adj_nodes[1].RealArray(vel_tag)[1]},
+            {adj_nodes[2].RealArray(vel_tag)[0], adj_nodes[2].RealArray(vel_tag)[1]}
+        };
+
+        // move velocity components to nodal basis
+        std::vector<std::vector<double>> local_vel_nodal = 
+        {
+            mesh->VecTransitionToElemBasis({local_vel_geo[0][0], local_vel_geo[0][1]}, adj_nodes[0]),
+            mesh->VecTransitionToElemBasis({local_vel_geo[1][0], local_vel_geo[1][1]}, adj_nodes[1]),
+            mesh->VecTransitionToElemBasis({local_vel_geo[2][0], local_vel_geo[2][1]}, adj_nodes[2])
+        };
+
+        // move velocity components to trian basis
+        std::vector<std::vector<double>> local_vel_trian = 
+        {
+            mesh->VecTransition({local_vel_nodal[0][0], local_vel_nodal[0][1]}, adj_nodes[0], trianit->getCells()[0]),
+            mesh->VecTransition({local_vel_nodal[1][0], local_vel_nodal[1][1]}, adj_nodes[1], trianit->getCells()[0]),
+            mesh->VecTransition({local_vel_nodal[2][0], local_vel_nodal[2][1]}, adj_nodes[2], trianit->getCells()[0])
+        };
+
+        // get u and v components separately
+        std::vector<double> u_components = 
+        {
+            local_vel_trian[0][0],
+            local_vel_trian[1][0],
+            local_vel_trian[2][0]
+        };
+
+        std::vector<double> v_components = 
+        {
+            local_vel_trian[0][1],
+            local_vel_trian[1][1],
+            local_vel_trian[2][1]
+        };
+
+        // get scalar values of trian
+        std::vector<double> local_scal_trian = 
+        {
+            adj_nodes[0].Real(scal_tag),
+            adj_nodes[1].Real(scal_tag),
+            adj_nodes[2].Real(scal_tag)
+        };
+
+        // get the Jacobian matrix info
+        std::vector<double> Jacobi_info_vec = 
+        {
+            trianit->RealArray(Jacobi_info_tag)[0],
+            trianit->RealArray(Jacobi_info_tag)[1],
+            trianit->RealArray(Jacobi_info_tag)[2],
+            trianit->RealArray(Jacobi_info_tag)[3],
+            trianit->RealArray(Jacobi_info_tag)[4]
+        };
+
+        // assemble local RHS vector of size 3
+        std::vector<double> localRHS;
+
+        if (adv_time_scheme == adv::timeScheme::TG2)
+        {
+            // assemble local mass matrix
+            auto local_mass_matrix = FastLocalMassMatrixAssembling(reference_trian_mass_matrix,
+                                                                   Jacobi_info_vec);
+
+            // assemble local first derivative matrix
+            auto local_first_der_matrix = FastLocalFirstDerivMatrixAssembling(reference_trian_first_deriv_matricies,
+                                                                              u_components,
+                                                                              v_components,
+                                                                              Jacobi_info_vec);
+
+            auto local_second_der_matrix = FastLocalSecondDerivMatrixAssembling(reference_trian_second_deriv_matricies,
+                                                                                u_components,
+                                                                                v_components,
+                                                                                Jacobi_info_vec);
+
+            // assemble local RHS vector
+
+
+            localRHS = (local_mass_matrix + time_step*local_first_der_matrix - (time_step*time_step*0.5)*local_second_der_matrix)*local_scal_trian;
         }
         else
         {
@@ -761,7 +936,7 @@ void AgridAdvectionSolver::PrintProfiling()
     {
         adv_log.Log("## Profiling info ##\n");
         adv_log.Log("Total RHS assembling time: " + std::to_string(RHS_assembling_time) + " ms\n");
-        adv_log.Log("Total matrix invertion time: " + std::to_string(matrix_invertion_time) + " ms\n");
+        adv_log.Log("Total SLAE solver time: " + std::to_string(matrix_invertion_time) + " ms\n");
         adv_log.Log("Total limiter time: " + std::to_string(limiter_time) + " ms\n");
     }
     RHS_assembling_time = 0.0;

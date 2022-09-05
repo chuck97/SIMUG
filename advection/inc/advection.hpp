@@ -100,9 +100,17 @@ namespace SIMUG
         INMOST::Solver* slae_solver;
         std::vector<double> params;
     
-    // auxilary data for filter
+    // auxilary data for filter and matrix assembling
     private:
         std::vector<std::vector<std::vector<double>>> M_C_minus_M_L;
+
+        using Vec2d = std::vector<std::vector<double>>;
+        using Vec3d = std::vector<std::vector<std::vector<double>>>;
+        using Vec4d = std::vector<std::vector<std::vector<std::vector<double>>>>;
+
+        Vec2d reference_trian_mass_matrix;
+        std::pair<Vec3d, Vec3d> reference_trian_first_deriv_matricies;
+        std::vector<Vec4d> reference_trian_second_deriv_matricies;
 
     // sparse matricies and vectors 
     private:
@@ -111,6 +119,13 @@ namespace SIMUG
 
         INMOST::Sparse::Vector RHS;
         INMOST::Sparse::Vector RHS_low;
+
+    // !! tag for inverse Jacobi matrix and Jacobian and computation function!!
+    // first four numbers: J_inv[0][0], J_inv[0][1], J_inv[1][0], J_inv[1][1]
+    // last number is |det(J)| 
+    private:
+        INMOST::Tag Jacobi_info_tag;
+        void ComputeJacobiInfo(INMOST::Tag jacobi_tag);
 
     // time for profiling
     private:
@@ -175,7 +190,6 @@ namespace SIMUG
     // time for profiling
     private:
         void PrintProfiling() override;
-        double limiter_time = 0.0;
         double flux_computation_time = 0.0;
         double step_computation_time = 0.0;
     };

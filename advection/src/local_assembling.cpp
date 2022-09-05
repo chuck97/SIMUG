@@ -73,10 +73,149 @@ double SIMUG::L_ij_entry(const std::vector<std::vector<double>>& node_coords,
     return (term1 + term2 + term3);
 }
 
+Vec2d SIMUG::LocaReferenceMassMatrixAssembling()
+{
+    std::vector<std::vector<double>> reference_trian_coords = 
+    {
+        {0.0, 0.0},
+        {0.0, 1.0},
+        {1.0, 0.0}
+    };
+
+    std::vector<std::vector<double>> coeffs_reference =
+    {
+        {-1.0, -1.0, 1.0},
+        {0.0, 1.0, 0.0},
+        {1.0, 0.0, 0.0}
+    };
+
+    ScalarFunction phi0(FuncType::linear, coeffs_reference[0], reference_trian_coords);
+    ScalarFunction phi1(FuncType::linear, coeffs_reference[1], reference_trian_coords);
+    ScalarFunction phi2(FuncType::linear, coeffs_reference[2], reference_trian_coords);
+
+    std::vector<ScalarFunction> phi_vec = {phi0, phi1, phi2};
+
+    std::vector<double> v1d = {0.0, 0.0, 0.0};
+
+    std::vector<std::vector<double>> M_matrix = {v1d, v1d, v1d};
+
+    // compute M matrix
+    for (int i = 0; i < 3; ++i)
+    {
+        for (int j = 0; j < 3; ++j)
+        {
+            M_matrix[i][j] = integral_over_triangle(reference_trian_coords, phi_vec[j]*phi_vec[i]);
+        }
+    }
+    return M_matrix;
+}
+
+std::pair<Vec3d, Vec3d> SIMUG::LocaReferenceFirstDerivativesMatrixAssembling()
+{
+    std::vector<std::vector<double>> reference_trian_coords = 
+    {
+        {0.0, 0.0},
+        {0.0, 1.0},
+        {1.0, 0.0}
+    };
+
+    std::vector<std::vector<double>> coeffs_reference =
+    {
+        {-1.0, -1.0, 1.0},
+        {0.0, 1.0, 0.0},
+        {1.0, 0.0, 0.0}
+    };
+
+    ScalarFunction phi0(FuncType::linear, coeffs_reference[0], reference_trian_coords);
+    ScalarFunction phi1(FuncType::linear, coeffs_reference[1], reference_trian_coords);
+    ScalarFunction phi2(FuncType::linear, coeffs_reference[2], reference_trian_coords);
+
+    std::vector<ScalarFunction> phi_vec = {phi0, phi1, phi2};
+
+    std::vector<std::vector<ScalarFunction>> dphi_matr = 
+    {
+        {(d_dx(phi0)), d_dx(phi1), d_dx(phi2)},
+        {d_dy(phi0), d_dy(phi1), d_dy(phi2)}
+    };
+
+    std::vector<double> v1d = {0.0, 0.0, 0.0};
+    std::vector<std::vector<double>> v2d = {v1d, v1d, v1d};
+
+    std::vector<std::vector<std::vector<double>>> DX_matrix = {v2d, v2d, v2d};
+    std::vector<std::vector<std::vector<double>>> DY_matrix = {v2d, v2d, v2d};
+
+    // compute DX, DY matricies
+    for (int i = 0; i < 3; ++i)
+    {
+        for (int j = 0; j < 3; ++j)
+        {
+            for (int k = 0; k < 3; ++k)
+            {
+                DX_matrix[i][j][k] = integral_over_triangle(reference_trian_coords, phi_vec[j]*phi_vec[k]*dphi_matr[0][i]);
+                DY_matrix[i][j][k] = integral_over_triangle(reference_trian_coords, phi_vec[j]*phi_vec[k]*dphi_matr[1][i]);
+            }
+        }
+    }
+    return {DX_matrix, DY_matrix};
+};
+
+std::vector<Vec4d> SIMUG::LocaReferenceSecondDerivativesMatrixAssembling()
+{
+    std::vector<std::vector<double>> reference_trian_coords = 
+    {
+        {0.0, 0.0},
+        {0.0, 1.0},
+        {1.0, 0.0}
+    };
+
+    std::vector<std::vector<double>> coeffs_reference =
+    {
+        {-1.0, -1.0, 1.0},
+        {0.0, 1.0, 0.0},
+        {1.0, 0.0, 0.0}
+    };
+
+    ScalarFunction phi0(FuncType::linear, coeffs_reference[0], reference_trian_coords);
+    ScalarFunction phi1(FuncType::linear, coeffs_reference[1], reference_trian_coords);
+    ScalarFunction phi2(FuncType::linear, coeffs_reference[2], reference_trian_coords);
+
+    std::vector<ScalarFunction> phi_vec = {phi0, phi1, phi2};
+
+    std::vector<double> v1d = {0.0, 0.0, 0.0};
+    std::vector<std::vector<double>> v2d = {v1d, v1d, v1d};
+    Vec3d v3d = {v2d, v2d, v2d};
+    Vec4d v4d = {v3d, v3d, v3d};
+
+    Vec4d XX_matrix = v4d;
+    Vec4d XY_matrix = v4d;
+    Vec4d YX_matrix = v4d;
+    Vec4d YY_matrix = v4d;
+
+    // compute XX, XY, YX, YY matricies
+    for (int i = 0; i < 3; ++i)
+    {
+        for (int j = 0; j < 3; ++j)
+        {
+            for (int k = 0; k < 3; ++k)
+            {
+                for (int l = 0; l < 3; ++l)
+                {
+                    XX_matrix[i][j][k][l] = integral_over_triangle(reference_trian_coords, (d_dx(phi_vec[j])*phi_vec[k] + phi_vec[j]*d_dx(phi_vec[k]))*phi_vec[l]*d_dx(phi_vec[i]));
+                    XY_matrix[i][j][k][l] = integral_over_triangle(reference_trian_coords, (d_dx(phi_vec[j])*phi_vec[k] + phi_vec[j]*d_dx(phi_vec[k]))*phi_vec[l]*d_dy(phi_vec[i]));
+                    YX_matrix[i][j][k][l] = integral_over_triangle(reference_trian_coords, (d_dy(phi_vec[j])*phi_vec[k] + phi_vec[j]*d_dy(phi_vec[k]))*phi_vec[l]*d_dx(phi_vec[i]));
+                    YY_matrix[i][j][k][l] = integral_over_triangle(reference_trian_coords, (d_dy(phi_vec[j])*phi_vec[k] + phi_vec[j]*d_dy(phi_vec[k]))*phi_vec[l]*d_dy(phi_vec[i]));
+                } 
+            }
+        }
+    }
+    return {XX_matrix, XY_matrix, YX_matrix, YY_matrix};
+};
+
+
 std::vector<double> SIMUG::LocalTG2RhsAssembling(const std::vector<std::vector<double>>& node_coords,
-                                                    const std::vector<std::vector<double>>& uvalues,
-                                                    const std::vector<double>& localmass,
-                                                    double time_step)
+                                                 const std::vector<std::vector<double>>& uvalues,
+                                                 const std::vector<double>& localmass,
+                                                 double time_step)
 {
     double u00 =  uvalues[0][0];
     double u01 =  uvalues[0][1];
@@ -179,7 +318,9 @@ std::vector<double> SIMUG::LocalTG2RhsAssembling(const std::vector<std::vector<d
                                           {N10, N11, N12},
                                           {N20, N21, N22}}; 
 
-    std::vector<std::vector<double>> RhsMatrix = M + time_step*K - ((time_step*time_step)/2.0)*N;
+
+
+    std::vector<std::vector<double>> RhsMatrix = M + time_step*K - (time_step*time_step*0.5)*N;
 
     return {RhsMatrix*localmass};
 }
@@ -654,4 +795,110 @@ std::vector<double> SIMUG::LocalTTG4RhsAssembling(const std::vector<std::vector<
     {
         return{M*localmass + time_step*K*localmass_half - (time_step*time_step*gamma)*N*localmass_half};
     }
+}
+
+Vec2d SIMUG::FastLocalMassMatrixAssembling(const Vec2d& mass_tensor,
+                                           const std::vector<double>& Jacobi_info_vec)
+{
+    std::vector<std::vector<double>> Jac_inv = 
+    {
+        {Jacobi_info_vec[0], Jacobi_info_vec[1]},
+        {Jacobi_info_vec[2], Jacobi_info_vec[3]}
+    };
+
+    double Jacobian = Jacobi_info_vec[4];
+
+    auto M_matr = mass_tensor;
+
+    std::vector<double> v1d = {0.0, 0.0, 0.0};
+    std::vector<std::vector<double>> mass_matr = {v1d, v1d, v1d};
+
+    for (int i = 0; i < 3; ++i)
+    {
+        for (int j = 0; j < 3; ++j)
+        {
+            mass_matr[i][j] += M_matr[i][j]*Jacobian;
+        }
+    }
+
+    return mass_matr;
+}
+
+Vec2d SIMUG::FastLocalFirstDerivMatrixAssembling(const std::pair<Vec3d, Vec3d>& first_deriv_tensors,
+                                              const std::vector<double>& u_components,
+                                              const std::vector<double>& v_components,
+                                              const std::vector<double>& Jacobi_info_vec)
+{
+    std::vector<std::vector<double>> Jac_inv = 
+    {
+        {Jacobi_info_vec[0], Jacobi_info_vec[1]},
+        {Jacobi_info_vec[2], Jacobi_info_vec[3]}
+    };
+
+    double Jacobian = Jacobi_info_vec[4];
+
+    std::vector<double> u_comp = u_components;
+    std::vector<double> v_comp = v_components;
+
+    auto Dx = first_deriv_tensors.first;
+    auto Dy = first_deriv_tensors.second;
+
+    std::vector<double> v1d = {0.0, 0.0, 0.0};
+    std::vector<std::vector<double>> first_deriv_matr = {v1d, v1d, v1d};
+
+    for (int i = 0; i < 3; ++i)
+    {
+        for (int j = 0; j < 3; ++j)
+        {
+            for (int k = 0; k < 3; ++k)
+            {
+                first_deriv_matr[i][j] += Dx[i][j][k]*(u_comp[k]*Jac_inv[0][0] + v_comp[k]*Jac_inv[0][1])*Jacobian +
+                                          Dy[i][j][k]*(u_comp[k]*Jac_inv[1][0] + v_comp[k]*Jac_inv[1][1])*Jacobian;
+            }
+        }
+    }
+
+    return first_deriv_matr;
+}
+
+Vec2d SIMUG::FastLocalSecondDerivMatrixAssembling(const std::vector<Vec4d>& second_deriv_tensors,
+                                                  const std::vector<double>& u_components,
+                                                  const std::vector<double>& v_components,
+                                                  const std::vector<double>& Jacobi_info_vec)
+{
+    std::vector<std::vector<double>> Jac_inv = 
+    {
+        {Jacobi_info_vec[0], Jacobi_info_vec[1]},
+        {Jacobi_info_vec[2], Jacobi_info_vec[3]}
+    };
+
+    double Jacobian = Jacobi_info_vec[4];
+
+    std::vector<double> u_comp = u_components;
+    std::vector<double> v_comp = v_components;
+
+    auto DD_matr = second_deriv_tensors;
+
+    std::vector<double> v1d = {0.0, 0.0, 0.0};
+    std::vector<std::vector<double>> second_deriv_matr = {v1d, v1d, v1d};
+
+    for (int i = 0; i < 3; ++i)
+    {
+        for (int j = 0; j < 3; ++j)
+        {
+            for (int k = 0; k < 3; ++k)
+            {
+                for (int l = 0; l < 3; ++l)
+                {
+                    second_deriv_matr[i][j] += DD_matr[0][i][j][k][l]*(u_comp[k]*u_comp[l]*Jac_inv[0][0]*Jac_inv[0][0] + u_comp[k]*v_comp[l]*Jac_inv[0][0]*Jac_inv[0][1] + v_comp[k]*u_comp[l]*Jac_inv[0][1]*Jac_inv[0][0] + v_comp[k]*v_comp[l]*Jac_inv[0][1]*Jac_inv[0][1])*Jacobian + 
+                                               DD_matr[1][i][j][k][l]*(u_comp[k]*u_comp[l]*Jac_inv[0][0]*Jac_inv[1][0] + u_comp[k]*v_comp[l]*Jac_inv[0][0]*Jac_inv[1][1] + v_comp[k]*u_comp[l]*Jac_inv[0][1]*Jac_inv[1][0] + v_comp[k]*v_comp[l]*Jac_inv[0][1]*Jac_inv[1][1])*Jacobian + 
+                                               DD_matr[2][i][j][k][l]*(u_comp[k]*u_comp[l]*Jac_inv[1][0]*Jac_inv[0][0] + u_comp[k]*v_comp[l]*Jac_inv[1][0]*Jac_inv[0][1] + v_comp[k]*u_comp[l]*Jac_inv[1][1]*Jac_inv[0][0] + v_comp[k]*v_comp[l]*Jac_inv[1][1]*Jac_inv[0][1])*Jacobian +
+                                               DD_matr[3][i][j][k][l]*(u_comp[k]*u_comp[l]*Jac_inv[1][0]*Jac_inv[1][0] + u_comp[k]*v_comp[l]*Jac_inv[1][0]*Jac_inv[1][1] + v_comp[k]*u_comp[l]*Jac_inv[1][1]*Jac_inv[1][0] + v_comp[k]*v_comp[l]*Jac_inv[1][1]*Jac_inv[1][1])*Jacobian; 
+                                       
+                }
+            }
+        }
+    } 
+
+    return second_deriv_matr;
 }

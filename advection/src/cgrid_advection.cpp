@@ -135,7 +135,10 @@ CgridAdvectionSolver::CgridAdvectionSolver(SIMUG::IceMesh *mesh_,
     }
     else
     {
-        SIMUG_ERR("unknown type of space scheme for C grid");
+        if (adv_space_scheme != adv::spaceScheme::FVupwind)
+        {
+            SIMUG_ERR("unknown type of space scheme for C grid");
+        }
     }
 
     if (mesh->GetMesh()->GetProcessorRank() == 0)
@@ -746,7 +749,7 @@ void CgridAdvectionSolver::ComputeMUSCLrfactors(adv::advFilter adv_filt, scalar_
                     }
                     else
                     {
-                        trianit->RealArray(r_factor_tags)[ed_num] = 2.0*(edge_grad*bari_diff_vec))/(adj_trian.Real(scal_tag) - trianit->Real(scal_tag)) - 1.0;
+                        trianit->RealArray(r_factor_tags)[ed_num] = 2.0*(edge_grad*bari_diff_vec)/(adj_trian.Real(scal_tag) - trianit->Real(scal_tag)) - 1.0;
                     }
                     trianit->RealArray(trian_sc_diff)[ed_num] = adj_trian.Real(scal_tag) - trianit->Real(scal_tag);
                 }
@@ -807,8 +810,8 @@ void CgridAdvectionSolver::ComputeRHS(INMOST::Tag scalar_tag)
                     double edge_len = adj_edges[ed_num]->Real(mesh->GetGridInfo(mesh::gridElemType::Edge)->GetCartesianSize());
 
                     // compute simple FV upwind rhs for triangle
-                    current_trian_rhs += (normal_edge_velocity_component > 0.0) ? trianit->Real(scalar_tag) * normal_edge_velocity_component * edge_len
-                                                                                : adj_trian->Real(scalar_tag) * normal_edge_velocity_component * edge_len;
+                    current_trian_rhs += 0.5*normal_edge_velocity_component*edge_len*(trianit->Real(scalar_tag) + adj_trian->Real(scalar_tag)) -
+                                         0.5*std::abs(normal_edge_velocity_component)*edge_len*(adj_trian->Real(scalar_tag) - trianit->Real(scalar_tag));
                 }
                 // store the value of computed rhs
                 trianit->Real(triangle_rhs_tag) = current_trian_rhs;
@@ -1016,11 +1019,13 @@ void CgridAdvectionSolver::ComputeRHS(INMOST::Tag scalar_tag)
                     INMOST::Cell calc_trian = (normal_edge_velocity_component > 0.0) ? trianit->getCells()[0] : adj_trian;
 
                     // get the gradient value on calc trian
+                    /*
                     std::vector<double> grad_trian = 
                     {
                         calc_trian.RealArray(gradient_trian_tag)[0],
                         calc_trian.RealArray(gradient_trian_tag)[1]
                     };
+                    */
 
                     // find current edge index in calc trian numeration
                     int edg_index = 0;
@@ -1042,11 +1047,13 @@ void CgridAdvectionSolver::ComputeRHS(INMOST::Tag scalar_tag)
                     }
 
                     // get the distance vector between baricenter to the current edge in calc trian
+                    /*
                     std::vector<double> vec_to_edge = 
                     {
                         calc_trian.RealArray(edge_distance_vector_tags)[edg_index*2 + 0],
                         calc_trian.RealArray(edge_distance_vector_tags)[edg_index*2 + 1]
                     };
+                    */
 
                     double phi = 1.0;
 
@@ -1060,10 +1067,14 @@ void CgridAdvectionSolver::ComputeRHS(INMOST::Tag scalar_tag)
                     } 
 
                     // compute edge scalar value for current edge
-                    double edge_scalar = calc_trian.Real(scalar_tag) + 0.5*phi*(grad_trian*vec_to_edge);
+                    //double edge_scalar = calc_trian.Real(scalar_tag) + 0.5*phi*(grad_trian*vec_to_edge);
 
-                    // compute simple FV upwind rhs for triangle with edge scalar value
-                    current_trian_rhs += edge_scalar*normal_edge_velocity_component*edge_len;
+                    // add simple upwind flux
+                    current_trian_rhs += 0.5*normal_edge_velocity_component*edge_len*(trianit->Real(scalar_tag) + adj_trian->Real(scalar_tag)) -
+                                         0.5*std::abs(normal_edge_velocity_component)*edge_len*(adj_trian->Real(scalar_tag) - trianit->Real(scalar_tag));
+                    
+                    // add antidiffusive flux 
+                    current_trian_rhs += 0.5*phi*normal_edge_velocity_component*edge_len*(adj_trian->Real(scalar_tag) - trianit->Real(scalar_tag));
                 }
                 // store the value of computed rhs
                 trianit->Real(triangle_rhs_tag) = current_trian_rhs;
@@ -1197,9 +1208,7 @@ void CgridAdvectionSolver::PrintProfiling()
         adv_log.Log("## Profiling info ##\n");
         adv_log.Log("Total flux assembling time: " + std::to_string(flux_computation_time) + " ms\n");
         adv_log.Log("Total step computation time: " + std::to_string(step_computation_time) + " ms\n");
-        adv_log.Log("Total limiter time: " + std::to_string(limiter_time) + " ms\n");
     }
-    limiter_time = 0.0;
     flux_computation_time = 0.0;
     step_computation_time = 0.0;
     BARRIER
