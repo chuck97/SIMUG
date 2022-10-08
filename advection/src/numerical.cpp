@@ -1,7 +1,5 @@
 #include "numerical.hpp"
 
-using namespace SIMUG;
-
 std::vector<double> SIMUG::FromBariToOrdinary(const std::vector<std::vector<double>>& trnodes,
                                        const std::vector<double>& bcoords)
 {

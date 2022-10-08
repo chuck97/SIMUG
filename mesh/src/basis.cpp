@@ -2,7 +2,9 @@
 
 using namespace std;
 using namespace INMOST;
-using namespace SIMUG;
+
+namespace SIMUG
+{
 
 void IceMesh::AssembleGeoElementBasis()
 {
@@ -1068,4 +1070,6 @@ void IceMesh::AssembleBasisData()
     ComputeNodeCoordsInTrianBasis();
     ComputeIfXedgeBasisIsNormalToTrian();
     ComputeElementsCartesianSize();
+}
+
 }

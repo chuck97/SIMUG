@@ -1,6 +1,7 @@
 #include "timer.hpp"
 
-using namespace SIMUG;
+namespace SIMUG
+{
 
 Timer::Timer()
 {
@@ -99,3 +100,5 @@ double Timer::GetAvgTime() const
     return GetTime();
 #endif
 };
+
+}

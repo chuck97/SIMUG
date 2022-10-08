@@ -115,10 +115,10 @@ int main(int argc, char* argv[])
     }
 
     // mesh initialization
-    IceMesh mesh_sphere(SPHERE_PATH, mesh::surfType::sphere, mesh::gridType::Agrid); 
+    IceMesh* mesh_sphere = new IceMesh(SPHERE_PATH, mesh::surfType::sphere, mesh::gridType::Agrid); 
  
     // forcing initialization
-    Forcing test_forcing(&mesh_sphere);
+    Forcing test_forcing(mesh_sphere);
 
     // assign initial scalar and velocity field 
     test_forcing.SetAnalytical(mesh::meshVar::mi, 0, init_mass_gaussian);
@@ -127,22 +127,22 @@ int main(int argc, char* argv[])
     test_forcing.Update(mesh::meshVar::ui, coord::coordType::geo, 0.0);
 
     // get mass and velocity tag
-    INMOST::Tag mass_tag = mesh_sphere.GetDataMulti(mesh::gridElemType::Node, 0)->Get(mesh::meshVar::mi);
-    INMOST::Tag vel_tag = mesh_sphere.GetDataSingle(mesh::gridElemType::Node)->Get(mesh::meshVar::ui);
+    INMOST::Tag mass_tag = mesh_sphere->GetDataMulti(mesh::gridElemType::Node, 0)->Get(mesh::meshVar::mi);
+    INMOST::Tag vel_tag = mesh_sphere->GetDataSingle(mesh::gridElemType::Node)->Get(mesh::meshVar::ui);
 
     // initialize SLAE solver
-    INMOST::Solver slae_solver("inner_ilu2"); 
-    slae_solver.SetParameter("absolute_tolerance", "1e-9");
+    INMOST::Solver* slae_solver = new INMOST::Solver("inner_ilu2"); 
+    slae_solver->SetParameter("absolute_tolerance", "1e-9");
 
     // initialize advection solver
-    AgridAdvectionSolver advection(&mesh_sphere,
+    AgridAdvectionSolver advection(mesh_sphere,
                                    1.0, 
                                    vel_tag,
-                                   &slae_solver,
+                                   slae_solver,
                                    adv::timeScheme::TTG4,
                                    adv::spaceScheme::CFE,
-                                   adv::advFilter::none,
-                                   {});
+                                   adv::advFilter::Zalesak,
+                                   {0.5});
     
     // add mass scalar for advection
     advection.AddScalar(mass_tag);
@@ -160,7 +160,7 @@ int main(int argc, char* argv[])
     size_t n_steps = (size_t)(FINAL_TIME/time_step);
 
     // log Courant number, time step and number of steps
-    if (mesh_sphere.GetMesh()->GetProcessorRank() == 0)
+    if (mesh_sphere->GetMesh()->GetProcessorRank() == 0)
     {
         logger.Log("Courant number: " + std::to_string(check_courant) +"\n");
         logger.Log("Time step: " + std::to_string(time_step) + " s\n");
@@ -169,7 +169,7 @@ int main(int argc, char* argv[])
     BARRIER
 
     // write initial state to file
-    mesh_sphere.SaveVTU("AgridAdvectionSphere", 0);
+    mesh_sphere->SaveVTU("AgridAdvectionSphere", 0);
 
     // time stepping
     double current_time = 0.0;
@@ -188,12 +188,16 @@ int main(int argc, char* argv[])
         // write output to file
         if (stepnum % 10 == 0)
         {
-            if (mesh_sphere.GetMesh()->GetProcessorRank() == 0)
+            if (mesh_sphere->GetMesh()->GetProcessorRank() == 0)
                 logger.Log("Step: " + std::to_string(stepnum) +"\n");
                 
-            mesh_sphere.SaveVTU("AgridAdvectionSphere", stepnum);
+            mesh_sphere->SaveVTU("AgridAdvectionSphere", stepnum);
         }
         BARRIER
     }
+
+    delete slae_solver;
+    delete mesh_sphere;
+    
 	return 0;
 }

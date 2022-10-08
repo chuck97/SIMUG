@@ -1,4 +1,5 @@
 #pragma once
+
 #include "defines.hpp"
 #include "function.hpp"
 #include "vecmath.hpp"

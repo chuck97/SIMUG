@@ -1,7 +1,9 @@
 #include "forcing.hpp"
 
 using namespace INMOST;
-using namespace SIMUG;
+
+namespace SIMUG
+{
 
 void Forcing::SetAnalytical(mesh::meshVar mesh_var,
                             int layer,
@@ -318,4 +320,5 @@ void Forcing::Update(const std::string& varname,
     // update prognostic value 
     UpdateVariable(var_tag, elem_type, coord_type, expr_ptr.value(), time);
     BARRIER
+}
 }

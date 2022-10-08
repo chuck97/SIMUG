@@ -10,20 +10,23 @@ include_directories(${INMOST_INCLUDE_DIRS})
 add_definitions(${INMOST_DEFINITIONS})
 
 # Make library from sources
-add_library(advection STATIC 
+add_library(
+  advection STATIC 
   src/function.cpp
   src/numerical.cpp
   src/local_assembling.cpp
   src/advection.cpp
+  src/fct_zalesak.cpp
   src/agrid_advection.cpp
   src/cgrid_advection.cpp
-  )
+)
 
 # link with external libraries
-target_link_libraries(advection PUBLIC ${INMOST_LIBRARIES})
+target_link_libraries(advection PRIVATE ${INMOST_LIBRARIES})
 
 # link with internal libraries
-target_link_libraries(advection PRIVATE 
+target_link_libraries(
+  advection PRIVATE 
   sub::variables
   sub::tools
   sub::mesh

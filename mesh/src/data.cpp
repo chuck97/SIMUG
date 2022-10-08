@@ -1,8 +1,10 @@
 #include "data.hpp"
 
-using namespace SIMUG;
 using namespace INMOST;
 using namespace std;
+
+namespace SIMUG
+{
 
 // Create prognostic grid data (scalar, vector or tensor)
 void GridData::GridCreateData(const mesh::meshVar& pNot, const mesh::meshDim& pDim,
@@ -89,3 +91,5 @@ void GridData::GridCreateData(const std::string& tVar, const int& vSize,
     temp_data_size[tVar] = vSize;
     temp_data[tVar].first = tag;
 };
+
+}

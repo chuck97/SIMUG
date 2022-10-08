@@ -4,6 +4,7 @@
 #include <cmath>
 #include <iostream>
 #include "defines.hpp"
+#include "inmost.h"
 
 #ifdef USE_MPI
 #include "mpi.h"
@@ -365,4 +366,16 @@ namespace SIMUG
         
         return (inv(lhs)*rhs);
     }
+
+    // the sum of two sparse INMOST vectors
+    void vec_plus_vec_sparse(const INMOST::Sparse::Vector& v1, const INMOST::Sparse::Vector& v2, INMOST::Sparse::Vector& res, unsigned int idmin, unsigned int idmax);
+
+    // the difference of two sparse INMOST vectors
+    void vec_minus_vec_sparse(const INMOST::Sparse::Vector& v1, const INMOST::Sparse::Vector& v2, INMOST::Sparse::Vector& res, unsigned int idmin, unsigned int idmax);
+
+    // vector number multiplication for sparse INMOST vectors
+    void vec_mult_num_sparse(INMOST::Sparse::Vector& b, double scale, unsigned int idmin, unsigned int idmax);
+
+    // matrix vector multiplication for sparse INMOST matrix and sparse INMOST vector
+    void mat_mult_vec_sparse(INMOST::Sparse::Matrix& M, INMOST::Sparse::Vector& b, INMOST::Sparse::Vector& res);
 }

@@ -1,6 +1,7 @@
 #include "mesh.hpp"
 
-using namespace SIMUG;
+namespace SIMUG
+{
 
 void NodeInfo::Mute()
 {
@@ -140,6 +141,4 @@ void TrianInfo::UnMute()
     BARRIER
 }
 
-
-
-
+}

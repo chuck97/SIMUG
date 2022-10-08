@@ -2,7 +2,10 @@
 
 using namespace std;
 using namespace INMOST;
-using namespace SIMUG;
+
+
+namespace SIMUG
+{
 
 IceMesh::IceMesh(const std::string& path_to_file_,
                  const std::string& output_folder_,
@@ -1450,4 +1453,6 @@ std::vector<double> IceMesh::VecTransitionToGeoBasis(const std::vector<double>& 
                                                    {trian.RealArray(matr_to_trian)[2], trian.RealArray(matr_to_trian)[3]}
                                                   };
     return trans_matr*vec_coords;
+}
+
 }

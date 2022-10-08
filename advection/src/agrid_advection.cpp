@@ -1,7 +1,9 @@
 #include "advection.hpp"
 
 using namespace INMOST;
-using namespace SIMUG;
+
+namespace SIMUG
+{
 
 AgridAdvectionSolver::AgridAdvectionSolver(SIMUG::IceMesh* mesh_,
                                            double time_step_,
@@ -379,86 +381,6 @@ void AgridAdvectionSolver::AssembleLHS()
 
 void AgridAdvectionSolver::AssembleSingleStepRHS(velocity_tag vel_tag, scalar_tag scal_tag)
 {
-/*    
-    // node id tag
-    INMOST::Tag node_id_tag = mesh->GetGridInfo(mesh::gridElemType::Node)->id;
-
-
-    // tag for node coords in local trian basis
-    std::vector<INMOST::Tag> node_coords_in_trian_basis_tags = mesh->GetGridInfo(mesh::gridElemType::Trian)->GetNodeCoordsInTrianBasis();
-
-    for(auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit) 
-    {
-        // get nodes of current trian
-        ElementArray<INMOST::Node> adj_nodes = trianit->getNodes();
-
-        // get node coords of trian (in trian basis)
-        std::vector<std::vector<double>> local_node_coords = 
-        {
-            {trianit->RealArray(node_coords_in_trian_basis_tags[0])[0], trianit->RealArray(node_coords_in_trian_basis_tags[0])[1]},
-            {trianit->RealArray(node_coords_in_trian_basis_tags[1])[0], trianit->RealArray(node_coords_in_trian_basis_tags[1])[1]},
-            {trianit->RealArray(node_coords_in_trian_basis_tags[2])[0], trianit->RealArray(node_coords_in_trian_basis_tags[2])[1]}
-        };
-
-        // get velocity values of trian
-        std::vector<std::vector<double>> local_vel_geo = 
-        {
-            {adj_nodes[0].RealArray(vel_tag)[0], adj_nodes[0].RealArray(vel_tag)[1]},
-            {adj_nodes[1].RealArray(vel_tag)[0], adj_nodes[1].RealArray(vel_tag)[1]},
-            {adj_nodes[2].RealArray(vel_tag)[0], adj_nodes[2].RealArray(vel_tag)[1]}
-        };
-
-        // move velocity components to nodal basis
-        std::vector<std::vector<double>> local_vel_nodal = 
-        {
-            mesh->VecTransitionToElemBasis({local_vel_geo[0][0], local_vel_geo[0][1]}, adj_nodes[0]),
-            mesh->VecTransitionToElemBasis({local_vel_geo[1][0], local_vel_geo[1][1]}, adj_nodes[1]),
-            mesh->VecTransitionToElemBasis({local_vel_geo[2][0], local_vel_geo[2][1]}, adj_nodes[2])
-        };
-
-        // move velocity components to trian basis
-        std::vector<std::vector<double>> local_vel_trian = 
-        {
-            mesh->VecTransition({local_vel_nodal[0][0], local_vel_nodal[0][1]}, adj_nodes[0], trianit->getCells()[0]),
-            mesh->VecTransition({local_vel_nodal[1][0], local_vel_nodal[1][1]}, adj_nodes[1], trianit->getCells()[0]),
-            mesh->VecTransition({local_vel_nodal[2][0], local_vel_nodal[2][1]}, adj_nodes[2], trianit->getCells()[0])
-        };
-
-        // get scalar values of trian
-        std::vector<double> local_scal_trian = 
-        {
-            adj_nodes[0].Real(scal_tag),
-            adj_nodes[1].Real(scal_tag),
-            adj_nodes[2].Real(scal_tag)
-        };
-
-        // assemble local RHS vector of size 3
-        std::vector<double> localRHS;
-
-        if (adv_time_scheme == adv::timeScheme::TG2)
-        {
-            localRHS = LocalTG2RhsAssembling(local_node_coords,
-                                             local_vel_trian,
-                                             local_scal_trian,
-                                             time_step);
-        }
-        else
-        {
-            SIMUG_ERR("Only avalible single step solvers: TG2");
-        }
-
-        // assemble global RHS vector
-        for (int i = 0; i < 3; ++i)
-        {
-            if(adj_nodes[i].GetStatus() != Element::Ghost)
-            {
-                RHS[adj_nodes[i].Integer(node_id_tag)] += localRHS[i];
-            }
-        }
-    }   
-    BARRIER
-*/
-
     // node id tag
     INMOST::Tag node_id_tag = mesh->GetGridInfo(mesh::gridElemType::Node)->id;
 
@@ -568,136 +490,6 @@ void AgridAdvectionSolver::AssembleSingleStepRHS(velocity_tag vel_tag, scalar_ta
 
 void AgridAdvectionSolver::AssembleDoubleStepRHS(velocity_tag vel_tag, scalar_tag scal_tag, scalar_tag scal_half_tag,  StepNumber step_num)
 {
-    /*
-    // node id tag
-    INMOST::Tag node_id = mesh->GetGridInfo(mesh::gridElemType::Node)->id;
-
-    // tag for node coords in local trian basis
-    std::vector<INMOST::Tag> node_coords_in_trian_basis_tags = mesh->GetGridInfo(mesh::gridElemType::Trian)->GetNodeCoordsInTrianBasis();
-
-    for(auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit) 
-    {
-         // get nodes of current trian
-        ElementArray<INMOST::Node> adj_nodes = trianit->getNodes();
-
-        // get node coords of trian (in trian basis)
-        std::vector<std::vector<double>> local_node_coords = 
-        {
-            {trianit->RealArray(node_coords_in_trian_basis_tags[0])[0], trianit->RealArray(node_coords_in_trian_basis_tags[0])[1]},
-            {trianit->RealArray(node_coords_in_trian_basis_tags[1])[0], trianit->RealArray(node_coords_in_trian_basis_tags[1])[1]},
-            {trianit->RealArray(node_coords_in_trian_basis_tags[2])[0], trianit->RealArray(node_coords_in_trian_basis_tags[2])[1]}
-        };
-
-
-        // get velocity values of trian
-        std::vector<std::vector<double>> local_vel_geo = 
-        {
-            {adj_nodes[0].RealArray(vel_tag)[0], adj_nodes[0].RealArray(vel_tag)[1]},
-            {adj_nodes[1].RealArray(vel_tag)[0], adj_nodes[1].RealArray(vel_tag)[1]},
-            {adj_nodes[2].RealArray(vel_tag)[0], adj_nodes[2].RealArray(vel_tag)[1]}
-        };
-
-        // move velocity components to nodal basis
-        std::vector<std::vector<double>> local_vel_nodal = 
-        {
-            mesh->VecTransitionToElemBasis({local_vel_geo[0][0], local_vel_geo[0][1]}, adj_nodes[0]),
-            mesh->VecTransitionToElemBasis({local_vel_geo[1][0], local_vel_geo[1][1]}, adj_nodes[1]),
-            mesh->VecTransitionToElemBasis({local_vel_geo[2][0], local_vel_geo[2][1]}, adj_nodes[2])
-        };
-
-        // move velocity components to trian basis
-        std::vector<std::vector<double>> local_vel_trian = 
-        {
-            mesh->VecTransition({local_vel_nodal[0][0], local_vel_nodal[0][1]}, adj_nodes[0], trianit->getCells()[0]),
-            mesh->VecTransition({local_vel_nodal[1][0], local_vel_nodal[1][1]}, adj_nodes[1], trianit->getCells()[0]),
-            mesh->VecTransition({local_vel_nodal[2][0], local_vel_nodal[2][1]}, adj_nodes[2], trianit->getCells()[0])
-        };
-
-        // get scalar values of trian
-        std::vector<double> local_scal_trian = 
-        {
-            adj_nodes[0].Real(scal_tag),
-            adj_nodes[1].Real(scal_tag),
-            adj_nodes[2].Real(scal_tag)
-        };
-
-        // get scalar value of trian from previous step
-        std::vector<double> local_scal_half_trian;
-        if (step_num == StepNumber::second)
-        {
-            local_scal_half_trian = 
-            {
-                adj_nodes[0].Real(scal_half_tag),
-                adj_nodes[1].Real(scal_half_tag),
-                adj_nodes[2].Real(scal_half_tag)
-            };
-        }
-        
-        // assemble local load vector of size 3
-        std::vector<double> localRHS;
-        if (adv_time_scheme == adv::timeScheme::TTG2)
-        {
-            
-            localRHS = (step_num == StepNumber::first) ? LocalTTG2RhsAssembling(local_node_coords,
-                                                                                local_vel_trian,
-                                                                                local_scal_trian,
-                                                                                local_scal_trian,
-                                                                                time_step,
-                                                                                1)
-                                                       : LocalTTG2RhsAssembling(local_node_coords,
-                                                                                local_vel_trian,
-                                                                                local_scal_trian,
-                                                                                local_scal_half_trian,
-                                                                                time_step,
-                                                                                1);
-        }
-        else if (adv_time_scheme == adv::timeScheme::TTG3)
-        {
-            localRHS = (step_num == StepNumber::first) ? LocalTTG3RhsAssembling(local_node_coords,
-                                                                                local_vel_trian,
-                                                                                local_scal_trian,
-                                                                                local_scal_trian,
-                                                                                time_step,
-                                                                                1)
-                                                       : LocalTTG3RhsAssembling(local_node_coords,
-                                                                                local_vel_trian,
-                                                                                local_scal_trian,
-                                                                                local_scal_half_trian,
-                                                                                time_step,
-                                                                                1);
-        }
-        else if (adv_time_scheme == adv::timeScheme::TTG4)
-        {
-            localRHS = (step_num == StepNumber::first) ? LocalTTG4RhsAssembling(local_node_coords,
-                                                                                local_vel_trian,
-                                                                                local_scal_trian,
-                                                                                local_scal_trian,
-                                                                                time_step,
-                                                                                1)
-                                                       : LocalTTG4RhsAssembling(local_node_coords,
-                                                                                local_vel_trian,
-                                                                                local_scal_trian,
-                                                                                local_scal_half_trian,
-                                                                                time_step,
-                                                                                1);
-        }
-        else
-        {
-            SIMUG_ERR("Only avalible double step solvers: TTG2, TTG3, TTG4");
-        }
-            
-        // assemble global RHS vector
-        for (int i = 0; i < 3; ++i)
-        {
-            if(adj_nodes[i].GetStatus() != Element::Ghost)
-            {
-                RHS[adj_nodes[i].Integer(node_id)] += localRHS[i];
-            }
-        }
-    }
-    BARRIER
-    */
-
     // node id tag
     INMOST::Tag node_id_tag = mesh->GetGridInfo(mesh::gridElemType::Node)->id;
 
@@ -967,109 +759,109 @@ void AgridAdvectionSolver::Evaluate(velocity_tag vel_tag, scalar_tag scal_tag)
         mesh->GetDataSingle(mesh::gridElemType::Node)->Exchange("scal_high_tag");
     }
 
-    // Reset SOL and RHS vector
+    // Reset SOL vector
     SOL.Clear();
-    RHS.Clear();
     SOL.SetInterval(idmin, idmax);
-    RHS.SetInterval(idmin, idmax);
     BARRIER
 
-    /*
-    // Calculate low order solution if FCT is used
+    // #### FCT Zalesak filter! ####
+    adv_timer.Launch();
     if (adv_filter == adv::advFilter::Zalesak)
     {
-        // make old MASS vector and tmp vectors
-        Sparse::Vector MASS, tmp_vec_1, tmp_vec_2, tmp_vec_3;
-        MASS.SetInterval(idmin, idmax);
+        // prepare RHS_low sparse vector
+        RHS_low.SetInterval(idmin, idmax);
+
+        // create invisible tag for low-order solution
+        INMOST::Tag scal_low_tag = mesh->GetMesh()->CreateTag("scal_low_tag", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 1);
+        mesh->GetMesh()->SetFileOption("Tag:scal_low_tag", "nosave");
+
+        // make old scalar vector and tmp vectors
+        Sparse::Vector SCAL, tmp_vec_1, tmp_vec_2, tmp_vec_3;
+        SCAL.SetInterval(idmin, idmax);
         tmp_vec_1.SetInterval(idmin, idmax);
         tmp_vec_2.SetInterval(idmin, idmax);
         tmp_vec_3.SetInterval(idmin, idmax);
 
         // fill mass vector
-        for( auto nodeit = mesh->GetMesh()->BeginNode(); nodeit != mesh->GetMesh()->EndNode(); ++nodeit)
+        for(auto nodeit = mesh->GetMesh()->BeginNode();
+                 nodeit != mesh->GetMesh()->EndNode();
+                 ++nodeit)
         {
             if(nodeit->GetStatus() != Element::Ghost)
             {
-                MASS[nodeit->Integer(id)] = nodeit->Real(m_tag);
+                SCAL[nodeit->Integer(node_id_tag)] = nodeit->Real(scal_tag);
             }
         }
-        BARRIER
-        mat_mult_vec(LHS, MASS, tmp_vec_1);
-        BARRIER
-        mat_mult_vec(LHS_low, MASS, tmp_vec_2);
-        BARRIER
-        vec_mult_num(tmp_vec_1, (params.fct_cd - 1.0), idmin, idmax);
-        BARRIER
-        vec_mult_num(tmp_vec_2, (1.0 - params.fct_cd), idmin, idmax);
-        BARRIER
-        vec_plus_vec(tmp_vec_1, tmp_vec_2, tmp_vec_3, idmin, idmax);
-        BARRIER
-        vec_plus_vec(tmp_vec_3, RHS, RHS_low, idmin, idmax);
-        BARRIER
 
+        BARRIER
+        mat_mult_vec_sparse(LHS, SCAL, tmp_vec_1);
+        BARRIER
+        mat_mult_vec_sparse(LHS_low, SCAL, tmp_vec_2);
+        BARRIER
+        vec_mult_num_sparse(tmp_vec_1, (params[0] - 1.0), (unsigned int)idmin, (unsigned int)idmax);
+        BARRIER
+        vec_mult_num_sparse(tmp_vec_2, (1.0 - params[0]), (unsigned int)idmin, (unsigned int)idmax);
+        BARRIER
+        vec_plus_vec_sparse(tmp_vec_1, tmp_vec_2, tmp_vec_3, (unsigned int)idmin, (unsigned int)idmax);
+        BARRIER
+        vec_plus_vec_sparse(tmp_vec_3, RHS, RHS_low, (unsigned int)idmin, (unsigned int)idmax);
+        BARRIER
 
         // solve low order system 
-        Sol.SetMatrix(LHS_low);
-        Sol.Solve(RHS_low, SOL);
-
-        // update m_low value
-        for( Mesh::iteratorNode nodeit = n.GetMesh()->BeginNode();
-             nodeit != n.GetMesh()->EndNode();
-             ++nodeit)
+        for(auto nodeit = mesh->GetMesh()->BeginNode();
+                 nodeit != mesh->GetMesh()->EndNode();
+                 ++nodeit)
         {
             if(nodeit->GetStatus() != Element::Ghost)
             {
-                nodeit->Real(m_low_tag) = SOL[nodeit->Integer(id)];
+                nodeit->Real(scal_low_tag) = RHS_low[nodeit->Integer(node_id_tag)]/
+                                             LHS_low[nodeit->Integer(node_id_tag)][nodeit->Integer(node_id_tag)];
             }
         }
         BARRIER
-        n.GetMesh()->ExchangeData(m_low_tag, NODE, 0);
-
-        // clear RHS_low vector
-        RHS_low.Clear();
-        RHS_low.SetInterval(idmin, idmax); 
     }
-    
+    mesh->GetMesh()->ExchangeData(scal_low_tag, NODE, 0);
 
-    // clear RHS and SOL vector
-    SOL.Clear();
-    RHS.Clear();
-    */
+    // clear RHS_low vector
+    RHS_low.Clear();
+    RHS_low.SetInterval(idmin, idmax); 
 
-    /*
-    // apply FCT (if used) and update m finally
-    if (params.is_fct)
+    // apply Zalesak-FCT (if used) and update scalar finally
+    if (adv_filter == adv::advFilter::Zalesak)
     {
-        FCT_Procedure(n, M_C_minus_M_L, m_tag, m_low_tag, m_high_tag, params.fct_cd);
-    }
-    else
-    {
-       for( Mesh::iteratorNode nodeit = n.GetMesh()->BeginNode();
-             nodeit != n.GetMesh()->EndNode();
-             ++nodeit)
-        {
-            if(nodeit->GetStatus() != Element::Ghost)
-            {
-                nodeit->Real(m_tag) = nodeit->Real(m_high_tag);
-            }
-        }
-        n.GetMesh()->ExchangeData(m_tag, NODE, 0); 
+        FCT_Procedure(mesh->GetMesh(),
+                      M_C_minus_M_L,
+                      scal_tag,
+                      scal_low_tag,
+                      scal_high_tag,
+                      mesh->GetGridInfo(mesh::gridElemType::Node)->id,
+                      params[0]);
     }
     BARRIER
 
+    // stop the timer and save limiter duration
+    adv_timer.Stop();
+    duration = adv_timer.GetMaxTime();
+    adv_timer.Reset();
+    limiter_time += duration;
+
     
-    // clear RHS and SOL vector
+    // clear RHS, RHS_low and SOL vector
     SOL.Clear();
     RHS.Clear();
+    RHS_low.Clear();
     SOL.SetInterval(idmin, idmax);
     RHS.SetInterval(idmin, idmax);
+    RHS_low.SetInterval(idmin, idmax);
 
-*/
-    // update scalar value
-    for(auto nodeit = mesh->GetMesh()->BeginNode(); nodeit != mesh->GetMesh()->EndNode(); ++nodeit)
+    // update scalar value for scheme without filters
+    if (adv_filter == adv::advFilter::none)
     {
-        if(nodeit->GetStatus() != Element::Ghost)
-            nodeit->Real(scal_tag) = nodeit->Real(scal_high_tag);
+        for(auto nodeit = mesh->GetMesh()->BeginNode(); nodeit != mesh->GetMesh()->EndNode(); ++nodeit)
+        {
+            if(nodeit->GetStatus() != Element::Ghost)
+                nodeit->Real(scal_tag) = nodeit->Real(scal_high_tag);
+        }
     }
     BARRIER
 
@@ -1078,11 +870,16 @@ void AgridAdvectionSolver::Evaluate(velocity_tag vel_tag, scalar_tag scal_tag)
 
     // clear all temporal tags
     mesh->GetDataSingle(mesh::gridElemType::Node)->Delete("scal_high_tag");
+
     if (adv_filter == adv::advFilter::Zalesak)
+    {
         mesh->GetDataSingle(mesh::gridElemType::Node)->Delete("scal_low_tag");
+    }
 
     if (!adv::is_single_step.at(adv_time_scheme))
+    {
          mesh->GetDataSingle(mesh::gridElemType::Node)->Delete("scal_half_tag");
+    }
     BARRIER
 }
 
@@ -1101,4 +898,6 @@ void AgridAdvectionSolver::PrintProfiling()
     limiter_time = 0.0;
     matrix_invertion_time = 0.0;
     BARRIER
+}
+
 }

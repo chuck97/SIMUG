@@ -1,7 +1,9 @@
 #include "advection.hpp"
 
 using namespace INMOST;
-using namespace SIMUG;
+
+namespace SIMUG
+{
 
 CgridAdvectionSolver::CgridAdvectionSolver(SIMUG::IceMesh *mesh_,
                                            double time_step_,
@@ -1212,4 +1214,6 @@ void CgridAdvectionSolver::PrintProfiling()
     flux_computation_time = 0.0;
     step_computation_time = 0.0;
     BARRIER
+}
+
 }

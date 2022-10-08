@@ -2,7 +2,9 @@
 
 using namespace std;
 using namespace INMOST;
-using namespace SIMUG;
+
+namespace SIMUG
+{
 
 AdvectionSolver::AdvectionSolver(SIMUG::IceMesh* mesh_,
                                  double time_step_,
@@ -54,3 +56,5 @@ void AdvectionSolver::TransportScalars()
     PrintProfiling();
     BARRIER
 };
+
+}

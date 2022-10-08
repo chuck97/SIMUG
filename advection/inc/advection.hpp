@@ -4,6 +4,8 @@
 #include "advvar.hpp"
 #include "vecmath.hpp"
 #include "local_assembling.hpp"
+#include "tools.hpp"
+#include "fct_zalesak.hpp"
 
 namespace SIMUG
 {
