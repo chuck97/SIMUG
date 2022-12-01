@@ -73,6 +73,7 @@ add_subdirectory(tools)
 add_subdirectory(mesh)
 add_subdirectory(forcing)
 add_subdirectory(advection)
+add_subdirectory(momentum)
 #add_subdirectory(configuration)
 
 
