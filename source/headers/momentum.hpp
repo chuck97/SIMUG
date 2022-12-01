@@ -47,7 +47,7 @@ namespace SIMUG
         SIMUG::dyn::scheme mom_time_scheme;
         SIMUG::dyn::press press_param;
         SIMUG::dyn::bc bc_type;
-    }
+    };
 
     class AgridMomentumSolver: public MomentumSolver
     {
@@ -68,5 +68,5 @@ namespace SIMUG
     // auxilary parameters
     private:
         // to do
-    }
+    };
 }

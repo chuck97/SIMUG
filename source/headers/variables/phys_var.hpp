@@ -23,14 +23,14 @@ namespace SIMUG::phys
     };
 
     // model variable list
-    constexpr static std::initializer_list<var> vars = 
+    constexpr static std::initializer_list<physVar> vars = 
     {
         g, rhow, rhoa, rhoi, Cw, Ca, C, pstr, e, delmin, f, Reth 
     };
 
 
     // variable notation -> variable name
-    static std::map<var, std::string> name =
+    static std::map<physVar, std::string> name =
     {
         {g,      "gravity acceleration"       },
         {rhow,   "water density"              },

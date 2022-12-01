@@ -15,20 +15,11 @@ add_executable(${PROJECT_NAME}
 
 # link with internal libraries
 target_link_libraries(${PROJECT_NAME}
-    sub::variables
-#    sub::configuration
-    sub::mesh
-    sub::tools
-    sub::forcing
+    simug
 )
 
 # link with external libraries
 target_link_libraries(${PROJECT_NAME} ${INMOST_LIBRARIES})
-
-# include headers
-target_include_directories(${PROJECT_NAME}
-    PRIVATE ${PROJECT_SOURCE_DIR}/inc
-)
 
 # to run tests
 add_test(${PROJECT_NAME} ${PROJECT_NAME})

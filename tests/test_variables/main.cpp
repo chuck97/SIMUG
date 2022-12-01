@@ -1,7 +1,6 @@
 #include <iostream>
 
-#include "defines.hpp"
-#include "variable.hpp"
+#include "simug.hpp"
 
 
 using namespace std;

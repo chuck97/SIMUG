@@ -1,11 +1,4 @@
-#include "defines.hpp"
-#include "inmost.h"
-#include "model_var.hpp"
-#include "mesh_info.hpp"
-#include "data.hpp"
-#include "mesh.hpp"
-#include "forcing.hpp"
-#include "advection.hpp"
+#include "simug.hpp"
 
 #include<sstream>
 #include<iomanip>

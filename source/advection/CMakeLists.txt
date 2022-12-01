@@ -1,0 +1,11 @@
+set(SOURCE
+    ${SOURCE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/advection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/agrid_advection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/cgrid_advection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fct_zalesak.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/function.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/local_assembling.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/numerical.cpp
+    PARENT_SCOPE
+    )

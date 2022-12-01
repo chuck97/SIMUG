@@ -1,0 +1,22 @@
+add_subdirectory(variables)
+
+set(HEADER 
+    ${HEADER}
+    ${CMAKE_CURRENT_SOURCE_DIR}/advection.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/data.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fct_zalesak.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/forcing.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/function.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/gridvars.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/local_assembling.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/logger.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/mesh.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/momentum.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/numerical.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/stringtrim.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/timer.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tools.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/vecmath.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/simug.hpp
+    PARENT_SCOPE
+    )

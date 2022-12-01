@@ -1,12 +1,5 @@
 #include <iostream>
-#include "defines.hpp"
-#include "allvars.hpp"
-#include "model_config.hpp"
-#include "phys_config.hpp"
-#include "mesh_config.hpp"
-#include "adv_config.hpp"
-#include "dyn_config.hpp"
-#include "forc_config.hpp"
+#include "simug.hpp"
 
 
 const std::string test_filename = "/data90t/geosci/spetrov/SIMUG/Configs/test_config.json";

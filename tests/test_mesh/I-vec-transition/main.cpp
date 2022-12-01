@@ -1,11 +1,5 @@
-#include "defines.hpp"
+#include "simug.hpp"
 #include "inmost.h"
-#include "model_var.hpp"
-#include "mesh_info.hpp"
-#include "data.hpp"
-#include "mesh.hpp"
-#include "vecmath.hpp"
-#include "forcing.hpp"
 
 #ifdef USE_MPI
 #include "mpi.h"

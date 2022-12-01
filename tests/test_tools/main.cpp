@@ -3,8 +3,7 @@
 #include <variant>
 #include <unistd.h>
 
-#include "defines.hpp"
-#include "tools.hpp"
+#include "simug.hpp"
 
 #if defined(USE_MPI)
 #include "mpi.h"

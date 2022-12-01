@@ -15,11 +15,7 @@ add_executable(${PROJECT_NAME}
 
 # link with internal libraries
 target_link_libraries(${PROJECT_NAME}
-    sub::variables
-    sub::mesh
-    sub::tools
-    sub::forcing
-    sub::advection
+    simug
 )
 
 # link with external libraries

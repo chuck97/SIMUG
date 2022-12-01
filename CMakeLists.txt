@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.17.0)
 
-project(SIMUG_v1)
+project(SIMUG)
 
 # C/C++ compilers
 enable_language (CXX C)
@@ -17,6 +17,7 @@ endif()
 
 # options
 option(USE_MPI "Compile with MPI support" OFF)
+option(USE_OMP "Compile with OpenMP support" OFF)
 option(USE_PARTITIONER "Compile with partitioner" OFF)
 option(USE_SOLVER "Compile with solver" ON)
 option(USE_FP64 "Use 64-bit floating-point types (usually on)" ON)
@@ -30,8 +31,13 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
 endif()
 
 if (USE_MPI)
-  MESSAGE(STATUS "MPI enabled")
+  MESSAGE(STATUS "MPI ENABLED")
   add_definitions(-DUSE_MPI)
+endif()
+
+if (USE_OMP)
+  MESSAGE(STATUS "OpenMP ENABLED")
+  add_definitions(-DUSE_OMP)
 endif()
 
 if (USE_PARTITIONER)
@@ -44,7 +50,6 @@ if (USE_PARTITIONER_PARMETIS)
   add_definitions(-DUSE_PARTITIONER)
   add_definitions(-DUSE_PARTITIONER_PARMETIS)
 endif()
-
 
 if (USE_SOLVER)
   MESSAGE(STATUS "Linear system solver ENABLED")
@@ -60,22 +65,28 @@ if (COMPILE_TESTS)
   MESSAGE(STATUS "Test compiling ENABLED")
 endif()
 
-if (COMPILE_EXAMPLES)
-  MESSAGE(STATUS "Examples compiling ENABLED")
-  add_subdirectory(examples)
-endif()
 
-
+# include headers directories
+include_directories("source/headers")
+include_directories("source/headers/variables")
 
 # Add subdirectories
-add_subdirectory(variables)
-add_subdirectory(tools)
-add_subdirectory(mesh)
-add_subdirectory(forcing)
-add_subdirectory(advection)
-add_subdirectory(momentum)
-#add_subdirectory(configuration)
+add_subdirectory(source)
 
+# make library
+add_library(simug STATIC ${SOURCE} ${HEADER})
+
+# find inmost package
+find_package(inmost 0.3.0 REQUIRED)
+
+# include inmost variables
+link_directories(${INMOST_LIBRARY_DIRS})
+include_directories(${INMOST_INCLUDE_DIRS})
+add_definitions(${INMOST_DEFINITIONS})
+
+# link library with inmost
+# link with external libraries
+target_link_libraries(simug PUBLIC ${INMOST_LIBRARIES})
 
 if(COMPILE_TESTS)
   enable_testing()
@@ -83,3 +94,7 @@ if(COMPILE_TESTS)
   add_subdirectory(tests)
 endif(COMPILE_TESTS)
 
+if (COMPILE_EXAMPLES)
+  MESSAGE(STATUS "Examples compiling ENABLED")
+  add_subdirectory(examples)
+endif()

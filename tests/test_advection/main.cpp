@@ -1,7 +1,4 @@
-#include "defines.hpp"
-#include "vecmath.hpp"
-#include "timer.hpp"
-#include "local_assembling.hpp"
+#include "simug.hpp"
 
 #ifdef USE_MPI
 #include "mpi.h"

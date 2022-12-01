@@ -1,9 +1,5 @@
-#include "defines.hpp"
 #include "inmost.h"
-#include "model_var.hpp"
-#include "mesh_info.hpp"
-#include "data.hpp"
-#include "mesh.hpp"
+#include "simug.hpp"
 
 #ifdef USE_MPI
 #include "mpi.h"

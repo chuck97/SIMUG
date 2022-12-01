@@ -5,8 +5,7 @@ add_executable(${PROJECT_NAME} main.cpp)
 
 # Link the static library from subprojects
 target_link_libraries(${PROJECT_NAME}
-    sub::variables
-    sub::tools
+    simug
 )
 
 # to run tests

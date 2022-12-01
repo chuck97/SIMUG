@@ -1,0 +1,15 @@
+set(HEADER
+    ${HEADER}
+    ${CMAKE_CURRENT_SOURCE_DIR}/advvar.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/confvar.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/coordvar.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/defines.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/dynvar.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/forcvar.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/mesh_data.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/mesh_info.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/model_var.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/phys_var.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/variable.hpp
+    PARENT_SCOPE
+    )

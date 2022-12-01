@@ -1,0 +1,10 @@
+add_subdirectory(tools)
+add_subdirectory(mesh)
+add_subdirectory(forcing)
+add_subdirectory(advection)
+add_subdirectory(momentum)
+add_subdirectory(configuration)
+add_subdirectory(headers)
+
+set(SOURCE ${SOURCE} PARENT_SCOPE)
+set(HEADER ${HEADER} PARENT_SCOPE)
