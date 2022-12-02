@@ -1,4 +1,5 @@
 #include "simug.hpp"
+#include "inmost.h"
 
 #include<sstream>
 #include<iomanip>
@@ -52,6 +53,56 @@ std::vector<double> ocean_level(std::pair<double, double> coords, double time)
 {
     return {0.0};
 }
+
+// special procedure to fix wrong scalars 
+void FixScalars(INMOST::Mesh* mesh,
+                INMOST::Tag mass_tag,
+                INMOST::Tag conc_tag,
+                INMOST::Tag thick_tag)
+{
+    for(auto nodeit = mesh->BeginNode(); nodeit != mesh->EndNode(); ++nodeit)
+    {
+        if (nodeit->GetStatus() != Element::Ghost)
+        {
+            double m = nodeit->Real(mass_tag);
+            double a = nodeit->Real(conc_tag);
+            double h = nodeit->Real(thick_tag);
+
+            if (a < SIMUG::IceConsts::amin)
+            {
+                nodeit->Real(mass_tag) = 0.0;
+                nodeit->Real(conc_tag) = 0.0;
+                nodeit->Real(thick_tag) = 0.0;
+                continue;
+            }
+
+            if (m < SIMUG::IceConsts::hmin*SIMUG::IceConsts::rhoi)
+            {
+                nodeit->Real(mass_tag) = 0.0;
+                nodeit->Real(conc_tag) = 0.0;
+                nodeit->Real(thick_tag) = 0.0;
+                continue;
+            }
+
+            if (h < SIMUG::IceConsts::hmin)
+            {
+                nodeit->Real(mass_tag) = 0.0;
+                nodeit->Real(conc_tag) = 0.0;
+                nodeit->Real(thick_tag) = 0.0;
+                continue;
+            }
+
+            if (a > 1.0)
+            {
+                nodeit->Real(conc_tag) = 1.0;
+            }
+
+            nodeit->Real(thick_tag) = m/SIMUG::IceConsts::rhoi;
+        }
+    }
+    BARRIER
+}
+
 
 
 void run_model(double time_step,
@@ -223,8 +274,8 @@ void run_model(double time_step,
         // transport scalars
         advection.TransportScalars();
 
-        // fix ice concentration
-        // ice_mesh->FixConcentration();
+        // fix ice scalars (handle case a>1, recalculate thickness)
+        FixScalars(mesh_plane->GetMesh(), mass_tag, conc_tag, thick_tag);
 
         // update ice velocity
         momentum.ComputeVelocity();
