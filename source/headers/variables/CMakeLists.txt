@@ -10,6 +10,5 @@ set(HEADER
     ${CMAKE_CURRENT_SOURCE_DIR}/mesh_info.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/model_var.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/phys_var.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/variable.hpp
     PARENT_SCOPE
     )

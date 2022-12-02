@@ -7,7 +7,7 @@
 namespace SIMUG::dyn
 {
     // momentum solver schemes
-    enum scheme
+    enum timeScheme
     {
         EVP,      // classical EVP solver 
         mEVP,     // modified EVP solver
@@ -17,41 +17,27 @@ namespace SIMUG::dyn
         Newton    // Jacobian free Newton-Krylov solver
     };
 
-    // list of momentum schemes
-    constexpr static std::initializer_list<scheme> schemes = 
+    enum spaceScheme
     {
-        EVP, mEVP, aEVP, mEVPopt, Picard, Newton 
+        CFE,      // Continous Finite Elements
+        stabCR    // Stabilized nonconforming Crouzeix-Raviart
     };
 
-    // pressure parametrization methods
-    enum press
+    enum pressParam
     {
-        clas, // classical pressure parametrization
-        repl  // replaced pressure parametrization
+        clas,    // classical definition
+        repl     // pressure with replacement
     };
 
-    // list of pressure parametrizations
-    constexpr static std::initializer_list<press> press_list = 
+    enum bcType
     {
-        clas, repl 
+        noslip, // no-slip boundary conditions
+        slip,   // slip boundary conditions
+        fric    // friction boundary conditions
     };
 
-    // boundary condition types
-    enum bc
-    {
-        noslip,   // no-slip boundary conditions  (u = 0 on BND)
-        slip,     // slip boundary conditions     (u|_n = 0 on BND)
-        fric      // friction boundary conditions (+ friction in momentum equ. for BND nodes)
-    };
-
-    // list of boundary condition types
-    constexpr static std::initializer_list<bc> bc_list = 
-    {
-        noslip, slip, fric
-    };
-
-    // momentum solver scheme type -> name
-    static std::map<scheme, std::string> momschname =
+    // momentum solver time scheme type -> name
+    static std::map<timeScheme, std::string> momTimeSchemeName =
     {
         {EVP,     "EVP momentum solver"     },
         {mEVP,    "mEVP momentum solver"    },
@@ -61,8 +47,8 @@ namespace SIMUG::dyn
         {Newton,  "JFNKS momentum solver"   }
     };
 
-    // momentum solver short name -> type
-    static std::map<std::string, scheme> momschnotation =
+    // momentum solver time scheme short name -> type
+    static std::map<std::string, timeScheme> momTimeSchemeNotation =
     {
         {"EVP",     EVP     },
         {"mEVP",    mEVP    },
@@ -72,30 +58,44 @@ namespace SIMUG::dyn
         {"Newton",  Newton  }
     };
 
+    // momentum solver space scheme type -> name
+    static std::map<spaceScheme, std::string> momSpaceSchemeName =
+    {
+        {CFE,     "continous finite elements"                                 },
+        {stabCR,  "nonconforming stabilized Crouzeix-Raviart finite elements" }
+    };
+
+    // momentum solver space scheme type -> name
+    static std::map<std::string, spaceScheme> momSpaceSchemeNotation =
+    {
+        {"continous finite elements", CFE,                                    },
+        {"nonconforming stabilized Crouzeix-Raviart finite elements", stabCR  }
+    };
+
     // pressure parametrization -> name
-    static std::map<press, std::string> pressname =
+    static std::map<pressParam, std::string> momPressParamName =
     {
         {clas,  "classical"  },
         {repl,  "replacement"}
     };
 
     // pressure name -> parametrization
-    static std::map<std::string, press> pressnotation =
+    static std::map<std::string, pressParam> momPressParamNotation =
     {
         {"classical",   clas},
         {"replacement", repl}
     };
 
     // bc type -> name
-    static std::map<bc, std::string> bcname =
+    static std::map<bcType, std::string> momBcTypeName =
     {
-        {noslip,  "no-slip (u = 0 on BND)"                         },
-        {slip,    "slip (u|_n = 0 on BND)"                         },
-        {fric,    "friction (+ friction in mom. eq. for BND nodes)"}
+        {noslip,  "no-slip (u = 0 on BND)"                             },
+        {slip,    "slip (u|_n = 0 on BND)"                             },
+        {fric,    "friction (+ friction in mom. eq. for BND elements)" }
     };
 
     // bc name -> type
-    static std::map<std::string, bc> bcnotation =
+    static std::map<std::string, bcType> momBcTypeNotation =
     {
         {"no-slip" , noslip },
         {"slip"    , slip   },
