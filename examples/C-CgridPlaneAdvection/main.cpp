@@ -111,7 +111,7 @@ int main(int argc, char* argv[])
                                    1.0,
                                    vel_tag,
                                    adv::timeScheme::TRK2,
-                                   adv::spaceScheme::MUSCL,
+                                   adv::spaceScheme::MUST,
                                    adv::advFilter::Minmod,
                                    {});
 
