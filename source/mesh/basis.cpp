@@ -171,6 +171,12 @@ void IceMesh::AssembleCartesianElementBasis()
             // basis k
             basis_k = unit_normal_vec;
 
+            // fix unit normal if numeration is bad
+            if (basis_k[2] < 0.0)
+            {
+                basis_k = (-1.0)*basis_k;
+            }
+
             // basis i
             std::vector<double> c0_coords = {node0_x - centr_x, node0_y - centr_y, node0_z - centr_z};
             basis_i = c0_coords*(1.0/L2_norm_vec(c0_coords)); 
@@ -444,7 +450,7 @@ void IceMesh::AssembleGeoToElementTransitionMatricies()
 
     for (auto edgeit = ice_mesh->BeginFace(); edgeit != ice_mesh->EndFace(); ++edgeit)
     {
-        if (edgeit->GetStatus() != Element::Ghost)
+        //if (edgeit->GetStatus() != Element::Ghost)
         {
             // gain geo and cart basis vectors
             std::vector<double> basis_geo_x = {edgeit->RealArray(geo_basis_edge[0])[0],
@@ -749,6 +755,11 @@ void IceMesh::AssembleElementToElementTransitionMatricies()
 
                     break;
                 }
+
+                if (j == adj_trians_for_curr_edge.size()-1)
+                {
+                    SIMUG_ERR("cant find adjacent triangle for edge");
+                }
             }
         }
     }
@@ -855,8 +866,8 @@ void IceMesh::ComputeNodeCoordsInTrianBasis()
     // calculate node coords in trian basis
     for (auto trianit = ice_mesh->BeginCell(); trianit != ice_mesh->EndCell(); ++trianit)
     {
-        if (trianit->GetStatus() != Element::Ghost)
-        {
+        //if (trianit->GetStatus() != Element::Ghost)
+        //{
             // get triangle basis for current triangle
             std::vector<double> trian_basis_x = 
             {
@@ -918,7 +929,7 @@ void IceMesh::ComputeNodeCoordsInTrianBasis()
 
             trianit->RealArray(node_coords_in_trian_basis_tags[2])[0] = second_node_coords_in_trian_basis[0];
             trianit->RealArray(node_coords_in_trian_basis_tags[2])[1] = second_node_coords_in_trian_basis[1];
-        }
+        //}
     }
 
     // exchange computed data

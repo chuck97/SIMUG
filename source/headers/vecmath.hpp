@@ -367,6 +367,27 @@ namespace SIMUG
         return (inv(lhs)*rhs);
     }
 
+    // assemble matrix (M) from two vectors (v1, v2) as M = v1 * v2^T - matrix is stored as a vector of raws
+    template <typename T>
+    std::vector<std::vector<T>> vec_transpose_product(const std::vector<T>& v1, const std::vector<T>& v2)
+    {
+        if (v1.size() != v2.size())
+            SIMUG_ERR("can't make transpose product - v1 and v2 should have the same size!");
+        
+        std::vector<std::vector<T>> res;
+        
+        for (size_t i = 0; i < v1.size(); ++i)
+        {
+            std::vector<T> curr_row;
+            for (size_t j = 0; j < v1.size(); ++j)
+            {
+                curr_row.push_back(v1[i]*v2[j]);
+            }
+            res.push_back(curr_row);
+        }
+        return res;
+    }
+
     // the sum of two sparse INMOST vectors
     void vec_plus_vec_sparse(const INMOST::Sparse::Vector& v1, const INMOST::Sparse::Vector& v2, INMOST::Sparse::Vector& res, unsigned int idmin, unsigned int idmax);
 

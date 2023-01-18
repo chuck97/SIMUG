@@ -13,6 +13,8 @@
 #define MIDDLE_RES_MESH_PATH "../../../SIMUG_v0/MESHES/pmf/Box_middle_res.pmf"
 #define HIGH_RES_MESH_PATH "../../../SIMUG_v0/MESHES/pmf/Box_high_res.pmf"
 
+#define LKF_BOX_LEN_SCALE 5e5
+
 using namespace INMOST;
 using namespace SIMUG;
 using namespace std;
@@ -36,7 +38,7 @@ std::vector<double> init_ice_velocity(std::pair<double, double> coords, double t
     double x = coords.first;
     double y = coords.second;
 
-    return {sin(x*M_PI), cos(y*M_PI)};
+    return {sin(M_PI*x)/LKF_BOX_LEN_SCALE, cos(M_PI*y)/LKF_BOX_LEN_SCALE};
 } 
 
 // function for wind velocity
@@ -305,7 +307,7 @@ int main()
               (std::string)LOW_RES_MESH_PATH,  // path to mesh (LOW_RES_MESH_PATH, MIDDLE_RES_MESH_PATH, HIGH_RES_MESH_PATH) 
               1,                               // output frequncy n (every n-th time will be written to file)
               adv::timeScheme::TRK2,           // advection time scheme (TG2, TTG2, TTG3, TTG4)
-              adv::spaceScheme::FVupwind,      // advection space scheme (FVupwind, MUST, MUSCL)
+              adv::spaceScheme::MUST,      // advection space scheme (FVupwind, MUST, MUSCL)
               adv::advFilter::none,            // advection filter (Minmod, VanLeer, Superbee, BarthJesperson, none)
               {},                              // vector pf advection filter parameters ()
               {500.0, 500.0},                  // vector of mEVP real params (alpha, beta)

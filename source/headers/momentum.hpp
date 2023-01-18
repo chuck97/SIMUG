@@ -116,6 +116,12 @@ namespace SIMUG
     
         // opposite edge num for every node on every triangle
         INMOST::Tag opposite_edge_for_node_tags;
+
+        // edge basis in trian coords tags
+        INMOST::Tag outward_edge_basis_in_trian_coords_tags;
+
+        // height of triangle to edge
+        INMOST::Tag trian_height_to_edge_tags;
     
     // private functions
     private:
@@ -124,6 +130,12 @@ namespace SIMUG
 
         // computation of opposite node number for every edge of triangle
         void ComputeOppositeEdges(INMOST::Tag op_edge_tags);
+
+        // compute local edge basis in trian coords
+        void ComputeEdgeBasisInTrianCoords(INMOST::Tag edge_basis_in_trian_coords_tags);
+
+        // compute trian heights
+        void ComputeTrianHeights(INMOST::Tag trian_hight_tags);
 
     };
 

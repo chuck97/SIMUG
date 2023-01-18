@@ -51,8 +51,8 @@ CgridAdvectionSolver::CgridAdvectionSolver(SIMUG::IceMesh *mesh_,
         mesh->GetMesh()->SetFileOption("Tag:node_scal_tag", "nosave");
         mesh->GetMesh()->SetFileOption("Tag:trian_rev_dist_tags", "nosave");
         mesh->GetMesh()->SetFileOption("Tag:node_sum_rev_dist_tag", "nosave");
-        //mesh->GetMesh()->SetFileOption("Tag:opposite_node_for_edge_tags", "nosave");
-        //mesh->GetMesh()->SetFileOption("Tag:phi_tags", "nosave");
+        mesh->GetMesh()->SetFileOption("Tag:opposite_node_for_edge_tags", "nosave");
+        mesh->GetMesh()->SetFileOption("Tag:phi_tags", "nosave");
 
         // compute triangles reversed distances
         adv_timer.Launch();
