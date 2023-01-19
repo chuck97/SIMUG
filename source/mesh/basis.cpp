@@ -171,10 +171,13 @@ void IceMesh::AssembleCartesianElementBasis()
             // basis k
             basis_k = unit_normal_vec;
 
-            // fix unit normal if numeration is bad
-            if (basis_k[2] < 0.0)
+            // fix unit normal if numeration is bad for plane
+            if (mesh_info.surface_type == mesh::surfType::plane)
             {
-                basis_k = (-1.0)*basis_k;
+                if (basis_k[2] < 0.0)
+                {
+                    basis_k = (-1.0)*basis_k;
+                }
             }
 
             // basis i

@@ -117,11 +117,17 @@ namespace SIMUG
         // opposite edge num for every node on every triangle
         INMOST::Tag opposite_edge_for_node_tags;
 
+        // opposite node num for every edge on every triangle
+        INMOST::Tag opposite_node_for_edge_tags
+
         // edge basis in trian coords tags
         INMOST::Tag outward_edge_basis_in_trian_coords_tags;
 
         // height of triangle to edge
         INMOST::Tag trian_height_to_edge_tags;
+
+        // gradients of basis functions (in trian basis)
+        INMOST::Tag grad_basis_func_tags; 
     
     // private functions
     private:
@@ -131,11 +137,17 @@ namespace SIMUG
         // computation of opposite node number for every edge of triangle
         void ComputeOppositeEdges(INMOST::Tag op_edge_tags);
 
+        // computation of opposite node number for every edge of triangle
+        void ComputeOppositeNodes(INMOST::Tag op_node_tags);
+
         // compute local edge basis in trian coords
         void ComputeEdgeBasisInTrianCoords(INMOST::Tag edge_basis_in_trian_coords_tags);
 
         // compute trian heights
         void ComputeTrianHeights(INMOST::Tag trian_hight_tags);
+
+        // compute gradients of basis functions in trian basis
+        void ComputeGradientsBasisFuncs(INMOST::Tag grad_bas_tags);
 
     };
 
@@ -186,6 +198,7 @@ namespace SIMUG
         
         void ComputeP();
         void ComputeVarepsilonDelta(INMOST::Tag vel_tag);
+        void AssembleForceVector(INMOST::Tag sig_tag);
 
     
     protected:
@@ -198,6 +211,7 @@ namespace SIMUG
         INMOST::Tag delta_tag;
         INMOST::Tag P_tag;
         INMOST::Tag vareps_tag;
+        INMOST::Tag force_tags;
     };
 
     
