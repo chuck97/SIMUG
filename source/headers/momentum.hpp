@@ -118,7 +118,7 @@ namespace SIMUG
         INMOST::Tag opposite_edge_for_node_tags;
 
         // opposite node num for every edge on every triangle
-        INMOST::Tag opposite_node_for_edge_tags
+        INMOST::Tag opposite_node_for_edge_tags;
 
         // edge basis in trian coords tags
         INMOST::Tag outward_edge_basis_in_trian_coords_tags;
@@ -197,14 +197,13 @@ namespace SIMUG
         void PrintProfiling() override;
         
         void ComputeP();
-        void ComputeVarepsilonDelta(INMOST::Tag vel_tag);
-        void AssembleForceVector(INMOST::Tag sig_tag);
-
-    
-    protected:
-        INMOST::Tag mass_matrix_entry;
+        void ComputeVarepsilonDelta(INMOST::Tag vel_tag);   // velocities should be in the edge basis!
+        void AssembleForceVector(INMOST::Tag sig_tag);      // velocities should be in the edge basis!
+        void UpdateSigmaMevp(INMOST::Tag sig_tag);          // velocities should be in the edge basis!
+        void ComputeEdgeStabilization(INMOST::Tag vel_tag); // velocities should be in the edge basis!
     
     private:
+        INMOST::Tag mass_matrix_entry;
         INMOST::Tag prev_vel_tag;
         INMOST::Tag new_vel_tag;
         INMOST::Tag sigma_tag;
@@ -212,6 +211,7 @@ namespace SIMUG
         INMOST::Tag P_tag;
         INMOST::Tag vareps_tag;
         INMOST::Tag force_tags;
+        INMOST::Tag edge_stab_tags;
     };
 
     
