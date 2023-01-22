@@ -35,7 +35,7 @@ namespace SIMUG
 
         // assemble edge-based mass matrix
         mass_matrix_entry_tag = mesh->GetMesh()->CreateTag("mass_matrix_entry_tag", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 1);
-        mesh->GetMesh()->SetFileOption("Tag:mass_matrix_entry_tag", "nosave");
+        //mesh->GetMesh()->SetFileOption("Tag:mass_matrix_entry_tag", "nosave");
         mom_timer.Launch();
         AssembleMassMatrix(mass_matrix_entry_tag);
         mom_timer.Stop();
@@ -524,7 +524,7 @@ namespace SIMUG
         mesh->GetMesh()->SetFileOption("Tag:force_tags", "nosave");
         mesh->GetMesh()->SetFileOption("Tag:edge_stab_tags", "nosave");
 
-        ComputeVarepsilonDelta(vel_tag);
+        ComputeVelocity();
 
         if (mesh->GetMesh()->GetProcessorRank() == 0)
         {
@@ -760,11 +760,11 @@ namespace SIMUG
                     // add force from trian to edge
                     adj_edges[ed_num].RealArray(force_tags)[0] = adj_edges[ed_num].RealArray(force_tags)[0] +
                                                                  trian_area*(sig_edge[0][0]*grad_basis[0] + sig_edge[0][1]*grad_basis[1])
-                                                                 /adj_edges[ed_num]->Real(mass_matrix_entry);
+                                                                 /adj_edges[ed_num]->Real(mass_matrix_entry_tag);
 
                     adj_edges[ed_num].RealArray(force_tags)[1] = adj_edges[ed_num].RealArray(force_tags)[1] +
                                                                  trian_area*(sig_edge[1][0]*grad_basis[0] + sig_edge[1][1]*grad_basis[1])
-                                                                 /adj_edges[ed_num]->Real(mass_matrix_entry);
+                                                                 /adj_edges[ed_num]->Real(mass_matrix_entry_tag);
                 }
             }
         }
@@ -947,9 +947,9 @@ namespace SIMUG
                 double xi_edge = (adj_trians[0]->Real(trian_area_tag)*(0.5*adj_trians[0]->Real(P_tag)/adj_trians[0]->Real(delta_tag)) +
                                   adj_trians[1]->Real(trian_area_tag)*(0.5*adj_trians[1]->Real(P_tag)/adj_trians[1]->Real(delta_tag)))/
                                   (adj_trians[0]->Real(trian_area_tag) + adj_trians[1]->Real(trian_area_tag));
-                
-                edgeit->RealArray(edge_stab_tags)[0] *= 2.0*xi_edge*alpha_stab*(1.0/edgeit->Real(mass_matrix_entry));
-                edgeit->RealArray(edge_stab_tags)[1] *= 2.0*xi_edge*alpha_stab*(1.0/edgeit->Real(mass_matrix_entry));
+
+                edgeit->RealArray(edge_stab_tags)[0] *=  2.0*xi_edge*alpha_stab*(1.0/edgeit->Real(mass_matrix_entry_tag));
+                edgeit->RealArray(edge_stab_tags)[1] *=  2.0*xi_edge*alpha_stab*(1.0/edgeit->Real(mass_matrix_entry_tag));
             }
         }
 
@@ -1104,6 +1104,85 @@ namespace SIMUG
     void Cgrid_mEVP_Solver::ComputeVelocity()
     {
         std::cout << "calculations" << std::endl;
+
+        // move velocity vector to edge basis
+        for(auto edgeit = mesh->GetMesh()->BeginFace(); edgeit != mesh->GetMesh()->EndFace(); ++edgeit)
+        {
+            if (edgeit->GetStatus() != Element::Ghost)
+            {
+                mesh->VecTransitionToElemBasis
+                (
+                    std::vector<double>
+                    {
+                        edgeit->RealArray(vel_tag)[0],
+                        edgeit->RealArray(vel_tag)[1]
+                    },
+                    edgeit->getFaces()[0]
+                );
+            }
+        }
+        mesh->GetMesh()->ExchangeData(vel_tag, FACE, 0);
+        BARRIER
+
+        // compute P
+        ComputeP();
+        BARRIER
+
+        // compute strain rate tensor and delta
+        ComputeVarepsilonDelta(vel_tag);
+        BARRIER 
+
+        // compute edge stabilization
+        ComputeEdgeStabilization(vel_tag);
+        BARRIER
+
+        // save mass matrix
+        /*
+        INMOST::Tag check_mass_matrix = mesh->GetMesh()->CreateTag("check_mass_matrix", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 1);
+        for (auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit)
+        {
+            if (trianit->GetStatus() != Element::Ghost)
+            {
+                trianit->RealArray(check_mass_matrix)[0] = (trianit->getFaces())[0]->Real(mass_matrix_entry_tag);
+            }
+        }
+        mesh->GetMesh()->ExchangeData(check_mass_matrix, CELL, 0);
+        BARRIER
+        */
+
+        // save stabilization
+        /*
+        INMOST::Tag check_stab_tag = mesh->GetMesh()->CreateTag("check_stab_tag", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 2);
+        for (auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit)
+        {
+            if (trianit->GetStatus() != Element::Ghost)
+            {
+                trianit->RealArray(check_stab_tag)[0] = (trianit->getFaces())[0]->RealArray(edge_stab_tags)[0];
+                trianit->RealArray(check_stab_tag)[1] = (trianit->getFaces())[0]->RealArray(edge_stab_tags)[1];
+            }
+        }
+        mesh->GetMesh()->ExchangeData(check_stab_tag, CELL, 0);
+        BARRIER
+        */
+
+        // move velocity vector to geo basis
+        for(auto edgeit = mesh->GetMesh()->BeginFace(); edgeit != mesh->GetMesh()->EndFace(); ++edgeit)
+        {
+            if (edgeit->GetStatus() != Element::Ghost)
+            {
+                mesh->VecTransitionToGeoBasis
+                (
+                    std::vector<double>
+                    {
+                        edgeit->RealArray(vel_tag)[0],
+                        edgeit->RealArray(vel_tag)[1]
+                    },
+                    edgeit->getFaces()[0]
+                );
+            }
+        }
+        mesh->GetMesh()->ExchangeData(vel_tag, FACE, 0);
+        BARRIER
     }
 
     void Cgrid_mEVP_Solver::PrintProfiling()

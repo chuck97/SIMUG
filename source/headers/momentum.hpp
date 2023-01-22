@@ -203,7 +203,6 @@ namespace SIMUG
         void ComputeEdgeStabilization(INMOST::Tag vel_tag); // velocities should be in the edge basis!
     
     private:
-        INMOST::Tag mass_matrix_entry;
         INMOST::Tag prev_vel_tag;
         INMOST::Tag new_vel_tag;
         INMOST::Tag sigma_tag;
@@ -214,5 +213,12 @@ namespace SIMUG
         INMOST::Tag edge_stab_tags;
     };
 
-    
+    // to do :
+    // 1) Assemble Level Vector
+    // 2) Fix Scalars
+    // 3) Compute Velocities Mevp
+    // 4) Compute U difference, Compute Sig difference
+    // 5) Compute Velocity
+    // 6) Update velocity, sigma, shear deformation
+    // 7) Profiling 
 }

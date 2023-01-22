@@ -307,10 +307,10 @@ int main()
               (std::string)LOW_RES_MESH_PATH,  // path to mesh (LOW_RES_MESH_PATH, MIDDLE_RES_MESH_PATH, HIGH_RES_MESH_PATH) 
               1,                               // output frequncy n (every n-th time will be written to file)
               adv::timeScheme::TRK2,           // advection time scheme (TG2, TTG2, TTG3, TTG4)
-              adv::spaceScheme::MUST,      // advection space scheme (FVupwind, MUST, MUSCL)
+              adv::spaceScheme::MUST,          // advection space scheme (FVupwind, MUST, MUSCL)
               adv::advFilter::none,            // advection filter (Minmod, VanLeer, Superbee, BarthJesperson, none)
               {},                              // vector pf advection filter parameters ()
-              {500.0, 500.0},                  // vector of mEVP real params (alpha, beta)
+              {500.0, 500.0, 1.0},             // vector of mEVP real params and stab param (alpha, beta, alpha_stab)
               {500},                           // vector of mEVP integer params (number of interations)
               "CgridBox"                       // output prefix
               );
