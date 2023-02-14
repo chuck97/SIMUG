@@ -47,7 +47,7 @@ namespace SIMUG::mesh
 
     static const std::map<meshVar, gridElemType> gridA_singleElems
     {
-        {meshVar::P0, gridElemType::Node},
+        {meshVar::P0, gridElemType::Trian},
         {meshVar::del, gridElemType::Trian},
         {meshVar::ui, gridElemType::Node},
         {meshVar::sig, gridElemType::Trian},
@@ -67,7 +67,7 @@ namespace SIMUG::mesh
 
     static const std::map<meshVar, gridElemType> gridC_singleElems
     {
-        {meshVar::P0, gridElemType::Edge},
+        {meshVar::P0, gridElemType::Trian},
         {meshVar::del, gridElemType::Trian},
         {meshVar::ui, gridElemType::Edge},
         {meshVar::sig, gridElemType::Trian},

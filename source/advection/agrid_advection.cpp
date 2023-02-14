@@ -889,10 +889,10 @@ void AgridAdvectionSolver::PrintProfiling()
 
     if (mesh->GetMesh()->GetProcessorRank() == 0)
     {
-        adv_log.Log("## Profiling info ##\n");
-        adv_log.Log("Total RHS assembling time: " + std::to_string(RHS_assembling_time) + " ms\n");
-        adv_log.Log("Total SLAE solver time: " + std::to_string(matrix_invertion_time) + " ms\n");
-        adv_log.Log("Total limiter time: " + std::to_string(limiter_time) + " ms\n");
+        adv_log.Log("## Advection profiling ##\n");
+        adv_log.Log("RHS assembling time: " + std::to_string(RHS_assembling_time) + " ms\n");
+        adv_log.Log("SLAE solver time: " + std::to_string(matrix_invertion_time) + " ms\n");
+        adv_log.Log("Limiter time: " + std::to_string(limiter_time) + " ms\n");
     }
     RHS_assembling_time = 0.0;
     limiter_time = 0.0;

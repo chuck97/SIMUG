@@ -21,7 +21,6 @@ namespace SIMUG
         MomentumSolver(SIMUG::IceMesh* mesh_,
                        double time_step_,
                        velocity_tag vel_tag_,
-                       scalar_tag mass_tag_,
                        scalar_tag conc_tag_,
                        scalar_tag thick_tag_,
                        SIMUG::dyn::timeScheme mom_time_scheme_,
@@ -47,7 +46,6 @@ namespace SIMUG
         SIMUG::IceMesh* mesh;
         double time_step;
         velocity_tag vel_tag;
-        scalar_tag mass_tag;
         scalar_tag conc_tag;
         scalar_tag thick_tag;
         SIMUG::dyn::timeScheme mom_time_scheme;
@@ -63,7 +61,6 @@ namespace SIMUG
         AgridMomentumSolver(SIMUG::IceMesh* mesh_,
                             double time_step_,
                             velocity_tag vel_tag_,
-                            scalar_tag mass_tag_,
                             scalar_tag conc_tag_,
                             scalar_tag thick_tag_,
                             SIMUG::dyn::timeScheme mom_time_scheme_,
@@ -82,6 +79,24 @@ namespace SIMUG
     //  solver parameters
         std::vector<double> real_params;
         std::vector<int> integer_params;
+    
+    // variables
+    protected:
+
+        // gradients of basis functions (in trian basis)
+        INMOST::Tag grad_basis_func_tags;
+
+        // lumped mass matrix tag
+        INMOST::Tag lumped_mass_matrix_tag;
+
+    private:
+
+        // compute gradients of basis functions in trian basis
+        void ComputeGradientsBasisFuncs(INMOST::Tag grad_bas_tags);
+
+        // compute lumped mass matrix
+        void ComputeMassMatrix(INMOST::Tag mm_tag);
+        
     };
 
     class CgridMomentumSolver: public MomentumSolver
@@ -91,7 +106,6 @@ namespace SIMUG
         CgridMomentumSolver(SIMUG::IceMesh* mesh_,
                             double time_step_,
                             velocity_tag vel_tag_,
-                            scalar_tag mass_tag_,
                             scalar_tag conc_tag_,
                             scalar_tag thick_tag_,
                             SIMUG::dyn::timeScheme mom_time_scheme_,
@@ -104,15 +118,12 @@ namespace SIMUG
         virtual void ComputeVelocity() = 0;
         virtual void PrintProfiling() = 0;
     
-    // auxilary parameters
+    // variables
     protected:
 
         //  solver parameters
         std::vector<double> real_params;
         std::vector<int> integer_params;
-    
-        // edge based mass matrix entries
-        INMOST::Tag mass_matrix_entry_tag;
     
         // opposite edge num for every node on every triangle
         INMOST::Tag opposite_edge_for_node_tags;
@@ -128,12 +139,12 @@ namespace SIMUG
 
         // gradients of basis functions (in trian basis)
         INMOST::Tag grad_basis_func_tags; 
+
+        // mass matrix tag
+        INMOST::Tag mass_matrix_tag;
     
     // private functions
     private:
-        // procedure of assembling edge-based mass matrix
-        void AssembleMassMatrix(INMOST::Tag mass_matrix_tag);
-
         // computation of opposite node number for every edge of triangle
         void ComputeOppositeEdges(INMOST::Tag op_edge_tags);
 
@@ -149,6 +160,9 @@ namespace SIMUG
         // compute gradients of basis functions in trian basis
         void ComputeGradientsBasisFuncs(INMOST::Tag grad_bas_tags);
 
+        // compute lumped mass matrix
+        void ComputeMassMatrix(INMOST::Tag mm_tag);
+
     };
 
 
@@ -159,7 +173,6 @@ namespace SIMUG
         Agrid_mEVP_Solver(SIMUG::IceMesh* mesh_,
                           double time_step_,
                           velocity_tag vel_tag_,
-                          scalar_tag mass_tag_,
                           scalar_tag conc_tag_,
                           scalar_tag thick_tag_,
                           SIMUG::dyn::pressParam mom_press_param_=SIMUG::dyn::pressParam::clas,
@@ -171,8 +184,48 @@ namespace SIMUG
 
     private:
         void PrintProfiling() override;
+
+        void UpdateScalars();
+        void ComputeP();
+        void ComputeVarepsilonDelta();
+        void AssembleForceVector();
+        void UpdateSigmaMevp();
+        void ComputeLevelVector();
+        void UpdateVelocityMevp();
+        void UpdateVelocity();
+        void UpdateSigma();
+        void MoveVectors(bool to_local);
+        void Initialize();
+        void Finalize();
+        void LogError(int presudostep);
+        void ComputeShearDeformation();
     
     private:
+        INMOST::Tag ua_tags;
+        INMOST::Tag uw_tags;
+
+        INMOST::Tag old_vel_tag;
+        INMOST::Tag prev_vel_tag;
+        INMOST::Tag new_vel_tag;
+
+        INMOST::Tag prev_sigma_tag;
+        INMOST::Tag new_sigma_tag;
+        INMOST::Tag old_sigma_tag;
+
+        INMOST::Tag delta_tag;
+        INMOST::Tag P_tag;
+        INMOST::Tag vareps_tag;
+        INMOST::Tag force_tags;
+        INMOST::Tag disc_level_tags;
+        INMOST::Tag level_tag;
+        
+        INMOST::Tag shear_deformation_tag;
+
+        // profiling
+    private:
+        double strain_rate_computation_time = 0.0;
+        double force_assembling_time = 0.0;
+        double velocity_computation_time = 0.0;
     };
 
 
@@ -183,7 +236,6 @@ namespace SIMUG
         Cgrid_mEVP_Solver(SIMUG::IceMesh* mesh_,
                           double time_step_,
                           velocity_tag vel_tag_,
-                          scalar_tag mass_tag_,
                           scalar_tag conc_tag_,
                           scalar_tag thick_tag_,
                           SIMUG::dyn::pressParam mom_press_param_=SIMUG::dyn::pressParam::clas,
@@ -196,29 +248,60 @@ namespace SIMUG
     private:
         void PrintProfiling() override;
         
+        void LogError(int presudostep);
+        void Initialize();
+        void Finalize();
+        void UpdateSigma();
+        void UpdateVelocity();
+        void UpdateScalars();
+        void MoveVectors(bool to_local);
         void ComputeP();
-        void ComputeVarepsilonDelta(INMOST::Tag vel_tag);   // velocities should be in the edge basis!
-        void AssembleForceVector(INMOST::Tag sig_tag);      // velocities should be in the edge basis!
-        void UpdateSigmaMevp(INMOST::Tag sig_tag);          // velocities should be in the edge basis!
-        void ComputeEdgeStabilization(INMOST::Tag vel_tag); // velocities should be in the edge basis!
+        void ComputeVarepsilonDelta();
+        void AssembleForceVector();
+        void UpdateSigmaMevp();
+        void UpdateVelocityMevp();
+        void ComputeEdgeStabilizationSum();
+        void ComputeEdgeStabilization(double alpha);
+        void ComputeLevelVector();
+        void ComputeShearDeformation();
+        
     
     private:
+
+        INMOST::Tag edge_thick_tag;
+        INMOST::Tag edge_conc_tag;
+
+        INMOST::Tag ua_tags;
+        INMOST::Tag uw_tags;
+
+        INMOST::Tag old_vel_tag;
         INMOST::Tag prev_vel_tag;
         INMOST::Tag new_vel_tag;
-        INMOST::Tag sigma_tag;
+
+        INMOST::Tag old_sigma_tag;
+        INMOST::Tag prev_sigma_tag;
+        INMOST::Tag new_sigma_tag;
+
         INMOST::Tag delta_tag;
         INMOST::Tag P_tag;
         INMOST::Tag vareps_tag;
+        INMOST::Tag xi_edge_tag;
         INMOST::Tag force_tags;
         INMOST::Tag edge_stab_tags;
-    };
+        INMOST::Tag edge_stab_sum_tags;
+        INMOST::Tag disc_level_tags;
+        INMOST::Tag level_tag;
 
-    // to do :
-    // 1) Assemble Level Vector
-    // 2) Fix Scalars
-    // 3) Compute Velocities Mevp
-    // 4) Compute U difference, Compute Sig difference
-    // 5) Compute Velocity
-    // 6) Update velocity, sigma, shear deformation
-    // 7) Profiling 
+        INMOST::Tag shear_deformation_tag;
+        INMOST::Tag check_vel_tag;
+        INMOST::Tag check_air_vel_tag;
+        INMOST::Tag check_water_vel_tag;
+    
+    // profiling
+    private:
+        double strain_rate_computation_time = 0.0;
+        double force_assembling_time = 0.0;
+        double velocity_computation_time = 0.0;
+        double stabilization_assembling_time = 0.0;
+    };
 }

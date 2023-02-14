@@ -1207,9 +1207,9 @@ void CgridAdvectionSolver::PrintProfiling()
 
     if (mesh->GetMesh()->GetProcessorRank() == 0)
     {
-        adv_log.Log("## Profiling info ##\n");
-        adv_log.Log("Total flux assembling time: " + std::to_string(flux_computation_time) + " ms\n");
-        adv_log.Log("Total step computation time: " + std::to_string(step_computation_time) + " ms\n");
+        adv_log.Log("## Advection profiling ##\n");
+        adv_log.Log("Flux assembling time: " + std::to_string(flux_computation_time) + " ms\n");
+        adv_log.Log("Step computation time: " + std::to_string(step_computation_time) + " ms\n");
     }
     flux_computation_time = 0.0;
     step_computation_time = 0.0;

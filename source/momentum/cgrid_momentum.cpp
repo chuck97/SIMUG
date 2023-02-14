@@ -7,7 +7,6 @@ namespace SIMUG
     CgridMomentumSolver::CgridMomentumSolver(SIMUG::IceMesh* mesh_,
                                              double time_step_,
                                              velocity_tag vel_tag_,
-                                             scalar_tag mass_tag_,
                                              scalar_tag conc_tag_,
                                              scalar_tag thick_tag_,
                                              SIMUG::dyn::timeScheme mom_time_scheme_,
@@ -18,35 +17,19 @@ namespace SIMUG
             MomentumSolver(mesh_,
                            time_step_,
                            vel_tag_,
-                           mass_tag_,
                            conc_tag_,
                            thick_tag_,
                            mom_time_scheme_,
                            SIMUG::dyn::spaceScheme::stabCR,
                            mom_press_param_,
                            mom_bc_type_),
-            real_params(real_params_),
-            integer_params(integer_params_)
+                           real_params(real_params_),
+                           integer_params(integer_params_)
     {
         // initialize timer and logger
         SIMUG::Logger mom_log(std::cout);
         SIMUG::Timer mom_timer;
         double duration;
-
-        // assemble edge-based mass matrix
-        mass_matrix_entry_tag = mesh->GetMesh()->CreateTag("mass_matrix_entry_tag", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 1);
-        //mesh->GetMesh()->SetFileOption("Tag:mass_matrix_entry_tag", "nosave");
-        mom_timer.Launch();
-        AssembleMassMatrix(mass_matrix_entry_tag);
-        mom_timer.Stop();
-        duration = mom_timer.GetMaxTime();
-        mom_timer.Reset();
-
-        if (mesh->GetMesh()->GetProcessorRank() == 0)
-        {
-            mom_log.Log("Assembling of edge-based mass matrix: OK (" + std::to_string(duration) + " ms)\n");
-        }
-        BARRIER
 
         // compute opposite edge for every node of triangle
         opposite_edge_for_node_tags = mesh->GetMesh()->CreateTag("opposite_edge_for_node_tags", INMOST::DATA_INTEGER, INMOST::CELL, INMOST::NONE, 3);
@@ -122,21 +105,20 @@ namespace SIMUG
             mom_log.Log("Computation of gradients of basis functions: OK (" + std::to_string(duration) + " ms)\n");
         }
         BARRIER
-    }
 
-    void CgridMomentumSolver::AssembleMassMatrix(INMOST::Tag mass_matrix_tag)
-    {
-        for (auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit)
+        // compute mass matrix
+        mass_matrix_tag = mesh->GetMesh()->CreateTag("mass_matrix_tag", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 6);
+        mesh->GetMesh()->SetFileOption("Tag:mass_matrix_tag", "nosave");
+        mom_timer.Launch();
+        ComputeMassMatrix(mass_matrix_tag);
+        mom_timer.Stop();
+        duration = mom_timer.GetMaxTime();
+        mom_timer.Reset();
+
+        if (mesh->GetMesh()->GetProcessorRank() == 0)
         {
-            double trian_area = trianit->Real(mesh->GetGridInfo(mesh::gridElemType::Trian)->GetCartesianSize());
-            ElementArray<INMOST::Face> adj_edges = trianit->getFaces();
-                
-            for (int edge_ind = 0; edge_ind < 3; ++edge_ind)
-            {
-                adj_edges[edge_ind]->Real(mass_matrix_tag) = adj_edges[edge_ind]->Real(mass_matrix_tag) + trian_area/3.0;
-            }
+            mom_log.Log("Computation of mass matrix: OK (" + std::to_string(duration) + " ms)\n");
         }
-        mesh->GetMesh()->ExchangeData(mass_matrix_tag, INMOST::FACE, 0);
         BARRIER
     }
 
@@ -484,10 +466,30 @@ namespace SIMUG
         BARRIER
     }
 
+    void CgridMomentumSolver::ComputeMassMatrix(INMOST::Tag mm_tag)
+    {
+        INMOST::Tag trian_area_tag = mesh->GetGridInfo(mesh::gridElemType::Trian)->GetCartesianSize();
+
+        for (auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit)
+        {
+            ElementArray<Face> adj_edges = trianit->getFaces();
+            double area = trianit->Real(trian_area_tag); 
+
+            for (int ed_num = 0; ed_num < 3; ++ed_num)
+            {
+                if ((adj_edges[ed_num]->GetStatus() != Element::Ghost) &&
+                    (adj_edges[ed_num]->Integer(mesh->GetGridInfo(mesh::gridElemType::Edge)->is_bnd) == 0))
+                {
+                    adj_edges[ed_num]->Real(mass_matrix_tag) += area/3.0;
+                }
+            }
+        }
+         mesh->GetMesh()->ExchangeData(mass_matrix_tag, INMOST::FACE, 0);
+    }
+
     Cgrid_mEVP_Solver::Cgrid_mEVP_Solver(SIMUG::IceMesh* mesh_,
                                          double time_step_,
                                          velocity_tag vel_tag_,
-                                         scalar_tag mass_tag_,
                                          scalar_tag conc_tag_,
                                          scalar_tag thick_tag_,
                                          SIMUG::dyn::pressParam mom_press_param_,
@@ -497,7 +499,6 @@ namespace SIMUG
             CgridMomentumSolver(mesh_,
                                 time_step_,
                                 vel_tag_,
-                                mass_tag_,
                                 conc_tag_,
                                 thick_tag_,
                                 SIMUG::dyn::timeScheme::mEVP,
@@ -508,29 +509,113 @@ namespace SIMUG
     {
         // initialize timer and logger
         SIMUG::Logger mom_log(std::cout);
-        SIMUG::Timer mom_timer;
 
         // create mandatory tags
-        P_tag = mesh->GetMesh()->CreateTag("P_tag", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 1);
-        vareps_tag = mesh->GetMesh()->CreateTag("vareps_tag", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
-        delta_tag = mesh->GetMesh()->CreateTag("delta_tag", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 1);
+        edge_thick_tag = mesh->GetMesh()->CreateTag("edge_thick_tag", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 1);
+        edge_conc_tag = mesh->GetMesh()->CreateTag("edge_conc_tag", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 1);
+
+        ua_tags = mesh->GetDataSingle(mesh::gridElemType::Edge)->Get(mesh::meshVar::ua);
+        uw_tags = mesh->GetDataSingle(mesh::gridElemType::Edge)->Get(mesh::meshVar::uw);
+
+        old_vel_tag = mesh->GetMesh()->CreateTag("old_vel_tag", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 2);
+        prev_vel_tag = mesh->GetMesh()->CreateTag("prev_vel_tag", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 2);
+        new_vel_tag = mesh->GetMesh()->CreateTag("new_vel_tag", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 2);
+
+        prev_sigma_tag = mesh->GetMesh()->CreateTag("prev_sigma_tag", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
+        new_sigma_tag = mesh->GetMesh()->CreateTag("new_sigma_tag", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
+        old_sigma_tag = mesh->GetMesh()->CreateTag("old_sigma_tag", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
+
+        delta_tag = mesh->GetDataSingle(mesh::gridElemType::Trian)->Get(mesh::meshVar::del);
+        P_tag = mesh->GetDataSingle(mesh::gridElemType::Trian)->Get(mesh::meshVar::P0);
+        vareps_tag = mesh->GetDataSingle(mesh::gridElemType::Trian)->Get(mesh::meshVar::eps);
+        xi_edge_tag = mesh->GetMesh()->CreateTag("xi_edge_tag", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 1);
         force_tags = mesh->GetMesh()->CreateTag("force_tags", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 2);
         edge_stab_tags = mesh->GetMesh()->CreateTag("edge_stab_tags", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 2);
+        edge_stab_sum_tags = mesh->GetMesh()->CreateTag("edge_stab_sum_tags", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 2);
+        disc_level_tags = mesh->GetMesh()->CreateTag("disc_level_tags", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 2);
+        level_tag = mesh->GetDataSingle(mesh::gridElemType::Trian)->Get(mesh::meshVar::hw);
+
+        shear_deformation_tag = mesh->GetMesh()->CreateTag("shear_deformation_tag", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 1);
+
+        check_vel_tag = mesh->GetMesh()->CreateTag("check_vel_tag", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 2);
+        check_air_vel_tag = mesh->GetMesh()->CreateTag("check_air_vel_tag", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 2);
+        check_water_vel_tag = mesh->GetMesh()->CreateTag("check_water_vel_tag", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 2);
         
         // mute tags
-        mesh->GetMesh()->SetFileOption("Tag:P_tag", "nosave");
-        mesh->GetMesh()->SetFileOption("Tag:vareps_tag", "nosave");
-        mesh->GetMesh()->SetFileOption("Tag:delta_tag", "nosave");
+        mesh->GetMesh()->SetFileOption("Tag:edge_thick_tag", "nosave");
+        mesh->GetMesh()->SetFileOption("Tag:edge_conc_tag", "nosave");
+
+        mesh->GetMesh()->SetFileOption("Tag:old_vel_tag", "nosave");
+        mesh->GetMesh()->SetFileOption("Tag:prev_vel_tag", "nosave");
+        mesh->GetMesh()->SetFileOption("Tag:new_vel_tag", "nosave");
+
+        mesh->GetMesh()->SetFileOption("Tag:prev_sigma_tag", "nosave");
+        mesh->GetMesh()->SetFileOption("Tag:new_sigma_tag", "nosave");
+        mesh->GetMesh()->SetFileOption("Tag:old_sigma_tag", "nosave");
+
+        mesh->GetMesh()->SetFileOption("Tag:xi_edge_tag", "nosave");
         mesh->GetMesh()->SetFileOption("Tag:force_tags", "nosave");
         mesh->GetMesh()->SetFileOption("Tag:edge_stab_tags", "nosave");
-
-        ComputeVelocity();
+        mesh->GetMesh()->SetFileOption("Tag:edge_stab_sum_tags", "nosave");
+        mesh->GetMesh()->SetFileOption("Tag:disc_level_tags", "nosave");
 
         if (mesh->GetMesh()->GetProcessorRank() == 0)
         {
             mom_log.Log("=====================================================================\n");
         }
         
+        BARRIER
+    }
+
+    void Cgrid_mEVP_Solver::UpdateScalars()
+    {
+         INMOST::Tag trian_area_tag = mesh->GetGridInfo(mesh::gridElemType::Trian)->GetCartesianSize();
+
+        // fix scalars
+        for(auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit)
+        {
+            if (trianit->GetStatus() != Element::Ghost)
+            {
+                double a = trianit->Real(conc_tag);
+                double h = trianit->Real(thick_tag);
+
+                if ((a < SIMUG::IceConsts::amin) or (h < SIMUG::IceConsts::hmin))
+                {
+                    trianit->Real(conc_tag) = SIMUG::IceConsts::amin;
+                    trianit->Real(thick_tag) = SIMUG::IceConsts::hmin;
+                }
+
+                if (a > 1.0)
+                {
+                    trianit->Real(conc_tag) = 1.0;
+                }
+            }
+        }
+
+        mesh->GetMesh()->ExchangeData(conc_tag, CELL, 0);
+        mesh->GetMesh()->ExchangeData(thick_tag, CELL, 0);
+        BARRIER
+
+        // zeroing edge scalars
+        for(auto edgeit = mesh->GetMesh()->BeginFace(); edgeit != mesh->GetMesh()->EndFace(); ++edgeit)
+        {
+            if ((edgeit->GetStatus() != Element::Ghost) &&
+                (edgeit->Integer(mesh->GetGridInfo(mesh::gridElemType::Edge)->is_bnd) == 0))
+            {
+                ElementArray<Cell> adj_trians = edgeit->getCells();
+
+                edgeit->Real(edge_thick_tag) = (adj_trians[0]->Real(thick_tag)*adj_trians[0]->Real(trian_area_tag) + 
+                                                adj_trians[1]->Real(thick_tag)*adj_trians[1]->Real(trian_area_tag))/
+                                                (adj_trians[0]->Real(trian_area_tag) + adj_trians[1]->Real(trian_area_tag));
+                
+                edgeit->Real(edge_conc_tag) = (adj_trians[0]->Real(conc_tag)*adj_trians[0]->Real(trian_area_tag) + 
+                                               adj_trians[1]->Real(conc_tag)*adj_trians[1]->Real(trian_area_tag))/
+                                                (adj_trians[0]->Real(trian_area_tag) + adj_trians[1]->Real(trian_area_tag));
+            }
+        }
+
+        mesh->GetMesh()->ExchangeData(edge_thick_tag, FACE, 0);
+        mesh->GetMesh()->ExchangeData(edge_conc_tag, FACE, 0);
         BARRIER
     }
 
@@ -541,8 +626,6 @@ namespace SIMUG
         {
             if (trianit->GetStatus() != Element::Ghost)
             {
-                ElementArray<Node> nodes = trianit->getNodes();
-
                 double h = trianit->Real(thick_tag);
 
                 double a = trianit->Real(conc_tag);
@@ -558,11 +641,10 @@ namespace SIMUG
         BARRIER
     }
 
-    void Cgrid_mEVP_Solver::ComputeVarepsilonDelta(INMOST::Tag vel_tag)
+    void Cgrid_mEVP_Solver::ComputeVarepsilonDelta()
     {
         double e = IceConsts::e;
         std::vector<INMOST::Tag> node_coords_in_trian_basis_tags = mesh->GetGridInfo(mesh::gridElemType::Trian)->GetNodeCoordsInTrianBasis();
-        std::vector<INMOST::Tag> is_normal_tags = mesh->GetGridInfo(mesh::gridElemType::Trian)->GetIsXedgeBasisIsNormal();
 
         for(auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit)
         {
@@ -575,15 +657,11 @@ namespace SIMUG
                 {
                     edge_velocities.push_back
                     (
-                        mesh->VecTransitionToElemBasis
-                        (
-                            std::vector<double>
-                            {
-                                edges[i]->RealArray(vel_tag)[0],
-                                edges[i]->RealArray(vel_tag)[1]
-                            },
-                            edges[i]
-                        )
+                        std::vector<double>
+                        {
+                            edges[i]->RealArray(new_vel_tag)[0],
+                            edges[i]->RealArray(new_vel_tag)[1]
+                        }
                     );
                 }
 
@@ -613,61 +691,34 @@ namespace SIMUG
                     edge_velocities_trian_basis[2][1]
                 };
 
-                // compute nodal values of velocities
-                std::vector<double> un_T =
+                // assemble gradient vectors
+                std::vector<double> grad_u(2);
+                for (int i = 0; i < 3; ++i)
                 {
-                    ue_T[0] + ue_T[1] + ue_T[2] - 2*ue_T[trianit->IntegerArray(opposite_edge_for_node_tags)[0]],
-                    ue_T[0] + ue_T[1] + ue_T[2] - 2*ue_T[trianit->IntegerArray(opposite_edge_for_node_tags)[1]],
-                    ue_T[0] + ue_T[1] + ue_T[2] - 2*ue_T[trianit->IntegerArray(opposite_edge_for_node_tags)[2]]
-                };
-
-                std::vector<double> vn_T =
-                {
-                    ve_T[0] + ve_T[1] + ve_T[2] - 2*ve_T[trianit->IntegerArray(opposite_edge_for_node_tags)[0]],
-                    ve_T[0] + ve_T[1] + ve_T[2] - 2*ve_T[trianit->IntegerArray(opposite_edge_for_node_tags)[1]],
-                    ve_T[0] + ve_T[1] + ve_T[2] - 2*ve_T[trianit->IntegerArray(opposite_edge_for_node_tags)[2]]
-                };
-
-                // get coordinates of nodes in trian basis
-                std::vector<std::vector<double>> node_coords_tr_basis =
-                {
-                    {trianit->RealArray(node_coords_in_trian_basis_tags[0])[0], trianit->RealArray(node_coords_in_trian_basis_tags[0])[1]},
-                    {trianit->RealArray(node_coords_in_trian_basis_tags[1])[0], trianit->RealArray(node_coords_in_trian_basis_tags[1])[1]},
-                    {trianit->RealArray(node_coords_in_trian_basis_tags[2])[0], trianit->RealArray(node_coords_in_trian_basis_tags[2])[1]}
-                };
-
-                // compute gradient of velocity in trian basis
-                std::vector<double> sol_u = solve_linear_system
-                (
-                    std::vector<std::vector<double>>
-                    {
-                        {node_coords_tr_basis[0][0], node_coords_tr_basis[0][1], 1.0},
-                        {node_coords_tr_basis[1][0], node_coords_tr_basis[1][1], 1.0},
-                        {node_coords_tr_basis[2][0], node_coords_tr_basis[2][1], 1.0}
-                    },
+                    grad_u = grad_u + ue_T[i]*
                     std::vector<double>
-                    {un_T[0], un_T[1], un_T[2]}
-                );
-
-
-                std::vector<double> sol_v = solve_linear_system
-                (
-                    std::vector<std::vector<double>>
                     {
-                        {node_coords_tr_basis[0][0], node_coords_tr_basis[0][1], 1.0},
-                        {node_coords_tr_basis[1][0], node_coords_tr_basis[1][1], 1.0},
-                        {node_coords_tr_basis[2][0], node_coords_tr_basis[2][1], 1.0},
-                    },
+                        trianit->RealArray(grad_basis_func_tags)[i*2 + 0],
+                        trianit->RealArray(grad_basis_func_tags)[i*2 + 1]
+                    };
+                }
+
+                std::vector<double> grad_v(2);
+                for (int i = 0; i < 3; ++i)
+                {
+                    grad_v = grad_v + ve_T[i]*
                     std::vector<double>
-                    {vn_T[0], vn_T[1], vn_T[2]}
-                );
+                    {
+                        trianit->RealArray(grad_basis_func_tags)[i*2 + 0],
+                        trianit->RealArray(grad_basis_func_tags)[i*2 + 1]
+                    };
+                }
 
-                double du_dx = sol_u[0];
-                double du_dy = sol_u[1];
+                double du_dx = grad_u[0];
+                double du_dy = grad_u[1];
 
-                double dv_dx = sol_v[0];
-                double dv_dy = sol_v[1];
-
+                double dv_dx = grad_v[0];
+                double dv_dy = grad_v[1];
 
                 // compute strain rate tensor
                 double eps11 = du_dx;
@@ -677,10 +728,10 @@ namespace SIMUG
                 // compute delta
                 double del_min = IceConsts::delmin;
 
-                double delta = sqrt( (eps11*eps11 + eps22*eps22)*(1.0 + 1.0/(e*e)) +
-                                      eps12*eps12*(4.0/(e*e)) +
-                                      eps11*eps22*2.0*(1.0 - 1.0/(e*e)) + del_min*del_min
-                                   );
+                double delta = std::sqrt( (eps11*eps11 + eps22*eps22)*(1.0 + 1.0/(e*e)) +
+                                           eps12*eps12*(4.0/(e*e)) +
+                                           eps11*eps22*2.0*(1.0 - 1.0/(e*e)) + del_min*del_min
+                                        );
 
                 // store strain rate and delta
                 trianit->RealArray(vareps_tag)[0] = eps11 + eps22;
@@ -694,7 +745,7 @@ namespace SIMUG
         BARRIER
     }
 
-    void Cgrid_mEVP_Solver::AssembleForceVector(INMOST::Tag sig_tag)
+    void Cgrid_mEVP_Solver::AssembleForceVector()
     {
         INMOST::Tag trian_area_tag = mesh->GetGridInfo(mesh::gridElemType::Trian)->GetCartesianSize();
 
@@ -711,8 +762,8 @@ namespace SIMUG
         // recalculate force vector
         for(auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit)
         {
-            if (trianit->GetStatus() != Element::Ghost)
-            {
+//            if (trianit->GetStatus() != Element::Ghost)
+//            {
                 // get area of trian
                 double trian_area = trianit->Real(trian_area_tag);
 
@@ -720,60 +771,59 @@ namespace SIMUG
 
                 for (int ed_num = 0; ed_num < 3; ++ed_num)
                 {
-                    // get gradient of basis function in edge basis
-                    std::vector<double> grad_basis = 
+                    if (adj_edges[ed_num]->GetStatus() != Element::Ghost)
                     {
-                        mesh->VecTransition
-                        (
-                            std::vector<double>
-                            {
-                                trianit->RealArray(grad_basis_func_tags)[ed_num*2 + 0],
-                                trianit->RealArray(grad_basis_func_tags)[ed_num*2 + 1]
-                            },
-                            trianit->getCells()[0],
-                            adj_edges[ed_num]
-                        )
-                    };
+                        // get gradient of basis function in edge basis
+                        std::vector<double> grad_basis = 
+                        {
+                            mesh->VecTransition
+                            (
+                                std::vector<double>
+                                {
+                                    trianit->RealArray(grad_basis_func_tags)[ed_num*2 + 0],
+                                    trianit->RealArray(grad_basis_func_tags)[ed_num*2 + 1]
+                                },
+                                trianit->getCells()[0],
+                                adj_edges[ed_num]
+                            )
+                        };
 
-                    // move sigma components to edge basis
-                    double sigma1 = trianit->RealArray(sig_tag)[0];
-                    double sigma2 = trianit->RealArray(sig_tag)[1];
-                    double sigma12 = trianit->RealArray(sig_tag)[2];
+                        // move sigma components to edge basis
+                        double sigma1 = trianit->RealArray(new_sigma_tag)[0];
+                        double sigma2 = trianit->RealArray(new_sigma_tag)[1];
+                        double sigma12 = trianit->RealArray(new_sigma_tag)[2];
 
-                    double sigma11 = 0.5*(sigma1 + sigma2);
-                    double sigma22 = 0.5*(sigma1 - sigma2);
+                        double sigma11 = 0.5*(sigma1 + sigma2);
+                        double sigma22 = 0.5*(sigma1 - sigma2);
 
-                    std::vector<std::vector<double>> sig_edge = 
-                    {
-                        mesh->TensTransition
-                        (
-                            std::vector<std::vector<double>>
-                            {
-                                {sigma11, sigma12},
-                                {sigma12, sigma22}
-                            },
-                            trianit->getCells()[0],
-                            adj_edges[ed_num]
-                        )
-                    };
+                        std::vector<std::vector<double>> sig_edge = 
+                        {
+                            mesh->TensTransition
+                            (
+                                std::vector<std::vector<double>>
+                                {
+                                    {sigma11, sigma12},
+                                    {sigma12, sigma22}
+                                },
+                                trianit->getCells()[0],
+                                adj_edges[ed_num]
+                            )
+                        };
 
-                    // add force from trian to edge
-                    adj_edges[ed_num].RealArray(force_tags)[0] = adj_edges[ed_num].RealArray(force_tags)[0] +
-                                                                 trian_area*(sig_edge[0][0]*grad_basis[0] + sig_edge[0][1]*grad_basis[1])
-                                                                 /adj_edges[ed_num]->Real(mass_matrix_entry_tag);
+                        // add force from trian to edge
+                        adj_edges[ed_num].RealArray(force_tags)[0] += trian_area*(sig_edge[0][0]*grad_basis[0] + sig_edge[0][1]*grad_basis[1]);
 
-                    adj_edges[ed_num].RealArray(force_tags)[1] = adj_edges[ed_num].RealArray(force_tags)[1] +
-                                                                 trian_area*(sig_edge[1][0]*grad_basis[0] + sig_edge[1][1]*grad_basis[1])
-                                                                 /adj_edges[ed_num]->Real(mass_matrix_entry_tag);
+                        adj_edges[ed_num].RealArray(force_tags)[1] += trian_area*(sig_edge[1][0]*grad_basis[0] + sig_edge[1][1]*grad_basis[1]);
+                    }
                 }
-            }
+ //           }
         }
 
         mesh->GetMesh()->ExchangeData(force_tags, FACE, 0);
         BARRIER
     }
 
-    void Cgrid_mEVP_Solver::UpdateSigmaMevp(INMOST::Tag sig_tag)
+    void Cgrid_mEVP_Solver::UpdateSigmaMevp()
     {
         double alpha = real_params[0];
         double e = IceConsts::e;
@@ -782,411 +832,802 @@ namespace SIMUG
         {
             if (trianit->GetStatus() != Element::Ghost)
             {
-                trianit->RealArray(sigma_tag)[0] = (1.0 - 1.0/alpha)*trianit->RealArray(sigma_tag)[0] + 
-                                                   (1.0/alpha)*(trianit->Real(P_tag)/trianit->Real(delta_tag))*
-                                                   (trianit->RealArray(vareps_tag)[0] - trianit->Real(delta_tag));
+                trianit->RealArray(new_sigma_tag)[0] = (1.0 - 1.0/alpha)*trianit->RealArray(prev_sigma_tag)[0] + 
+                                                       (1.0/alpha)*(trianit->Real(P_tag)/trianit->Real(delta_tag))*
+                                                       (trianit->RealArray(vareps_tag)[0] - trianit->Real(delta_tag));
                 
-                trianit->RealArray(sigma_tag)[1] = (1.0 - 1.0/alpha)*trianit->RealArray(sigma_tag)[1] + 
-                                                   (1.0/alpha)*(trianit->Real(P_tag)/(trianit->Real(delta_tag)*e*e))*
-                                                   trianit->RealArray(vareps_tag)[1];
+                trianit->RealArray(new_sigma_tag)[1] = (1.0 - 1.0/alpha)*trianit->RealArray(prev_sigma_tag)[1] + 
+                                                       (1.0/alpha)*(trianit->Real(P_tag)/(trianit->Real(delta_tag)*e*e))*
+                                                       trianit->RealArray(vareps_tag)[1];
                 
-                trianit->RealArray(sigma_tag)[2] = (1.0 - 1.0/alpha)*trianit->RealArray(sigma_tag)[2] + 
-                                                   (1.0/alpha)*(trianit->Real(P_tag)/(trianit->Real(delta_tag)*e*e))*
-                                                   trianit->RealArray(vareps_tag)[2];
+                trianit->RealArray(new_sigma_tag)[2] = (1.0 - 1.0/alpha)*trianit->RealArray(prev_sigma_tag)[2] + 
+                                                       (1.0/alpha)*(trianit->Real(P_tag)/(trianit->Real(delta_tag)*e*e))*
+                                                       trianit->RealArray(vareps_tag)[2];
             }
         }
 
-        mesh->GetMesh()->ExchangeData(sigma_tag, CELL, 0);
+        mesh->GetMesh()->ExchangeData(new_sigma_tag, CELL, 0);
         BARRIER
     }
 
-    void Cgrid_mEVP_Solver::ComputeEdgeStabilization(INMOST::Tag vel_tag)
+    void Cgrid_mEVP_Solver::ComputeEdgeStabilizationSum()
     {
-        double alpha_stab = real_params[2];
+        // zerroing stabilization sum
+        for (auto edgeit = mesh->GetMesh()->BeginFace(); edgeit != mesh->GetMesh()->EndFace(); ++edgeit)
+        {
+            if (edgeit->GetStatus() != Element::Ghost)
+            {
+                edgeit->RealArray(edge_stab_sum_tags)[0] = 0.0;
+                edgeit->RealArray(edge_stab_sum_tags)[1] = 0.0;
+            }
+        }
+        mesh->GetMesh()->ExchangeData(edge_stab_sum_tags, FACE, 0);
+        BARRIER
 
-        INMOST::Tag node_id_tag = mesh->GetGridInfo(mesh::gridElemType::Node)->id;
-        INMOST::Tag edge_id_tag = mesh->GetGridInfo(mesh::gridElemType::Edge)->id;
+        // compute new stabilization sum
+        for (auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit)
+        {
+            ElementArray<Face> edges = trianit->getFaces();
+
+            // move velocity components to trian basis
+            std::vector<std::vector<double>> trian_velocities;
+            for (int i = 0; i < 3; ++i)
+            {
+                trian_velocities.push_back
+                (
+                    mesh->VecTransition
+                    (
+                        std::vector<double>
+                        {
+                            edges[i]->RealArray(new_vel_tag)[0],
+                            edges[i]->RealArray(new_vel_tag)[1]
+                        },
+                        edges[i],
+                        trianit->getCells()[0]
+                    )
+                );
+            }
+
+            // compute the difference of velocities on every edge (in edge basis)
+            std::vector<double> e0_u_diff = 
+            mesh->VecTransition(trian_velocities[1], trianit->getCells()[0], edges[0]) - 
+            mesh->VecTransition(trian_velocities[2], trianit->getCells()[0], edges[0]);
+
+            std::vector<double> e1_u_diff = 
+            mesh->VecTransition(trian_velocities[2], trianit->getCells()[0], edges[1]) - 
+            mesh->VecTransition(trian_velocities[0], trianit->getCells()[0], edges[1]);
+
+            std::vector<double> e2_u_diff = 
+            mesh->VecTransition(trian_velocities[0], trianit->getCells()[0], edges[2]) - 
+            mesh->VecTransition(trian_velocities[1], trianit->getCells()[0], edges[2]);
+
+            // store
+            edges[0]->RealArray(edge_stab_sum_tags)[0] += (edges[0]->GetStatus() != Element::Ghost) ? e0_u_diff[0]: 0.0;
+            edges[0]->RealArray(edge_stab_sum_tags)[1] += (edges[0]->GetStatus() != Element::Ghost) ? e0_u_diff[1]: 0.0;
+
+            edges[1]->RealArray(edge_stab_sum_tags)[0] += (edges[1]->GetStatus() != Element::Ghost) ? e1_u_diff[0]: 0.0;
+            edges[1]->RealArray(edge_stab_sum_tags)[1] += (edges[1]->GetStatus() != Element::Ghost) ? e1_u_diff[1]: 0.0;
+
+            edges[2]->RealArray(edge_stab_sum_tags)[0] += (edges[2]->GetStatus() != Element::Ghost) ? e2_u_diff[0]: 0.0;
+            edges[2]->RealArray(edge_stab_sum_tags)[1] += (edges[2]->GetStatus() != Element::Ghost) ? e2_u_diff[1]: 0.0;
+        }
+        mesh->GetMesh()->ExchangeData(edge_stab_sum_tags, FACE, 0);
+        BARRIER
+    }
+
+    void Cgrid_mEVP_Solver::ComputeEdgeStabilization(double alpha)
+    {
         INMOST::Tag trian_area_tag = mesh->GetGridInfo(mesh::gridElemType::Trian)->GetCartesianSize();
 
+        // compute stabilization sum
+        ComputeEdgeStabilizationSum();
+        BARRIER
+
+        // compute edge xi
+        for (auto edgeit = mesh->GetMesh()->BeginFace(); edgeit != mesh->GetMesh()->EndFace(); ++edgeit)
+        {
+            if ((edgeit->GetStatus() != Element::Ghost) &&
+                (edgeit->Integer(mesh->GetGridInfo(mesh::gridElemType::Edge)->is_bnd) == 0))
+            {
+                ElementArray<Cell> adj_trians = edgeit->getCells();
+
+                edgeit->Real(xi_edge_tag) = (adj_trians[0]->Real(trian_area_tag)*(0.5*adj_trians[0]->Real(P_tag)/adj_trians[0]->Real(delta_tag)) +
+                                             adj_trians[1]->Real(trian_area_tag)*(0.5*adj_trians[1]->Real(P_tag)/adj_trians[1]->Real(delta_tag)))/
+                                             (adj_trians[0]->Real(trian_area_tag) + adj_trians[1]->Real(trian_area_tag));
+            }
+
+            if ((edgeit->GetStatus() != Element::Ghost) &&
+                (edgeit->Integer(mesh->GetGridInfo(mesh::gridElemType::Edge)->is_bnd) == 1))
+            {
+                ElementArray<Cell> adj_trians = edgeit->getCells();
+
+                edgeit->Real(xi_edge_tag) = 0.5*adj_trians[0]->Real(P_tag)/adj_trians[0]->Real(delta_tag);
+            }
+        }
+        mesh->GetMesh()->ExchangeData(xi_edge_tag, FACE, 0);
+        BARRIER
+
+        // zerroing edge stabilization
+        for (auto edgeit = mesh->GetMesh()->BeginFace(); edgeit != mesh->GetMesh()->EndFace(); ++edgeit)
+        {
+            if (edgeit->GetStatus() != Element::Ghost)
+            {
+                edgeit->RealArray(edge_stab_tags)[0] = 0.0;
+                edgeit->RealArray(edge_stab_tags)[1] = 0.0;
+            }
+        }
+        mesh->GetMesh()->ExchangeData(edge_stab_tags, FACE, 0);
+        BARRIER
+
+        // compute new edge stabilization
+        for (auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit)
+        {
+            ElementArray<Face> edges = trianit->getFaces();
+
+            // move stabilization sum components to trian basis
+            std::vector<std::vector<double>> trian_stab_sum;
+            for (int i = 0; i < 3; ++i)
+            {
+                trian_stab_sum.push_back
+                (
+                    mesh->VecTransition
+                    (
+                        std::vector<double>
+                        {
+                            edges[i]->RealArray(edge_stab_sum_tags)[0],
+                            edges[i]->RealArray(edge_stab_sum_tags)[1]
+                        },
+                        edges[i],
+                        trianit->getCells()[0]
+                    )
+                );
+            }
+
+            // get edges xi
+            std::vector<double> xi;
+            for (int i = 0; i < 3; ++i)
+            {
+                xi.push_back(edges[i]->Real(xi_edge_tag));
+            }
+
+            // compute new stabilization
+            std::vector<double> e0_stab = 
+            - xi[1]*mesh->VecTransition(trian_stab_sum[1], trianit->getCells()[0], edges[0])
+            + xi[2]*mesh->VecTransition(trian_stab_sum[2], trianit->getCells()[0], edges[0]);
+
+            std::vector<double> e1_stab = 
+            - xi[2]*mesh->VecTransition(trian_stab_sum[2], trianit->getCells()[0], edges[1])
+            + xi[0]*mesh->VecTransition(trian_stab_sum[0], trianit->getCells()[0], edges[1]);
+
+            std::vector<double> e2_stab = 
+            - xi[0]*mesh->VecTransition(trian_stab_sum[0], trianit->getCells()[0], edges[2])
+            + xi[1]*mesh->VecTransition(trian_stab_sum[1], trianit->getCells()[0], edges[2]);
+
+            // store
+            edges[0]->RealArray(edge_stab_tags)[0] += (edges[0]->GetStatus() != Element::Ghost) ? (-alpha/3.0)*e0_stab[0]: 0.0;
+            edges[0]->RealArray(edge_stab_tags)[1] += (edges[0]->GetStatus() != Element::Ghost) ? (-alpha/3.0)*e0_stab[1]: 0.0;
+
+            edges[1]->RealArray(edge_stab_tags)[0] += (edges[1]->GetStatus() != Element::Ghost) ? (-alpha/3.0)*e1_stab[0]: 0.0;
+            edges[1]->RealArray(edge_stab_tags)[1] += (edges[1]->GetStatus() != Element::Ghost) ? (-alpha/3.0)*e1_stab[1]: 0.0;
+
+            edges[2]->RealArray(edge_stab_tags)[0] += (edges[2]->GetStatus() != Element::Ghost) ? (-alpha/3.0)*e2_stab[0]: 0.0;
+            edges[2]->RealArray(edge_stab_tags)[1] += (edges[2]->GetStatus() != Element::Ghost) ? (-alpha/3.0)*e2_stab[1]: 0.0;
+        }
+        mesh->GetMesh()->ExchangeData(edge_stab_tags, FACE, 0);
+        BARRIER
+    }
+
+    void Cgrid_mEVP_Solver::ComputeLevelVector()
+    {
+        double rho_ice = IceConsts::rhoi;
+        double g = GenConsts::g;
+        INMOST::Tag trian_area_tag = mesh->GetGridInfo(mesh::gridElemType::Trian)->GetCartesianSize();
+
+        // zerroing current discrete level vector
         for(auto edgeit = mesh->GetMesh()->BeginFace(); edgeit != mesh->GetMesh()->EndFace(); ++edgeit)
         {
             if ((edgeit->GetStatus() != Element::Ghost) &&
                 (edgeit->Integer(mesh->GetGridInfo(mesh::gridElemType::Edge)->is_bnd) == 0))
             {
-                // zeroing previous stabilization
-                edgeit->RealArray(edge_stab_tags)[0] = 0.0;
-                edgeit->RealArray(edge_stab_tags)[1] = 0.0;
-
-                ElementArray<Cell> adj_trians = edgeit->getCells();
-
-                // move components of the first trian edge velocities to trian basis
-                ElementArray<Face> first_trian_edges = adj_trians[0].getFaces();
-                std::vector<std::vector<double>> first_trian_edge_vel;
-
-                for (int i = 0; i < 3; ++i)
-                {
-                    first_trian_edge_vel.push_back
-                    (
-                        mesh->VecTransition
-                        (
-                            std::vector<double>
-                            {
-                                first_trian_edges[i]->RealArray(vel_tag)[0],
-                                first_trian_edges[i]->RealArray(vel_tag)[1]
-                            },
-                            first_trian_edges[i],
-                            adj_trians[0]
-                        )
-                    );
-                }
-
-                // move components of the second trian edge velocities to trian basis
-                ElementArray<Face> second_trian_edges = adj_trians[1].getFaces();
-                std::vector<std::vector<double>> second_trian_edge_vel;
-
-                for (int i = 0; i < 3; ++i)
-                {
-                    second_trian_edge_vel.push_back
-                    (
-                        mesh->VecTransition
-                        (
-                            std::vector<double>
-                            {
-                                second_trian_edges[i]->RealArray(vel_tag)[0],
-                                second_trian_edges[i]->RealArray(vel_tag)[1]
-                            },
-                            second_trian_edges[i],
-                            adj_trians[1]
-                        )
-                    );
-                }
-
-                // move components for current edge basis for first and second trian
-                std::vector<std::vector<double>> first_trian_vel;
-                for (int i = 0; i < 3; ++i)
-                {
-                    first_trian_vel.push_back
-                    (
-                        mesh->VecTransition
-                        (
-                            std::vector<double>
-                            {
-                                first_trian_edge_vel[i][0],
-                                first_trian_edge_vel[i][1]
-                            },
-                            adj_trians[0],
-                            edgeit->getFaces()[0]
-                        )
-                    );
-                }
-
-                std::vector<std::vector<double>> second_trian_vel;
-                for (int i = 0; i < 3; ++i)
-                {
-                    second_trian_vel.push_back
-                    (
-                        mesh->VecTransition
-                        (
-                            std::vector<double>
-                            {
-                                second_trian_edge_vel[i][0],
-                                second_trian_edge_vel[i][1]
-                            },
-                            adj_trians[1],
-                            edgeit->getFaces()[0]
-                        )
-                    );
-                }
-
-                // creat element array of propper edges
-                ElementArray<Face> edges; 
-                std::vector<std::vector<double>> velocities;
-
-                for (int i = 0; i < 3; ++i)
-                {
-                    if (first_trian_edges[i]->Integer(edge_id_tag) != edgeit->Integer(edge_id_tag))
-                    {
-                        edges.push_back(first_trian_edges[i]);
-                        velocities.push_back(first_trian_vel[i]);
-                    }
-                }
-
-                for (int i = 0; i < 3; ++i)
-                {
-                    if (second_trian_edges[i]->Integer(edge_id_tag) != edgeit->Integer(edge_id_tag))
-                    {
-                        edges.push_back(second_trian_edges[i]);
-                        velocities.push_back(second_trian_vel[i]);
-                    }
-                }
-
-                // main cycle
-                for (int i = 0; i < 4; ++i)
-                {
-                    for (int j = 0; j < 4; ++j)
-                    {
-                        if (
-                                (((edges[i]->getNodes()[0])->Integer(node_id_tag) == (edges[j]->getNodes()[0])->Integer(node_id_tag)) and 
-                                 ((edges[i]->getNodes()[1])->Integer(node_id_tag) != (edges[j]->getNodes()[1])->Integer(node_id_tag))) or 
-                                (((edges[i]->getNodes()[0])->Integer(node_id_tag) == (edges[j]->getNodes()[1])->Integer(node_id_tag)) and 
-                                 ((edges[i]->getNodes()[1])->Integer(node_id_tag) != (edges[j]->getNodes()[0])->Integer(node_id_tag)))
-                           )
-                        {
-                            edgeit->RealArray(edge_stab_tags)[0] -= (1.0/3.0)*velocities[i][0];
-                            edgeit->RealArray(edge_stab_tags)[1] -= (1.0/3.0)*velocities[i][1];
-                        }
-                        else
-                        {
-                            edgeit->RealArray(edge_stab_tags)[0] += (1.0/3.0)*velocities[i][0];
-                            edgeit->RealArray(edge_stab_tags)[1] += (1.0/3.0)*velocities[i][1];
-                        }
-                    }
-                }
-
-                // calculate xi value on edge
-                double xi_edge = (adj_trians[0]->Real(trian_area_tag)*(0.5*adj_trians[0]->Real(P_tag)/adj_trians[0]->Real(delta_tag)) +
-                                  adj_trians[1]->Real(trian_area_tag)*(0.5*adj_trians[1]->Real(P_tag)/adj_trians[1]->Real(delta_tag)))/
-                                  (adj_trians[0]->Real(trian_area_tag) + adj_trians[1]->Real(trian_area_tag));
-
-                edgeit->RealArray(edge_stab_tags)[0] *=  2.0*xi_edge*alpha_stab*(1.0/edgeit->Real(mass_matrix_entry_tag));
-                edgeit->RealArray(edge_stab_tags)[1] *=  2.0*xi_edge*alpha_stab*(1.0/edgeit->Real(mass_matrix_entry_tag));
+                edgeit->RealArray(disc_level_tags)[0] = 0.0;
+                edgeit->RealArray(disc_level_tags)[1] = 0.0;
             }
         }
+        mesh->GetMesh()->ExchangeData(disc_level_tags, FACE, 0);
 
-        mesh->GetMesh()->ExchangeData(edge_stab_tags, FACE, 0);
+        // compute new discrete level vector
+        for(auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit)
+        {
+            ElementArray<Face> adj_edges = trianit->getFaces();
+            double level = trianit->Real(level_tag);
+            double thickness = trianit->Real(thick_tag);
+            double area = trianit->Real(trian_area_tag);
+
+            for (int ed_num = 0; ed_num < 3; ++ed_num)
+            {
+                if ((adj_edges[ed_num]->Integer(mesh->GetGridInfo(mesh::gridElemType::Edge)->is_bnd) == 0) &&
+                    (adj_edges[ed_num]->GetStatus() != Element::Ghost))
+                {
+                    // get gradient in current edge basis
+                    std::vector<double> current_grad = mesh->VecTransition
+                    (
+                        std::vector<double>
+                        {
+                            trianit->RealArray(grad_basis_func_tags)[2*ed_num + 0],
+                            trianit->RealArray(grad_basis_func_tags)[2*ed_num + 1]
+                        },
+                        trianit->getCells()[0],
+                        adj_edges[ed_num]
+                    );
+
+                    adj_edges[ed_num]->RealArray(disc_level_tags)[0] += rho_ice*thickness*g*level*current_grad[0]*area;
+                    adj_edges[ed_num]->RealArray(disc_level_tags)[1] += rho_ice*thickness*g*level*current_grad[1]*area;
+                }
+            }
+        }
+        mesh->GetMesh()->ExchangeData(disc_level_tags, FACE, 0);
         BARRIER
     }
 
-/*
-    void Cgrid_mEVP_Solver::ComputeVarepsilonDelta(INMOST::Tag vel_tag)
+    void Cgrid_mEVP_Solver::UpdateVelocityMevp()
     {
-        double e = IceConsts::e;
-        std::vector<INMOST::Tag> is_normal_tags = mesh->GetGridInfo(mesh::gridElemType::Trian)->GetIsXedgeBasisIsNormal();
+        double rho_i = IceConsts::rhoi;
+        double rho_w = WaterConsts::rhow;
+        double rho_a = AirConsts::rhoa;
+        double Cw = IceConsts::Cw;
+        double Ca = IceConsts::Ca;
+        double dt = time_step;
+        double beta = real_params[1];
+        double f = GenConsts::f;
+
+        INMOST::Tag edge_id_tag = mesh->GetGridInfo(mesh::gridElemType::Edge)->id;
+
+        // assemble rhs, lhs and solve
+        for(auto edgeit = mesh->GetMesh()->BeginFace(); edgeit != mesh->GetMesh()->EndFace(); ++edgeit)
+        {
+            if ((edgeit->GetStatus() != Element::Ghost) &&
+                (edgeit->Integer(mesh->GetGridInfo(mesh::gridElemType::Edge)->is_bnd) == 0))
+            {
+                std::vector<double> u_old = 
+                {
+                    edgeit->RealArray(old_vel_tag)[0],
+                    edgeit->RealArray(old_vel_tag)[1]
+                };
+
+                std::vector<double> u_prev = 
+                {
+                    edgeit->RealArray(prev_vel_tag)[0],
+                    edgeit->RealArray(prev_vel_tag)[1]
+                };
+
+                std::vector<double> u_a = 
+                {
+                    edgeit->RealArray(ua_tags)[0],
+                    edgeit->RealArray(ua_tags)[1]
+                };
+
+                std::vector<double> u_w = 
+                {
+                    edgeit->RealArray(uw_tags)[0],
+                    edgeit->RealArray(uw_tags)[1]
+                };
+
+                std::vector<double> Force = 
+                {
+                    edgeit->RealArray(force_tags)[0],
+                    edgeit->RealArray(force_tags)[1]
+                };
+
+                std::vector<double> Level = 
+                {
+                    edgeit->RealArray(disc_level_tags)[0],
+                    edgeit->RealArray(disc_level_tags)[1]
+                };
+
+                // Stabilization
+                std::vector<double> Stab =
+                {
+                    edgeit->RealArray(edge_stab_tags)[0],
+                    edgeit->RealArray(edge_stab_tags)[1]
+                };
+
+                double h = edgeit->Real(edge_thick_tag);
+                double a = edgeit->Real(edge_conc_tag);
+
+                double mm = edgeit->Real(mass_matrix_tag);
+
+                double lhs = (beta + 1.0)*rho_i*h/dt + a*rho_w*Cw*L2_norm_vec(u_prev - u_w);
+
+                std::vector<double> rhs(2);
+
+                rhs = (rho_i*h/dt)*(beta*u_prev + u_old) + (1.0/mm)*(Level - Force)
+                      + a*rho_a*Ca*L2_norm_vec(u_a)*u_a 
+                      + a*rho_w*Cw*L2_norm_vec(u_prev - u_w)*u_w
+                      + rho_i*h*f*std::vector<double>{u_prev[1], -u_prev[0]}
+                      + (1.0/mm)*Stab;
+                
+                edgeit->RealArray(new_vel_tag)[0] = rhs[0]/lhs;
+                edgeit->RealArray(new_vel_tag)[1] = rhs[1]/lhs;
+            }
+        }
+        mesh->GetMesh()->ExchangeData(new_vel_tag, FACE, 0);
+        BARRIER
+    }
+
+    void Cgrid_mEVP_Solver::UpdateVelocity()
+    {
+        for(auto edgeit = mesh->GetMesh()->BeginFace(); edgeit != mesh->GetMesh()->EndFace(); ++edgeit)
+        {
+            if (edgeit->GetStatus() != Element::Ghost)
+            {
+                edgeit->RealArray(prev_vel_tag)[0] = edgeit->RealArray(new_vel_tag)[0];
+                edgeit->RealArray(prev_vel_tag)[1] = edgeit->RealArray(new_vel_tag)[1];
+            }
+        }
+        mesh->GetMesh()->ExchangeData(prev_vel_tag, FACE, 0);
+        BARRIER
+    }
+
+    void Cgrid_mEVP_Solver::UpdateSigma()
+    {
+        for(auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit)
+        {
+            if (trianit->GetStatus() != Element::Ghost)
+            {
+                trianit->RealArray(prev_sigma_tag)[0] = trianit->RealArray(new_sigma_tag)[0];
+                trianit->RealArray(prev_sigma_tag)[1] = trianit->RealArray(new_sigma_tag)[1];
+                trianit->RealArray(prev_sigma_tag)[2] = trianit->RealArray(new_sigma_tag)[2];
+            }
+        }
+        mesh->GetMesh()->ExchangeData(prev_sigma_tag, CELL, 0);
+        BARRIER
+    }
+
+
+    void Cgrid_mEVP_Solver::MoveVectors(bool to_local)
+    {
+        if (to_local)
+        {
+            // move velocity vectors to edge basis
+            for(auto edgeit = mesh->GetMesh()->BeginFace(); edgeit != mesh->GetMesh()->EndFace(); ++edgeit)
+            {
+                if (edgeit->GetStatus() != Element::Ghost)
+                {
+                    // ice velocity
+                    std::vector<double> edge_ice_vel = 
+                    mesh->VecTransitionToElemBasis
+                    (
+                        std::vector<double>
+                        {
+                            edgeit->RealArray(vel_tag)[0],
+                            edgeit->RealArray(vel_tag)[1]
+                        },
+                        edgeit->getFaces()[0]
+                    );
+                    edgeit->RealArray(vel_tag)[0] = edge_ice_vel[0]; edgeit->RealArray(vel_tag)[1] = edge_ice_vel[1]; 
+
+                    // air velocity
+                    std::vector<double> edge_air_vel = 
+                    mesh->VecTransitionToElemBasis
+                    (
+                        std::vector<double>
+                        {
+                            edgeit->RealArray(ua_tags)[0],
+                            edgeit->RealArray(ua_tags)[1]
+                        },
+                        edgeit->getFaces()[0]
+                    );
+
+                    edgeit->RealArray(ua_tags)[0] = edge_air_vel[0]; edgeit->RealArray(ua_tags)[1] = edge_air_vel[1]; 
+
+                    // water velocity
+                    std::vector<double> edge_water_vel = 
+                    mesh->VecTransitionToElemBasis
+                    (
+                        std::vector<double>
+                        {
+                            edgeit->RealArray(uw_tags)[0],
+                            edgeit->RealArray(uw_tags)[1]
+                        },
+                        edgeit->getFaces()[0]
+                    );
+                    edgeit->RealArray(uw_tags)[0] = edge_water_vel[0]; edgeit->RealArray(uw_tags)[1] = edge_water_vel[1]; 
+                }
+            }
+        }
+        else
+        {
+            for(auto edgeit = mesh->GetMesh()->BeginFace(); edgeit != mesh->GetMesh()->EndFace(); ++edgeit)
+            {
+                if (edgeit->GetStatus() != Element::Ghost)
+                {
+                    // ice velocity
+                    std::vector<double> geo_ice_vel = 
+                    mesh->VecTransitionToGeoBasis
+                    (
+                        std::vector<double>
+                        {
+                            edgeit->RealArray(vel_tag)[0],
+                            edgeit->RealArray(vel_tag)[1]
+                        },
+                        edgeit->getFaces()[0]
+                    );
+                    edgeit->RealArray(vel_tag)[0] = geo_ice_vel[0]; edgeit->RealArray(vel_tag)[1] = geo_ice_vel[1]; 
+
+                    // air velocity
+                    std::vector<double> geo_air_vel = 
+                    mesh->VecTransitionToGeoBasis
+                    (
+                        std::vector<double>
+                        {
+                            edgeit->RealArray(ua_tags)[0],
+                            edgeit->RealArray(ua_tags)[1]
+                        },
+                        edgeit->getFaces()[0]
+                    );
+                    edgeit->RealArray(ua_tags)[0] = geo_air_vel[0]; edgeit->RealArray(ua_tags)[1] = geo_air_vel[1]; 
+
+                    // water velocity
+                    std::vector<double> geo_water_vel = 
+                    mesh->VecTransitionToGeoBasis
+                    (
+                        std::vector<double>
+                        {
+                            edgeit->RealArray(uw_tags)[0],
+                            edgeit->RealArray(uw_tags)[1]
+                        },
+                        edgeit->getFaces()[0]
+                    );
+                    edgeit->RealArray(uw_tags)[0] = geo_water_vel[0]; edgeit->RealArray(uw_tags)[1] = geo_water_vel[1]; 
+                }
+            }
+        }
+
+        mesh->GetMesh()->ExchangeData(vel_tag, FACE, 0);
+        mesh->GetMesh()->ExchangeData(ua_tags, FACE, 0);
+        mesh->GetMesh()->ExchangeData(uw_tags, FACE, 0);
+        BARRIER
+    }
+
+    void Cgrid_mEVP_Solver::Initialize()
+    {
+        // assign velocities from the previous step
+        for(auto edgeit = mesh->GetMesh()->BeginFace(); edgeit != mesh->GetMesh()->EndFace(); ++edgeit)
+        {
+            if (edgeit->GetStatus() != Element::Ghost)
+            {
+                edgeit->RealArray(old_vel_tag)[0] = edgeit->RealArray(vel_tag)[0];
+                edgeit->RealArray(old_vel_tag)[1] = edgeit->RealArray(vel_tag)[1];
+
+                edgeit->RealArray(prev_vel_tag)[0] = edgeit->RealArray(vel_tag)[0];
+                edgeit->RealArray(prev_vel_tag)[1] = edgeit->RealArray(vel_tag)[1];
+
+                edgeit->RealArray(new_vel_tag)[0] = edgeit->RealArray(vel_tag)[0];
+                edgeit->RealArray(new_vel_tag)[1] = edgeit->RealArray(vel_tag)[1];
+            }
+        }
+        mesh->GetMesh()->ExchangeData(old_vel_tag, FACE, 0);
+        mesh->GetMesh()->ExchangeData(prev_vel_tag, FACE, 0);
+        mesh->GetMesh()->ExchangeData(new_vel_tag, FACE, 0);
+
+        // assign sigma from the previous step
+        for(auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit)
+        {
+            if (trianit->GetStatus() != Element::Ghost)
+            {
+                trianit->RealArray(old_sigma_tag)[0] = trianit->RealArray(new_sigma_tag)[0];
+                trianit->RealArray(old_sigma_tag)[1] = trianit->RealArray(new_sigma_tag)[1];
+                trianit->RealArray(old_sigma_tag)[2] = trianit->RealArray(new_sigma_tag)[2];
+
+                trianit->RealArray(prev_sigma_tag)[0] = trianit->RealArray(new_sigma_tag)[0];
+                trianit->RealArray(prev_sigma_tag)[1] = trianit->RealArray(new_sigma_tag)[1];
+                trianit->RealArray(prev_sigma_tag)[2] = trianit->RealArray(new_sigma_tag)[2];
+            }
+        }
+        mesh->GetMesh()->ExchangeData(old_sigma_tag, CELL, 0);
+        mesh->GetMesh()->ExchangeData(prev_sigma_tag, CELL, 0);
+
+        BARRIER
+    }
+
+    void Cgrid_mEVP_Solver::Finalize()
+    {
+        // store velocity
+        for(auto edgeit = mesh->GetMesh()->BeginFace(); edgeit != mesh->GetMesh()->EndFace(); ++edgeit)
+        {
+            if (edgeit->GetStatus() != Element::Ghost)
+            {
+                edgeit->RealArray(vel_tag)[0] = edgeit->RealArray(new_vel_tag)[0];
+                edgeit->RealArray(vel_tag)[1] = edgeit->RealArray(new_vel_tag)[1];
+            }
+        }
+        mesh->GetMesh()->ExchangeData(vel_tag, FACE, 0);
+        BARRIER
+
+        // store sigma
+        for(auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit)
+        {
+            if (trianit->GetStatus() != Element::Ghost)
+            {
+                trianit->RealArray(old_sigma_tag)[0] = trianit->RealArray(new_sigma_tag)[0];
+                trianit->RealArray(old_sigma_tag)[1] = trianit->RealArray(new_sigma_tag)[1];
+                trianit->RealArray(old_sigma_tag)[2] = trianit->RealArray(new_sigma_tag)[2];
+            }
+        }
+        mesh->GetMesh()->ExchangeData(old_sigma_tag, CELL, 0);
+
+        BARRIER
+    }
+
+    void Cgrid_mEVP_Solver::LogError(int presudostep)
+    {
+        // compute u diff norm
+        double u_diff_norm = 0.0;
+        double u_old_norm = 0.0;
+
+        for(auto edgeit = mesh->GetMesh()->BeginFace(); edgeit != mesh->GetMesh()->EndFace(); ++edgeit)
+        {
+            if (edgeit->GetStatus() != Element::Ghost)
+            {
+                double current_vec_diff_sqr = L2_norm_vec
+                (
+                    std::vector<double>
+                    {
+                        edgeit->RealArray(new_vel_tag)[0] - edgeit->RealArray(prev_vel_tag)[0],
+                        edgeit->RealArray(new_vel_tag)[1] - edgeit->RealArray(prev_vel_tag)[1]
+                    }
+                );
+                current_vec_diff_sqr *= current_vec_diff_sqr;
+                u_diff_norm += current_vec_diff_sqr;
+
+                double current_old_vec_sqr = L2_norm_vec
+                (
+                    std::vector<double>
+                    {
+                        edgeit->RealArray(old_vel_tag)[0],
+                        edgeit->RealArray(old_vel_tag)[1]
+                    }
+                );
+                current_old_vec_sqr *= current_old_vec_sqr;
+                u_old_norm += current_old_vec_sqr;
+            }
+        }
+        BARRIER
+
+        // compute sum on every process
+        double u_diff_norm_all = u_diff_norm;
+        double u_old_norm_all = u_old_norm;
+
+#if defined(USE_MPI)
+        MPI_Allreduce(&u_diff_norm_all, &u_diff_norm, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+        BARRIER
+
+#if defined(USE_MPI)
+        MPI_Allreduce(&u_old_norm_all, &u_old_norm, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+        BARRIER
+
+        u_diff_norm_all = std::sqrt(u_diff_norm_all);
+        u_old_norm_all = std::sqrt(u_old_norm_all);
+
+        u_old_norm_all = (u_old_norm_all < REAL_MIN_ABS_VAL) ? 1e15 : u_old_norm_all;
+
+        // compute sigma diff norm
+        double sigma_diff_norm = 0.0;
+        double sigma_old_norm = 0.0;
 
         for(auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit)
         {
             if (trianit->GetStatus() != Element::Ghost)
             {
-                ElementArray<Face> adj_edges = trianit->getFaces();
-
-                // get outward edge basis in cuurent trian coords
-                std::vector<std::vector<double>> tangentials = 
-                {
+                double current_sigma_diff_sqr = L2_norm_vec
+                (
                     std::vector<double>
                     {
-                        trianit->RealArray(outward_edge_basis_in_trian_coords_tags)[0],
-                        trianit->RealArray(outward_edge_basis_in_trian_coords_tags)[1]
-                    },
-                    std::vector<double>
-                    {
-                        trianit->RealArray(outward_edge_basis_in_trian_coords_tags)[4],
-                        trianit->RealArray(outward_edge_basis_in_trian_coords_tags)[5]
-                    },
-                    std::vector<double>
-                    {
-                        trianit->RealArray(outward_edge_basis_in_trian_coords_tags)[8],
-                        trianit->RealArray(outward_edge_basis_in_trian_coords_tags)[9]
+                        trianit->RealArray(new_sigma_tag)[0] - trianit->RealArray(prev_sigma_tag)[0],
+                        trianit->RealArray(new_sigma_tag)[1] - trianit->RealArray(prev_sigma_tag)[1],
+                        trianit->RealArray(new_sigma_tag)[2] - trianit->RealArray(prev_sigma_tag)[2],
                     }
-                };
+                );
+                current_sigma_diff_sqr *= current_sigma_diff_sqr;
+                sigma_diff_norm += current_sigma_diff_sqr;
 
-                std::vector<std::vector<double>> normals = 
-                {
+                double current_sigma_old_sqr = L2_norm_vec
+                (
                     std::vector<double>
                     {
-                        trianit->RealArray(outward_edge_basis_in_trian_coords_tags)[2],
-                        trianit->RealArray(outward_edge_basis_in_trian_coords_tags)[3]
-                    },
-                    std::vector<double>
-                    {
-                        trianit->RealArray(outward_edge_basis_in_trian_coords_tags)[6],
-                        trianit->RealArray(outward_edge_basis_in_trian_coords_tags)[7]
-                    },
-                    std::vector<double>
-                    {
-                        trianit->RealArray(outward_edge_basis_in_trian_coords_tags)[10],
-                        trianit->RealArray(outward_edge_basis_in_trian_coords_tags)[11]
+                        trianit->RealArray(old_sigma_tag)[0],
+                        trianit->RealArray(old_sigma_tag)[1],
+                        trianit->RealArray(old_sigma_tag)[2],
                     }
-                };
-
-                // get trian heights
-                std::vector<double> heights = 
-                {
-                    trianit->RealArray(trian_height_to_edge_tags)[0],
-                    trianit->RealArray(trian_height_to_edge_tags)[1],
-                    trianit->RealArray(trian_height_to_edge_tags)[2]
-                };
-
-                // move velocity components to edge basis
-                std::vector<std::vector<double>> edge_velocities;
-                for (int i = 0; i < 3; ++i)
-                {
-                    edge_velocities.push_back
-                    (
-                        mesh->VecTransitionToElemBasis
-                        (
-                            std::vector<double>
-                            {
-                                adj_edges[i]->RealArray(vel_tag)[0],
-                                adj_edges[i]->RealArray(vel_tag)[1]
-                            },
-                            adj_edges[i]
-                        )
-                    );
-                }
-
-                // compute velocity components in outward trian basis
-                std::vector<std::vector<double>> velocities;
-                for (int i = 0; i < 3; ++i)
-                {
-                    if (trianit->Integer(is_normal_tags[i]) == 1)
-                    {
-                        velocities.push_back
-                        (
-                            std::vector<double>
-                            {
-                                -edge_velocities[i][1],
-                                 edge_velocities[i][0]
-                            }
-                        );
-                    }
-                    else
-                    {
-                        velocities.push_back
-                        (
-                            std::vector<double>
-                            {
-                                 edge_velocities[i][1],
-                                -edge_velocities[i][0]
-                            }
-                        );
-                    }
-                }
-
-                // compute strain rate tensor
-                std::vector<std::vector<double>> dot_vareps(2, std::vector<double>(2));
-
-                for (int i = 0; i < 3; ++i)
-                {
-                    
-                    dot_vareps = dot_vareps + (1.0/heights[i])*(velocities[i][0]*vec_transpose_product(tangentials[i], normals[i]) +
-                                                                velocities[i][1]*vec_transpose_product(normals[i], normals[i]) +
-                                                                velocities[i][0]*vec_transpose_product(normals[i], tangentials[i])
-                                                                );
-                    
-                }
-
-
-                double eps11 = dot_vareps[0][0];
-                double eps22 = dot_vareps[1][1];
-                double eps12 = dot_vareps[0][1];
-
-                // compute delta
-                double delta = sqrt( (eps11*eps11 + eps22*eps22)*(1.0 + 1.0/(e*e)) +
-                                      eps12*eps12*(4.0/(e*e)) +
-                                      eps11*eps22*2.0*(1.0 - 1.0/(e*e))
-                                   );
-
-                // store strain rate and delta
-                trianit->RealArray(vareps_tag)[0] = eps11 + eps22;
-                trianit->RealArray(vareps_tag)[1] = eps11 - eps22;
-                trianit->RealArray(vareps_tag)[2] = eps12;
-                trianit->Real(delta_tag) = delta;
+                );
+                current_sigma_old_sqr *= current_sigma_old_sqr;
+                sigma_old_norm += current_sigma_old_sqr;
             }
         }
+        BARRIER
 
-        mesh->GetMesh()->ExchangeData(vareps_tag, CELL, 0);
-        mesh->GetMesh()->ExchangeData(delta_tag, CELL, 0);
+        // compute sum on every process
+        double sigma_diff_norm_all = sigma_diff_norm;
+        double sigma_old_norm_all = sigma_old_norm;
+
+#if defined(USE_MPI)
+        MPI_Allreduce(&sigma_diff_norm_all, &sigma_diff_norm, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+        BARRIER
+
+#if defined(USE_MPI)
+        MPI_Allreduce(&sigma_old_norm_all, &sigma_old_norm, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+#endif
+        BARRIER
+
+        sigma_diff_norm_all = std::sqrt(sigma_diff_norm_all);
+        sigma_old_norm_all = std::sqrt(sigma_old_norm_all);
+
+        sigma_old_norm_all = (sigma_old_norm_all < REAL_MIN_ABS_VAL) ? 1e20 : sigma_old_norm_all;
+
+        // log
+        if (mesh->GetMesh()->GetProcessorRank() == 0)
+        {
+            std::cout << "Pseudoit " << presudostep << ", vel error = " << u_diff_norm_all/u_old_norm_all 
+                                                    << ", sigma error = " << sigma_diff_norm_all/sigma_old_norm_all 
+                                                    << std::endl;
+        }
 
         BARRIER
     }
-*/
+
+    void Cgrid_mEVP_Solver::ComputeShearDeformation()
+    {
+        for(auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit)
+        {
+            if (trianit->GetStatus() != Element::Ghost)
+            {
+                double e11 = 0.5*(trianit->RealArray(vareps_tag)[0] + trianit->RealArray(vareps_tag)[1]); 
+                double e22 = 0.5*(trianit->RealArray(vareps_tag)[0] - trianit->RealArray(vareps_tag)[1]);
+                double e12 = trianit->RealArray(vareps_tag)[2];
+
+                trianit->Real(shear_deformation_tag) = std::sqrt((e11 - e22)*(e11 - e22) + 4.0*e12*e12);
+            }
+        }
+        mesh->GetMesh()->ExchangeData(shear_deformation_tag, CELL, 0);
+        BARRIER
+    }
 
     void Cgrid_mEVP_Solver::ComputeVelocity()
     {
-        std::cout << "calculations" << std::endl;
+        double alpha_stab = real_params[2];
+        int err_frequency = integer_params[0]/5;
 
-        // move velocity vector to edge basis
-        for(auto edgeit = mesh->GetMesh()->BeginFace(); edgeit != mesh->GetMesh()->EndFace(); ++edgeit)
-        {
-            if (edgeit->GetStatus() != Element::Ghost)
-            {
-                mesh->VecTransitionToElemBasis
-                (
-                    std::vector<double>
-                    {
-                        edgeit->RealArray(vel_tag)[0],
-                        edgeit->RealArray(vel_tag)[1]
-                    },
-                    edgeit->getFaces()[0]
-                );
-            }
-        }
-        mesh->GetMesh()->ExchangeData(vel_tag, FACE, 0);
-        BARRIER
+        SIMUG::Timer mom_timer;
+        SIMUG::Logger mom_log(std::cout);
+        double duration;
 
-        // compute P
+        if (mesh->GetMesh()->GetProcessorRank() == 0)
+            mom_log.Log("\nmEVP solver info \n");
+
+        // compute edge-based scalars
+        UpdateScalars();
+
+        // move ice, air and water velocity to edge basis
+        MoveVectors(true);
+
+        // initialize mEVP solver
+        Initialize();
+
+        // compute ice strength
         ComputeP();
-        BARRIER
 
-        // compute strain rate tensor and delta
-        ComputeVarepsilonDelta(vel_tag);
-        BARRIER 
+        // compute discrete level vector
+        ComputeLevelVector();
 
-        // compute edge stabilization
-        ComputeEdgeStabilization(vel_tag);
-        BARRIER
+        // log initial error
+        //LogError(0);
 
-        // save mass matrix
-        /*
-        INMOST::Tag check_mass_matrix = mesh->GetMesh()->CreateTag("check_mass_matrix", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 1);
+        for (int pseudostep = 1; pseudostep < (integer_params[0] + 1); ++pseudostep)
+        {
+            // update vareps and delta
+            mom_timer.Launch();
+            ComputeVarepsilonDelta();
+            mom_timer.Stop();
+            duration = mom_timer.GetMaxTime();
+            mom_timer.Reset();
+            strain_rate_computation_time += duration;
+
+            // update sigma
+            UpdateSigmaMevp();
+
+            // assemble force vector
+            mom_timer.Launch();
+            AssembleForceVector();
+            mom_timer.Stop();
+            duration = mom_timer.GetMaxTime();
+            mom_timer.Reset();
+            force_assembling_time += duration;
+
+            // assemble edge stabilization
+            mom_timer.Launch();
+            ComputeEdgeStabilization(alpha_stab);
+            mom_timer.Stop();
+            duration = mom_timer.GetMaxTime();
+            mom_timer.Reset();
+            stabilization_assembling_time += duration;
+            
+            // update velocity
+            mom_timer.Launch();
+            UpdateVelocityMevp();
+            mom_timer.Stop();
+            duration = mom_timer.GetMaxTime();
+            mom_timer.Reset();
+            velocity_computation_time += duration;
+
+            // Log error
+            if (pseudostep%err_frequency == 0)
+            {
+                LogError(pseudostep);
+            }
+
+            // update velocity value
+            UpdateVelocity();
+
+            // update sigma value
+            UpdateSigma();
+            
+            BARRIER
+        }
+
+        // compute shear deformation
+        ComputeShearDeformation();
+
+        // finalize mEVP solver
+        Finalize();
+
+        // move ice, air and water velocity back to geo basis
+        MoveVectors(false);
+
+        // storre edge velocities in trians
         for (auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit)
         {
             if (trianit->GetStatus() != Element::Ghost)
             {
-                trianit->RealArray(check_mass_matrix)[0] = (trianit->getFaces())[0]->Real(mass_matrix_entry_tag);
-            }
-        }
-        mesh->GetMesh()->ExchangeData(check_mass_matrix, CELL, 0);
-        BARRIER
-        */
+                trianit->RealArray(check_vel_tag)[0] = (trianit->getFaces())[0]->RealArray(vel_tag)[0];
+                trianit->RealArray(check_vel_tag)[1] = (trianit->getFaces())[0]->RealArray(vel_tag)[1];
 
-        // save stabilization
-        /*
-        INMOST::Tag check_stab_tag = mesh->GetMesh()->CreateTag("check_stab_tag", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 2);
-        for (auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit)
-        {
-            if (trianit->GetStatus() != Element::Ghost)
-            {
-                trianit->RealArray(check_stab_tag)[0] = (trianit->getFaces())[0]->RealArray(edge_stab_tags)[0];
-                trianit->RealArray(check_stab_tag)[1] = (trianit->getFaces())[0]->RealArray(edge_stab_tags)[1];
-            }
-        }
-        mesh->GetMesh()->ExchangeData(check_stab_tag, CELL, 0);
-        BARRIER
-        */
+                trianit->RealArray(check_air_vel_tag)[0] = (trianit->getFaces())[0]->RealArray(ua_tags)[0];
+                trianit->RealArray(check_air_vel_tag)[1] = (trianit->getFaces())[0]->RealArray(ua_tags)[1];
 
-        // move velocity vector to geo basis
-        for(auto edgeit = mesh->GetMesh()->BeginFace(); edgeit != mesh->GetMesh()->EndFace(); ++edgeit)
-        {
-            if (edgeit->GetStatus() != Element::Ghost)
-            {
-                mesh->VecTransitionToGeoBasis
-                (
-                    std::vector<double>
-                    {
-                        edgeit->RealArray(vel_tag)[0],
-                        edgeit->RealArray(vel_tag)[1]
-                    },
-                    edgeit->getFaces()[0]
-                );
+                trianit->RealArray(check_water_vel_tag)[0] = (trianit->getFaces())[0]->RealArray(uw_tags)[0];
+                trianit->RealArray(check_water_vel_tag)[1] = (trianit->getFaces())[0]->RealArray(uw_tags)[1];
             }
         }
-        mesh->GetMesh()->ExchangeData(vel_tag, FACE, 0);
+        mesh->GetMesh()->ExchangeData(check_vel_tag, CELL, 0);
+        mesh->GetMesh()->ExchangeData(check_air_vel_tag, CELL, 0);
+        mesh->GetMesh()->ExchangeData(check_water_vel_tag, CELL, 0);
+        BARRIER
+
+        // Print profiling info
+        PrintProfiling();
         BARRIER
     }
 
     void Cgrid_mEVP_Solver::PrintProfiling()
     {
-        std::cout << "profiling" << std::endl;
+        SIMUG::Logger mom_log(std::cout);
+
+        if (mesh->GetMesh()->GetProcessorRank() == 0)
+        {
+            mom_log.Log("## Momentum solver profiling ##\n");
+            mom_log.Log("Strain rate computation time: " + std::to_string(strain_rate_computation_time) + " ms\n");
+            mom_log.Log("Force assembling time: " + std::to_string(force_assembling_time) + " ms\n");
+            mom_log.Log("Velocity computation time: " + std::to_string(velocity_computation_time) + " ms\n");
+            mom_log.Log("Stabilization assembling time: " + std::to_string(stabilization_assembling_time) + " ms\n");
+        }
+
+        strain_rate_computation_time = 0.0;
+        force_assembling_time = 0.0;
+        velocity_computation_time = 0.0;
+        stabilization_assembling_time = 0.0;
+        BARRIER
     }
 }
