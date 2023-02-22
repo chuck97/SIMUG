@@ -294,8 +294,6 @@ namespace SIMUG
 
         INMOST::Tag shear_deformation_tag;
         INMOST::Tag check_vel_tag;
-        INMOST::Tag check_air_vel_tag;
-        INMOST::Tag check_water_vel_tag;
     
     // profiling
     private:

@@ -1,5 +1,6 @@
 #include "simug.hpp"
 #include "inmost.h"
+#include "parser.hpp"
 
 #include<sstream>
 #include<iomanip>
@@ -8,10 +9,8 @@
 #include "mpi.h"
 #endif
 
-#define SQUARE_PATH "../../../SIMUG_v0/MESHES/pmf/square_1000km_15km.pmf" 
-
-#define BOX_LEN_SCALE 1000e3
-#define TIME_SCALE 345600.0
+#define BOX_LEN_SCALE 1024e3
+#define TIME_SCALE 86400.0
 
 using namespace INMOST;
 using namespace SIMUG;
@@ -28,7 +27,7 @@ std::vector<double> init_ice_thickness(std::pair<double, double> coords, double 
 std::vector<double> init_ice_concentration(std::pair<double, double> coords, double time)
 {
     double x = coords.first;
-    double y = coords.second;
+    //double y = coords.second;
 
     return {x/BOX_LEN_SCALE};
 }
@@ -47,8 +46,8 @@ std::vector<double> wind_velocity(std::pair<double, double> coords, double time)
 
     return 
     {
-        5.0 + (std::sin(2.0*M_PI*time/TIME_SCALE) - 3.0)*std::sin(2.0*M_PI*x/BOX_LEN_SCALE)*std::sin(2.0*M_PI*y/BOX_LEN_SCALE),
-        5.0 + (std::sin(2.0*M_PI*time/TIME_SCALE) - 3.0)*std::sin(2.0*M_PI*y/BOX_LEN_SCALE)*std::sin(2.0*M_PI*x/BOX_LEN_SCALE)
+        5.0 + (std::sin(2.0*M_PI*time/TIME_SCALE) - 3.0)*std::sin(2.0*M_PI*x/BOX_LEN_SCALE)*std::sin(M_PI*y/BOX_LEN_SCALE),
+        5.0 + (std::sin(2.0*M_PI*time/TIME_SCALE) - 3.0)*std::sin(2.0*M_PI*y/BOX_LEN_SCALE)*std::sin(M_PI*x/BOX_LEN_SCALE)
     };
 }
 
@@ -75,26 +74,21 @@ void run_model(double time_step,
                double total_time,
                const std::string& mesh_path,
                int output_frequency,
+               bool is_advection,
                adv::timeScheme advection_time_scheme,
                adv::spaceScheme advection_space_scheme,
                adv::advFilter advection_filter,
                const std::vector<double>& advection_params,
                const std::vector<double>& mevp_real_params,
                const std::vector<int>& mevp_integer_params,
-               const std::string& output_prefix)
+               const std::string& output_prefix,
+               const std::string& output_folder)
 {
-    // start MPI activity
-    int rank = 0;
-#ifdef USE_MPI
-    MPI_Init(NULL, NULL);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-#endif
-
     // initialize logger
     SIMUG::Logger logger(std::cout);
 
     // mesh initialization
-    IceMesh* mesh_plane = new IceMesh(mesh_path, mesh::surfType::plane, mesh::gridType::Cgrid); 
+    IceMesh* mesh_plane = new IceMesh(mesh_path, output_folder, mesh::surfType::plane, mesh::gridType::Cgrid); 
  
     // forcing initialization
     Forcing forcing(mesh_plane);
@@ -223,6 +217,11 @@ void run_model(double time_step,
         // update time
         current_time += time_step;
 
+        if (mesh_plane->GetMesh()->GetProcessorRank() == 0)
+        {
+            logger.Log("\n!!! Step " + std::to_string(stepnum) + " out of " + std::to_string(n_steps) + " !!!\n");
+        }
+
         // update air velocty
         forcing.Update(mesh::meshVar::ua, coord::coordType::cart, current_time);
 
@@ -233,7 +232,10 @@ void run_model(double time_step,
         forcing.Update(mesh::meshVar::hw, coord::coordType::cart, current_time);
         
         // transport scalars
-        advection.TransportScalars();
+        if (is_advection)
+        {
+            advection.TransportScalars();
+        }
 
         // update ice velocity
         momentum.ComputeVelocity();
@@ -243,31 +245,67 @@ void run_model(double time_step,
         {       
             mesh_plane->SaveVTU(output_prefix, stepnum);
         }
+        
         BARRIER
     }
     
     //delete slae solver and mesh
     delete mesh_plane;
+    BARRIER
+}
+
+int main(int argc, char* argv[])
+{
+    // start MPI activity
+    int rank = 0;
+#ifdef USE_MPI
+    MPI_Init(NULL, NULL);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+#endif
+
+    // parse input
+    std::string current_exec_name = argv[0]; 
+    std::vector<std::string> all_args;
+
+    std::string input_external_path;
+
+    if (argc > 1) 
+    {
+        all_args.assign(argv + 1, argv + argc);
+    }
+
+    if (all_args.size() > 1)
+    {
+        SIMUG_ERR("should be only one configuration \".txt\" file on input");
+    }
+    else if (all_args.size() == 0)
+    {
+        SIMUG_ERR("configuration \".txt\" file should be given on input");
+    }
+
+    Parser config(all_args.back());
+
+    run_model(config.time_step_seconds,
+              config.total_time_seconds,
+              config.grid_file,
+              config.output_frequency,
+              (config.is_advection == 1) ? true : false,
+              adv::timeScheme::TRK2,       // advection time scheme (TG2, TTG2, TTG3, TTG4)
+              adv::spaceScheme::FVupwind,  // advection space scheme (FVupwind, MUST, MUSCL)
+              adv::advFilter::none,        // advection filter (Minmod, VanLeer, Superbee, BarthJesperson, none)
+              {},                          // vector pf advection filter parameters ()
+              {
+                  config.alpha_mEVP,
+                  config.beta_mEVP,
+                  config.alpha_stab
+              },
+              {config.Nits_mEVP},
+              config.output_prefix,
+              config.output_dir
+              );
 
     // end MPI activity
 #ifdef USE_MPI
     MPI_Finalize();
 #endif
-
-}
-
-int main()
-{
-    run_model(600.0,                                // time step (seconds)
-              604800,                               // total time (seconds)
-              (std::string)SQUARE_PATH,             // path to mesh (LOW_RES_MESH_PATH, MIDDLE_RES_MESH_PATH, HIGH_RES_MESH_PATH) 
-              1,                                    // output frequncy n (every n-th time will be written to file)
-              adv::timeScheme::TRK2,                // advection time scheme (TG2, TTG2, TTG3, TTG4)
-              adv::spaceScheme::FVupwind,           // advection space scheme (FVupwind, MUST, MUSCL)
-              adv::advFilter::none,                 // advection filter (Minmod, VanLeer, Superbee, BarthJesperson, none)
-              {},                                   // vector pf advection filter parameters ()
-              {500.0, 500.0, 1.0},                  // vector of mEVP real params and stab param (alpha, beta, alpha_stab)
-              {200},                                // vector of mEVP integer params (number of interations)
-              "CgridBox"                            // output prefix
-              );
 }

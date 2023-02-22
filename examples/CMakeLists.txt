@@ -4,5 +4,6 @@
 #add_subdirectory(D-AgridPlaneAdvection)
 add_subdirectory(E-AgridLkfBox)
 add_subdirectory(F-CgridLkfBox)
-#add_subdirectory(G-AgridBox)
-#add_subdirectory(H-CgridBox)
+add_subdirectory(G-AgridBox)
+add_subdirectory(H-CgridBox)
+add_subdirectory(I-AgridCutSphere)

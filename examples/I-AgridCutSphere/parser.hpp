@@ -17,7 +17,6 @@ struct Parser
     int is_advection;
     double alpha_mEVP;
     double beta_mEVP;
-    double alpha_stab;
     int Nits_mEVP;
     std::string output_prefix;
     std::string output_dir;
@@ -80,7 +79,7 @@ Parser::Parser(const std::string& config_file_path)
 	ss >> str;
     if (str != "is_advection")
     {
-        SIMUG_ERR("5 line should be: output_frequency!");
+        SIMUG_ERR("5 line should be: is_advection!");
     }
 	ss >> is_advection;
     ss = std::stringstream();
@@ -107,24 +106,13 @@ Parser::Parser(const std::string& config_file_path)
 	ss >> beta_mEVP;
     ss = std::stringstream();
 
-    // parse alpha stab
-    std::getline(input_file, line);
-    ss = std::stringstream(line);
-	ss >> str;
-    if (str != "alpha_stab")
-    {
-        SIMUG_ERR("8 line should be: alpha_stab!");
-    }
-	ss >> alpha_stab;
-    ss = std::stringstream();
-
     // parse Nits mEVP
     std::getline(input_file, line);
     ss = std::stringstream(line);
 	ss >> str;
     if (str != "Nits_mEVP")
     {
-        SIMUG_ERR("9 line should be: Nits_mEVP!");
+        SIMUG_ERR("8 line should be: Nits_mEVP!");
     }
 	ss >> Nits_mEVP;
     ss = std::stringstream();
@@ -135,7 +123,7 @@ Parser::Parser(const std::string& config_file_path)
 	ss >> str;
     if (str != "output_prefix")
     {
-        SIMUG_ERR("10 line should be: output_prefix!");
+        SIMUG_ERR("9 line should be: output_prefix!");
     }
 	ss >> output_prefix;
     ss = std::stringstream();
@@ -146,7 +134,7 @@ Parser::Parser(const std::string& config_file_path)
 	ss >> str;
     if (str != "output_dir")
     {
-        SIMUG_ERR("11 line should be: output_dir!");
+        SIMUG_ERR("10 line should be: output_dir!");
     }
 	ss >> output_dir;
 };

@@ -1,10 +1,11 @@
 time_step_seconds 120.0
-total_time_seconds 1200.1
-grid_file /home/users/spetrov/SIMUG/SIMUG_v0/MESHES/pmf/square_512km_uni/square512km_8km_uni.pmf
-output_frequency 1
-alpha_mEVP 1000.0
-beta_mEVP 1000.0
+total_time_seconds 144000.1
+grid_file /home/users/spetrov/SIMUG/SIMUG_v0/MESHES/pmf/square_512km_uni/square512km_2km_uni.pmf
+output_frequency 100
+is_advection 1
+alpha_mEVP 3000.0
+beta_mEVP 3000.0
 alpha_stab 0.1
 Nits_mEVP 500
-output_prefix cgrid_8km
+output_prefix cgrid_512km_2km_lkf
 output_dir /home/users/spetrov/SIMUG/gnu-build/examples/F-CgridLkfBox/

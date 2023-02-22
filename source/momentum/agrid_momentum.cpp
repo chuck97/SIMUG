@@ -414,8 +414,8 @@ namespace SIMUG
                     };
 
                     // add force from trian to node
-                    adj_nodes[node_num].RealArray(force_tags)[0] += trian_area*(sig_node[0][0]*grad_basis[0] + sig_node[0][1]*grad_basis[1]);
-                    adj_nodes[node_num].RealArray(force_tags)[1] += trian_area*(sig_node[1][0]*grad_basis[0] + sig_node[1][1]*grad_basis[1]);
+                    adj_nodes[node_num].RealArray(force_tags)[0] += (adj_nodes[node_num]->GetStatus() != Element::Ghost) ? trian_area*(sig_node[0][0]*grad_basis[0] + sig_node[0][1]*grad_basis[1]) : 0.0;
+                    adj_nodes[node_num].RealArray(force_tags)[1] += (adj_nodes[node_num]->GetStatus() != Element::Ghost) ? trian_area*(sig_node[1][0]*grad_basis[0] + sig_node[1][1]*grad_basis[1]) : 0.0;
                 }
             }
         }
@@ -562,20 +562,28 @@ namespace SIMUG
 
                 double mm = nodeit->Real(lumped_mass_matrix_tag);
 
-                std::vector<double> lhs = 
-                {
-                    (beta + 1.0)*rho_i*h/dt + a*rho_w*Cw*L2_norm_vec(u_prev - u_w),
-                    rho_i*h*f
-                };
-
+                
+                double lhs = (beta + 1.0)*rho_i*h/dt + a*rho_w*Cw*L2_norm_vec(u_prev - u_w);
+                
+                /*
+                double lhs = (beta + 1.0)*rho_i*h/dt + rho_w*Cw*L2_norm_vec(u_prev - u_w);
+                */
+               
                 std::vector<double> rhs(2);
 
+                
                 rhs = (rho_i*h/dt)*(beta*u_prev + u_old) + (1.0/mm)*(Level - Force)
                       + a*rho_a*Ca*L2_norm_vec(u_a)*u_a 
-                      + a*rho_w*Cw*L2_norm_vec(u_prev - u_w)*u_w;
-                
-                nodeit->RealArray(new_vel_tag)[0] = (lhs[0]*rhs[0] + lhs[1]*rhs[1])/(lhs[0]*lhs[0] + lhs[1]*lhs[1]);
-                nodeit->RealArray(new_vel_tag)[1] = (lhs[0]*rhs[1] - lhs[1]*rhs[0])/(lhs[0]*lhs[0] + lhs[1]*lhs[1]);                
+                      + a*rho_w*Cw*L2_norm_vec(u_prev - u_w)*u_w
+                      + rho_i*h*f*std::vector<double>{-u_prev[1], u_prev[0]};
+                /*
+                rhs = (rho_i*h/dt)*(beta*u_prev + u_old) + (1.0/mm)*(Level - Force)
+                       + rho_a*Ca*L2_norm_vec(u_a)*u_a 
+                       + rho_w*Cw*L2_norm_vec(u_prev - u_w)*u_w
+                       + rho_i*h*f*std::vector<double>{-u_prev[1], u_prev[0]};
+                */
+                nodeit->RealArray(new_vel_tag)[0] = rhs[0]/lhs;
+                nodeit->RealArray(new_vel_tag)[1] = rhs[1]/lhs;               
             }
         }
         mesh->GetMesh()->ExchangeData(new_vel_tag, NODE, 0);

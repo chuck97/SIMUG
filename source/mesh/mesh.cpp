@@ -729,7 +729,7 @@ void IceMesh::AssignCoords()
                 double y = nodeit->RealArray(node_cart_tag)[1];
                 double z = nodeit->RealArray(node_cart_tag)[2];
 
-                double r = 1;
+                double r = std::sqrt(x*x + y*y + z*z);
                 double lat, lon;
 
 
@@ -788,7 +788,7 @@ void IceMesh::AssignCoords()
                 double y = edgeit->RealArray(edge_cart_tag)[1];
                 double z = edgeit->RealArray(edge_cart_tag)[2];
 
-                double r = 1;
+                double r = std::sqrt(x*x + y*y + z*z);
                 double lat, lon;
 
 
@@ -847,7 +847,7 @@ void IceMesh::AssignCoords()
                 double y = trianit->RealArray(trian_cart_tag)[1];
                 double z = trianit->RealArray(trian_cart_tag)[2];
 
-                double r = 1;
+                double r = std::sqrt(x*x + y*y + z*z);
                 double lat, lon;
 
 

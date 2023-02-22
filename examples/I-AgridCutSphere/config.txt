@@ -1,0 +1,10 @@
+time_step_seconds 600.0
+total_time_seconds 6000.1
+grid_file /home/users/spetrov/SIMUG/SIMUG_v0/MESHES/pmf/cut_sphere_ani/spherecut160km.pmf
+output_frequency 1
+is_advection 0
+alpha_mEVP 500.0
+beta_mEVP 500.0
+Nits_mEVP 500
+output_prefix agrid_sphere_cut_box
+output_dir /home/users/spetrov/SIMUG/gnu-build/examples/I-AgridCutSphere/

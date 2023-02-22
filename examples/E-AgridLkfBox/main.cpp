@@ -94,6 +94,7 @@ void run_model(double time_step,                             // time step (secon
                double total_time,                            // total time (seconds)
                const std::string& mesh_path,                 // path to mesh .pmf file
                int output_frequency,                         // output frequency
+               bool is_advection,                            // turn on the advection?
                adv::timeScheme advection_time_scheme,        // advection time scheme
                adv::spaceScheme advection_space_scheme,      // advection space scheme
                adv::advFilter advection_filter,              // advection filter type
@@ -239,6 +240,11 @@ void run_model(double time_step,                             // time step (secon
         // update time
         current_time += time_step;
 
+        if (mesh_plane->GetMesh()->GetProcessorRank() == 0)
+        {
+            logger.Log("\n!!! Step " + std::to_string(stepnum) + " out of " + std::to_string(n_steps) + " !!!\n");
+        }
+
         // update air velocty
         forcing.Update(mesh::meshVar::ua, coord::coordType::cart, current_time);
 
@@ -249,7 +255,10 @@ void run_model(double time_step,                             // time step (secon
         forcing.Update(mesh::meshVar::hw, coord::coordType::cart, current_time);
         
         // transport scalars
-        advection.TransportScalars();
+        if (is_advection)
+        {
+            advection.TransportScalars();
+        }
 
         // update ice velocity
         momentum.ComputeVelocity();
@@ -302,6 +311,7 @@ int main(int argc, char* argv[])
               config.total_time_seconds,
               config.grid_file,
               config.output_frequency,
+              (config.is_advection == 1) ? true : false,
               adv::timeScheme::TTG2,    // advection time scheme (TG2, TTG2, TTG3, TTG4)
               adv::spaceScheme::CFE,    // advection space scheme (CFE)
               adv::advFilter::Zalesak,  // advection filter (Zalesak, None)

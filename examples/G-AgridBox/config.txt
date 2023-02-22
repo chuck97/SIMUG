@@ -1,0 +1,10 @@
+time_step_seconds 600.0
+total_time_seconds 600000.1
+grid_file /home/users/spetrov/SIMUG/SIMUG_v0/MESHES/pmf/square_1024km_uni/square1024km_16km_uni.pmf
+output_frequency 100
+is_advection 0
+alpha_mEVP 500.0
+beta_mEVP 500.0
+Nits_mEVP 500
+output_prefix agrid_1024km_16km_box
+output_dir /home/users/spetrov/SIMUG/gnu-build/examples/G-AgridBox/
