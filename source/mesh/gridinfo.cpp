@@ -9,7 +9,7 @@ void NodeInfo::Mute()
     ice_mesh->SetFileOption("Tag:id node no bnd", "nosave");
     ice_mesh->SetFileOption("Tag:is node bnd", "nosave");
     ice_mesh->SetFileOption("Tag:model coords node", "nosave");
-    ice_mesh->SetFileOption("Tag:cart coords node", "nosave");
+    //ice_mesh->SetFileOption("Tag:cart coords node", "nosave");
     //ice_mesh->SetFileOption("Tag:geo coords node", "nosave");
 
     ice_mesh->SetFileOption("Tag:geo basis x node", "nosave");

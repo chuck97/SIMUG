@@ -9,7 +9,9 @@
 #include "mpi.h"
 #endif
 
-#define BOX_LEN_DEG_SCALE 1.6 // 1024e4/6400e3 
+#define EARTH_RADIUS 6400000.0
+#define BOX_LAT_SCALE 0.32 //0.32 // 2048e3/6400e3
+#define BOX_LON_SCALE 0.32 //0.32 // 2048e3/6400e3
 #define TIME_SCALE 86400.0
 
 using namespace INMOST;
@@ -29,7 +31,13 @@ std::vector<double> init_ice_concentration(std::pair<double, double> coords, dou
     double lon = coords.first;
     double lat = coords.second;
 
-    return {lon/BOX_LEN_DEG_SCALE};
+    double x = lon*EARTH_RADIUS*std::cos(lat);
+    double y = (lat + 0.5*BOX_LAT_SCALE)*EARTH_RADIUS;
+
+    double L_x = BOX_LON_SCALE*EARTH_RADIUS;
+    double L_y = BOX_LAT_SCALE*EARTH_RADIUS;
+
+    return {x/L_x};
 }
 
 // function for initial ice velocity
@@ -44,10 +52,16 @@ std::vector<double> wind_velocity(std::pair<double, double> coords, double time)
     double lon = coords.first;
     double lat = coords.second;
 
+    double x = lon*EARTH_RADIUS*std::cos(lat);
+    double y = (lat + 0.5*BOX_LAT_SCALE)*EARTH_RADIUS;
+
+    double L_x = BOX_LON_SCALE*EARTH_RADIUS*std::cos(lat);
+    double L_y = BOX_LAT_SCALE*EARTH_RADIUS;
+
     return 
     {
-        (5.0 + (std::sin(2.0*M_PI*time/TIME_SCALE) - 3.0)*std::sin(2.0*M_PI*lon/BOX_LEN_DEG_SCALE)*std::sin(M_PI*(lat + 0.5*BOX_LEN_DEG_SCALE)/BOX_LEN_DEG_SCALE))*10.0,
-        (5.0 + (std::sin(2.0*M_PI*time/TIME_SCALE) - 3.0)*std::sin(2.0*M_PI*(lat + 0.5*BOX_LEN_DEG_SCALE)/BOX_LEN_DEG_SCALE)*std::sin(M_PI*lon/BOX_LEN_DEG_SCALE))*10.0
+        (5.0 + (std::sin(2.0*M_PI*time/TIME_SCALE) - 3.0)*std::sin(2.0*M_PI*x/L_x)*std::sin(M_PI*y/L_y))*std::cos(lat)*1.5,
+        (5.0 + (std::sin(2.0*M_PI*time/TIME_SCALE) - 3.0)*std::sin(2.0*M_PI*y/L_y)*std::sin(M_PI*x/L_x))*1.5
     };
 }
 
@@ -57,10 +71,16 @@ std::vector<double> ocean_velocity(std::pair<double, double> coords, double time
     double lon = coords.first;
     double lat = coords.second;
 
+    double x = lon*EARTH_RADIUS*std::cos(lat);
+    double y = (lat + 0.5*BOX_LAT_SCALE)*EARTH_RADIUS;
+
+    double L_x = BOX_LON_SCALE*EARTH_RADIUS*std::cos(lat);
+    double L_y = BOX_LAT_SCALE*EARTH_RADIUS;
+
     return 
     {
-        (0.1*(2.0*(lat + 0.5*BOX_LEN_DEG_SCALE) - BOX_LEN_DEG_SCALE)/BOX_LEN_DEG_SCALE)*10.0,
-        (-0.1*(2.0*lon - BOX_LEN_DEG_SCALE)/BOX_LEN_DEG_SCALE)*10.0
+        (0.1*(2.0*y - L_y)/L_y)*std::cos(lat)*1.5,
+        (-0.1*(2.0*x - L_x)/L_x)*1.5
     };
 }
 
@@ -244,7 +264,7 @@ void run_model(double time_step,                             // time step (secon
         momentum.ComputeVelocity();
         
         // write output to file
-        if ((stepnum % output_frequency == 0) or (stepnum == (n_steps-1)))
+        if ((stepnum % output_frequency == 0) or (stepnum == (n_steps)))
         {       
             mesh_sphere->SaveVTU(output_prefix, stepnum);
         }

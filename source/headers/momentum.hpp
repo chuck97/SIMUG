@@ -131,12 +131,6 @@ namespace SIMUG
         // opposite node num for every edge on every triangle
         INMOST::Tag opposite_node_for_edge_tags;
 
-        // edge basis in trian coords tags
-        INMOST::Tag outward_edge_basis_in_trian_coords_tags;
-
-        // height of triangle to edge
-        INMOST::Tag trian_height_to_edge_tags;
-
         // gradients of basis functions (in trian basis)
         INMOST::Tag grad_basis_func_tags; 
 
@@ -150,12 +144,6 @@ namespace SIMUG
 
         // computation of opposite node number for every edge of triangle
         void ComputeOppositeNodes(INMOST::Tag op_node_tags);
-
-        // compute local edge basis in trian coords
-        void ComputeEdgeBasisInTrianCoords(INMOST::Tag edge_basis_in_trian_coords_tags);
-
-        // compute trian heights
-        void ComputeTrianHeights(INMOST::Tag trian_hight_tags);
 
         // compute gradients of basis functions in trian basis
         void ComputeGradientsBasisFuncs(INMOST::Tag grad_bas_tags);
@@ -220,6 +208,7 @@ namespace SIMUG
         INMOST::Tag level_tag;
         
         INMOST::Tag shear_deformation_tag;
+        INMOST::Tag z_component_tag;
 
         // profiling
     private:
@@ -294,6 +283,8 @@ namespace SIMUG
 
         INMOST::Tag shear_deformation_tag;
         INMOST::Tag check_vel_tag;
+        INMOST::Tag z_component_tag;
+        INMOST::Tag check_ghost_edge_tag;
     
     // profiling
     private:

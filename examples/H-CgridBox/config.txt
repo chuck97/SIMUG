@@ -1,10 +1,10 @@
-time_step_seconds 600.0
-total_time_seconds 600000.1
+time_step_seconds 100.0
+total_time_seconds 604800.1
 grid_file /home/users/spetrov/SIMUG/SIMUG_v0/MESHES/pmf/square_1024km_uni/square1024km_16km_uni.pmf
-output_frequency 100
+output_frequency 500
 is_advection 0
-alpha_mEVP 1500.0
-beta_mEVP 1500.0
+alpha_mEVP 1000.0
+beta_mEVP 1000.0
 alpha_stab 1.0
 Nits_mEVP 1000
 output_prefix cgrid_1024km_16km_box

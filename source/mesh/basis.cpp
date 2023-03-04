@@ -168,10 +168,12 @@ void IceMesh::AssembleCartesianElementBasis()
             // assemble cartesian basis
             std::vector<double> basis_i(3), basis_j(3), basis_k(3);
 
-            // basis k
             basis_k = unit_normal_vec;
 
+            //basis_k = unit_normal_vec;
+
             // fix unit normal if numeration is bad for plane
+            /*
             if (mesh_info.surface_type == mesh::surfType::plane)
             {
                 if (basis_k[2] < 0.0)
@@ -179,6 +181,7 @@ void IceMesh::AssembleCartesianElementBasis()
                     basis_k = (-1.0)*basis_k;
                 }
             }
+            */
 
             // basis i
             std::vector<double> c0_coords = {node0_x - centr_x, node0_y - centr_y, node0_z - centr_z};
@@ -217,6 +220,8 @@ void IceMesh::AssembleCartesianElementBasis()
     INMOST::Tag edge_cart_basis_x_tag = ice_mesh->CreateTag("cart basis x edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 3);
     INMOST::Tag edge_cart_basis_y_tag = ice_mesh->CreateTag("cart basis y edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 3);
     INMOST::Tag edge_cart_basis_z_tag = ice_mesh->CreateTag("cart basis z edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 3);
+    INMOST::Tag is_edge_bnd = grid_info[mesh::gridElemType::Edge]->is_bnd;
+    INMOST::Tag node_id_tag = grid_info[mesh::gridElemType::Node]->id;
 
     for (auto edgeit = ice_mesh->BeginFace(); edgeit != ice_mesh->EndFace(); ++edgeit)
     {
@@ -280,6 +285,50 @@ void IceMesh::AssembleCartesianElementBasis()
 
             //compute i-basis vector
             basis_i = basis_j%basis_k;
+            
+            // make sure that basis_i vector looks outside of triangle for bnd edge
+            if (edgeit->Integer(is_edge_bnd) == 1)
+            {
+                // get nodes of adjacent trian
+                ElementArray<INMOST::Node> adj_trian_nodes = edgeit->getCells()[0]->getNodes();
+                int index;
+                
+                if ((adj_trian_nodes[0]->Integer(node_id_tag) != edgeit->getNodes()[0]->Integer(node_id_tag)) and 
+                    (adj_trian_nodes[0]->Integer(node_id_tag) != edgeit->getNodes()[1]->Integer(node_id_tag)))
+                {
+                    index = 0;
+                }
+                else if ((adj_trian_nodes[1]->Integer(node_id_tag) != edgeit->getNodes()[0]->Integer(node_id_tag)) and 
+                         (adj_trian_nodes[1]->Integer(node_id_tag) != edgeit->getNodes()[1]->Integer(node_id_tag)))
+                {
+                    index = 1;
+                }
+                else
+                {
+                    index = 2;
+                }
+
+                std::vector<double> start_vec = 
+                {
+                    adj_trian_nodes[index]->RealArray(node_cart_tag)[0],
+                    adj_trian_nodes[index]->RealArray(node_cart_tag)[1],
+                    adj_trian_nodes[index]->RealArray(node_cart_tag)[2],
+                };
+
+                std::vector<double> end_vec = 
+                {
+                    adj_trian_nodes[(index + 1)%3]->RealArray(node_cart_tag)[0],
+                    adj_trian_nodes[(index + 1)%3]->RealArray(node_cart_tag)[1],
+                    adj_trian_nodes[(index + 1)%3]->RealArray(node_cart_tag)[2],
+                };
+                double sc_mult = (end_vec - start_vec)*basis_i;
+
+                if (sc_mult < 0)
+                {
+                    basis_i = (-1.0)*basis_i;
+                    basis_j = (-1.0)*basis_j;
+                }
+            }
 
             // first basis vector
             edgeit->RealArray(edge_cart_basis_x_tag)[0] = basis_i[0];

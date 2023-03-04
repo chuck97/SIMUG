@@ -175,6 +175,19 @@ namespace SIMUG
         level_tag = mesh->GetDataSingle(mesh::gridElemType::Node)->Get(mesh::meshVar::hw);
 
         shear_deformation_tag = mesh->GetMesh()->CreateTag("shear_deformation_tag", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 1);
+        z_component_tag = mesh->GetMesh()->CreateTag("z_component_tag", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
+
+        for(auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit)
+        {
+            if (trianit->GetStatus() != Element::Ghost)
+            {
+                trianit->RealArray(z_component_tag)[0] = trianit->RealArray(mesh->GetGridInfo(mesh::gridElemType::Trian)->cart_basis[2])[0];
+                trianit->RealArray(z_component_tag)[1] = trianit->RealArray(mesh->GetGridInfo(mesh::gridElemType::Trian)->cart_basis[2])[1];
+                trianit->RealArray(z_component_tag)[2] = trianit->RealArray(mesh->GetGridInfo(mesh::gridElemType::Trian)->cart_basis[2])[2];
+            }
+        }
+        mesh->GetMesh()->ExchangeData(z_component_tag, CELL, 0);
+        BARRIER
 
         // mute tags
         mesh->GetMesh()->SetFileOption("Tag:old_vel_tag", "nosave");
@@ -513,7 +526,7 @@ namespace SIMUG
         double Ca = IceConsts::Ca;
         double dt = time_step;
         double beta = real_params[1];
-        double f = GenConsts::f;
+        double f = 0.0;// GenConsts::f;
 
         // assemble rhs, lhs and solve
         for(auto nodeit = mesh->GetMesh()->BeginNode(); nodeit != mesh->GetMesh()->EndNode(); ++nodeit)

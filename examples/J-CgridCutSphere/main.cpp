@@ -9,8 +9,9 @@
 #include "mpi.h"
 #endif
 
-#define L_X 1024e3
-#define L_Y 1025.3740e3
+#define EARTH_RADIUS 6400000.0
+#define BOX_LAT_SCALE 0.32 //0.32 // 2048e3/6400e3
+#define BOX_LON_SCALE 0.32 //0.32 // 2048e3/6400e3
 #define TIME_SCALE 86400.0
 
 using namespace INMOST;
@@ -27,41 +28,59 @@ std::vector<double> init_ice_thickness(std::pair<double, double> coords, double 
 // function for initial ice concentration
 std::vector<double> init_ice_concentration(std::pair<double, double> coords, double time)
 {
-    double x = coords.first;
-    //double y = coords.second;
+    double lon = coords.first;
+    double lat = coords.second;
 
-    return {x/L_X};
+    double x = lon*EARTH_RADIUS*std::cos(lat);
+    double y = (lat + 0.5*BOX_LAT_SCALE)*EARTH_RADIUS;
+
+    double L_x = BOX_LON_SCALE*EARTH_RADIUS;
+    double L_y = BOX_LAT_SCALE*EARTH_RADIUS;
+
+    return {x/L_x};
 }
 
 // function for initial ice velocity
 std::vector<double> init_ice_velocity(std::pair<double, double> coords, double time)
 {
     return {0.0, 0.0};
-} 
+}
 
 // function for wind velocity
 std::vector<double> wind_velocity(std::pair<double, double> coords, double time)
 {
-    double x = coords.first;
-    double y = coords.second;
+    double lon = coords.first;
+    double lat = coords.second;
+
+    double x = lon*EARTH_RADIUS*std::cos(lat);
+    double y = (lat + 0.5*BOX_LAT_SCALE)*EARTH_RADIUS;
+
+    double L_x = BOX_LON_SCALE*EARTH_RADIUS*std::cos(lat);
+    double L_y = BOX_LAT_SCALE*EARTH_RADIUS;
 
     return 
     {
-        5.0 + (std::sin(2.0*M_PI*time/TIME_SCALE) - 3.0)*std::sin(2.0*M_PI*x/L_X)*std::sin(M_PI*y/L_Y),
-        5.0 + (std::sin(2.0*M_PI*time/TIME_SCALE) - 3.0)*std::sin(2.0*M_PI*y/L_Y)*std::sin(M_PI*x/L_X)
+        (5.0 + (std::sin(2.0*M_PI*time/TIME_SCALE) - 3.0)*std::sin(2.0*M_PI*x/L_x)*std::sin(M_PI*y/L_y))*std::cos(lat)*1.5,
+        (5.0 + (std::sin(2.0*M_PI*time/TIME_SCALE) - 3.0)*std::sin(2.0*M_PI*y/L_y)*std::sin(M_PI*x/L_x))*1.5
     };
 }
 
 // function for ocean velocity
 std::vector<double> ocean_velocity(std::pair<double, double> coords, double time)
 {
-    double x = coords.first;
-    double y = coords.second;
+    double lon = coords.first;
+    double lat = coords.second;
+
+    double x = lon*EARTH_RADIUS*std::cos(lat);
+    double y = (lat + 0.5*BOX_LAT_SCALE)*EARTH_RADIUS;
+
+    double L_x = BOX_LON_SCALE*EARTH_RADIUS*std::cos(lat);
+    double L_y = BOX_LAT_SCALE*EARTH_RADIUS;
 
     return 
     {
-        0.1*(2.0*y - L_Y)/L_Y,
-        -0.1*(2.0*x - L_X)/L_X 
+        (0.1*(2.0*y - L_y)/L_y)*std::cos(lat)*1.5,
+        (-0.1*(2.0*x - L_x)/L_x)*1.5
     };
 }
 
@@ -71,28 +90,28 @@ std::vector<double> ocean_level(std::pair<double, double> coords, double time)
     return {0.0};
 }
 
-void run_model(double time_step,
-               double total_time,
-               const std::string& mesh_path,
-               int output_frequency,
-               bool is_advection,
-               adv::timeScheme advection_time_scheme,
-               adv::spaceScheme advection_space_scheme,
-               adv::advFilter advection_filter,
-               const std::vector<double>& advection_params,
-               const std::vector<double>& mevp_real_params,
-               const std::vector<int>& mevp_integer_params,
-               const std::string& output_prefix,
-               const std::string& output_folder)
+void run_model(double time_step,                             // time step (seconds)
+               double total_time,                            // total time (seconds)
+               const std::string& mesh_path,                 // path to mesh .pmf file
+               int output_frequency,                         // output frequency
+               bool is_advection,                            // turn on the advection?
+               adv::timeScheme advection_time_scheme,        // advection time scheme
+               adv::spaceScheme advection_space_scheme,      // advection space scheme
+               adv::advFilter advection_filter,              // advection filter type
+               const std::vector<double>& advection_params,  // vector of real advection params
+               const std::vector<double>& mevp_real_params,  // vector of real momentum params
+               const std::vector<int>& mevp_integer_params,  // vector of integer momentum params
+               const std::string& output_prefix,             // output prefix
+               const std::string& output_folder)             // output folder
 {
     // initialize logger
     SIMUG::Logger logger(std::cout);
 
     // mesh initialization
-    IceMesh* mesh_plane = new IceMesh(mesh_path, output_folder, mesh::surfType::plane, mesh::gridType::Cgrid); 
+    IceMesh* mesh_sphere = new IceMesh(mesh_path, output_folder, mesh::surfType::sphere, mesh::gridType::Cgrid); 
  
     // forcing initialization
-    Forcing forcing(mesh_plane);
+    Forcing forcing(mesh_sphere);
     
     // assign initial ice thickness
     forcing.SetAnalytical
@@ -104,7 +123,7 @@ void run_model(double time_step,
             return init_ice_thickness(coords, time);
         }
     );
-    forcing.Update(mesh::meshVar::hi, 0, coord::coordType::cart, 0.0);
+    forcing.Update(mesh::meshVar::hi, 0, coord::coordType::geo, 0.0);
 
     // assign initial ice concentration
     forcing.SetAnalytical
@@ -116,7 +135,7 @@ void run_model(double time_step,
             return init_ice_concentration(coords, time);
         }
     );
-    forcing.Update(mesh::meshVar::ai, 0, coord::coordType::cart, 0.0);
+    forcing.Update(mesh::meshVar::ai, 0, coord::coordType::geo, 0.0);
 
 
     // assign initial ice velocity
@@ -128,7 +147,7 @@ void run_model(double time_step,
             return init_ice_velocity(coords, time);
         }
     );
-    forcing.Update(mesh::meshVar::ui, coord::coordType::cart, 0.0);
+    forcing.Update(mesh::meshVar::ui, coord::coordType::geo, 0.0);
 
     // set analytical air velocity
     forcing.SetAnalytical
@@ -139,7 +158,7 @@ void run_model(double time_step,
             return wind_velocity(coords, time);
         }
     );
-    forcing.Update(mesh::meshVar::ua, coord::coordType::cart, 0.0);
+    forcing.Update(mesh::meshVar::ua, coord::coordType::geo, 0.0);
 
     // set analytical ocean velocity
     forcing.SetAnalytical
@@ -150,7 +169,7 @@ void run_model(double time_step,
             return ocean_velocity(coords, time);
         }
     );
-    forcing.Update(mesh::meshVar::uw, coord::coordType::cart, 0.0);
+    forcing.Update(mesh::meshVar::uw, coord::coordType::geo, 0.0);
 
     // set analytical ocean level
     forcing.SetAnalytical
@@ -161,17 +180,16 @@ void run_model(double time_step,
             return ocean_level(coords, time);
         }
     );
-    forcing.Update(mesh::meshVar::hw, coord::coordType::cart, 0.0);
+    forcing.Update(mesh::meshVar::hw, coord::coordType::geo, 0.0);
 
 
     // get tags for ice values
-    INMOST::Tag conc_tag = mesh_plane->GetDataMulti(mesh::gridElemType::Trian, 0)->Get(mesh::meshVar::ai);
-    INMOST::Tag thick_tag = mesh_plane->GetDataMulti(mesh::gridElemType::Trian, 0)->Get(mesh::meshVar::hi);
-    INMOST::Tag vel_tag = mesh_plane->GetDataSingle(mesh::gridElemType::Edge)->Get(mesh::meshVar::ui);
-
+    INMOST::Tag conc_tag = mesh_sphere->GetDataMulti(mesh::gridElemType::Trian, 0)->Get(mesh::meshVar::ai);
+    INMOST::Tag thick_tag = mesh_sphere->GetDataMulti(mesh::gridElemType::Trian, 0)->Get(mesh::meshVar::hi);
+    INMOST::Tag vel_tag = mesh_sphere->GetDataSingle(mesh::gridElemType::Edge)->Get(mesh::meshVar::ui);
 
     // initialize advection solver
-    CgridAdvectionSolver advection(mesh_plane,
+    CgridAdvectionSolver advection(mesh_sphere,
                                    time_step,
                                    vel_tag,
                                    advection_time_scheme,
@@ -187,7 +205,7 @@ void run_model(double time_step,
     size_t n_steps = (size_t)(total_time/time_step);
 
     // initialize momentum solver
-    Cgrid_mEVP_Solver momentum(mesh_plane,
+    Cgrid_mEVP_Solver momentum(mesh_sphere,
                                time_step,
                                vel_tag,
                                conc_tag,
@@ -198,9 +216,8 @@ void run_model(double time_step,
                                mevp_integer_params
                                );
 
-
-    // log time step and number of steps
-    if (mesh_plane->GetMesh()->GetProcessorRank() == 0)
+    // log Courant number, time step and number of steps
+    if (mesh_sphere->GetMesh()->GetProcessorRank() == 0)
     {
         logger.Log("Time step: " + std::to_string(time_step) + " s\n");
         logger.Log("Number of steps: " + std::to_string(n_steps) + "\n");
@@ -208,7 +225,7 @@ void run_model(double time_step,
     BARRIER
 
     // write initial state to file
-    mesh_plane->SaveVTU(output_prefix, 0);
+    mesh_sphere->SaveVTU(output_prefix, 0);
 
     // time stepping
     double current_time = 0.0;
@@ -218,19 +235,19 @@ void run_model(double time_step,
         // update time
         current_time += time_step;
 
-        if (mesh_plane->GetMesh()->GetProcessorRank() == 0)
+        if (mesh_sphere->GetMesh()->GetProcessorRank() == 0)
         {
             logger.Log("\n!!! Step " + std::to_string(stepnum) + " out of " + std::to_string(n_steps) + " !!!\n");
         }
 
         // update air velocty
-        forcing.Update(mesh::meshVar::ua, coord::coordType::cart, current_time);
+        forcing.Update(mesh::meshVar::ua, coord::coordType::geo, current_time);
 
         // update ocean velocty
-        forcing.Update(mesh::meshVar::uw, coord::coordType::cart, current_time);
+        forcing.Update(mesh::meshVar::uw, coord::coordType::geo, current_time);
 
         // update ocean level
-        forcing.Update(mesh::meshVar::hw, coord::coordType::cart, current_time);
+        forcing.Update(mesh::meshVar::hw, coord::coordType::geo, current_time);
         
         // transport scalars
         if (is_advection)
@@ -244,20 +261,18 @@ void run_model(double time_step,
         // write output to file
         if ((stepnum % output_frequency == 0) or (stepnum == (n_steps)))
         {       
-            mesh_plane->SaveVTU(output_prefix, stepnum);
+            mesh_sphere->SaveVTU(output_prefix, stepnum);
         }
-        
         BARRIER
     }
     
     //delete slae solver and mesh
-    delete mesh_plane;
-    BARRIER
+    delete mesh_sphere;
 }
 
 int main(int argc, char* argv[])
 {
-    // start MPI activity
+// start MPI activity
     int rank = 0;
 #ifdef USE_MPI
     MPI_Init(NULL, NULL);
@@ -294,7 +309,7 @@ int main(int argc, char* argv[])
               adv::timeScheme::TRK2,       // advection time scheme (TG2, TTG2, TTG3, TTG4)
               adv::spaceScheme::FVupwind,  // advection space scheme (FVupwind, MUST, MUSCL)
               adv::advFilter::none,        // advection filter (Minmod, VanLeer, Superbee, BarthJesperson, none)
-              {},                          // vector pf advection filter parameters ()
+              {},                    // vector of advection filter parameters (fct cd value)
               {
                   config.alpha_mEVP,
                   config.beta_mEVP,
@@ -305,7 +320,7 @@ int main(int argc, char* argv[])
               config.output_dir
               );
 
-    // end MPI activity
+// end MPI activity
 #ifdef USE_MPI
     MPI_Finalize();
 #endif
