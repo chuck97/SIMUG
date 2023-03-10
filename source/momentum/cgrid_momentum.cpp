@@ -317,7 +317,7 @@ namespace SIMUG
 
         mesh->GetMesh()->SetFileOption("Tag:xi_edge_tag", "nosave");
         mesh->GetMesh()->SetFileOption("Tag:xi_node_tag", "nosave");
-        mesh->GetMesh()->SetFileOption("Tag:force_tags", "nosave");
+        //mesh->GetMesh()->SetFileOption("Tag:force_tags", "nosave");
         mesh->GetMesh()->SetFileOption("Tag:edge_stab_tags", "nosave");
         mesh->GetMesh()->SetFileOption("Tag:edge_stab_sum_tags", "nosave");
         mesh->GetMesh()->SetFileOption("Tag:disc_level_tags", "nosave");
@@ -667,8 +667,8 @@ namespace SIMUG
             edges[1]->RealArray(edge_stab_sum_tags)[0] += (edges[1]->GetStatus() != Element::Ghost) ? e1_u_diff[0] : 0.0;
             edges[1]->RealArray(edge_stab_sum_tags)[1] += (edges[1]->GetStatus() != Element::Ghost) ? e1_u_diff[1] : 0.0;
 
-            edges[2]->RealArray(edge_stab_sum_tags)[0] += (edges[2]->GetStatus() != Element::Ghost) ? e2_u_diff[0]: 0.0;
-            edges[2]->RealArray(edge_stab_sum_tags)[1] += (edges[2]->GetStatus() != Element::Ghost) ? e2_u_diff[1]: 0.0;
+            edges[2]->RealArray(edge_stab_sum_tags)[0] += (edges[2]->GetStatus() != Element::Ghost) ? e2_u_diff[0] : 0.0;
+            edges[2]->RealArray(edge_stab_sum_tags)[1] += (edges[2]->GetStatus() != Element::Ghost) ? e2_u_diff[1] : 0.0;
         }
         mesh->GetMesh()->ExchangeData(edge_stab_sum_tags, FACE, 0);
         BARRIER
@@ -696,9 +696,12 @@ namespace SIMUG
                 double P1 = adj_trians[1]->Real(P_tag);
                 double delta0 = adj_trians[0]->Real(delta_tag);
                 double delta1 = adj_trians[1]->Real(delta_tag);
+                double S0 = adj_trians[0]->Real(trian_area_tag);
+                double S1 = adj_trians[1]->Real(trian_area_tag);
 
-                edgeit->Real(xi_edge_tag) = 0.5*(0.5*P0*delta0/((delta0 + del_min)*(delta0 + del_min)) +
-                                                 0.5*P1*delta1/((delta1 + del_min)*(delta1 + del_min)));
+                double xi0 = 2.5*0.5*(P0 + P1)*((S0 + S1)/3.0)/(time_step);
+
+                edgeit->Real(xi_edge_tag) = 2.5*0.5*(P0 + P1)*((S0 + S1)/3.0)/time_step;
             }
 
             if ((edgeit->GetStatus() != Element::Ghost) &&
@@ -707,8 +710,9 @@ namespace SIMUG
                 ElementArray<Cell> adj_trians = edgeit->getCells();
                 double P = adj_trians[0]->Real(P_tag);
                 double delta = adj_trians[0]->Real(delta_tag);
+                double S = adj_trians[0]->Real(trian_area_tag);
 
-                edgeit->Real(xi_edge_tag) = 0.5*P*delta/((delta + del_min)*(delta + del_min));
+                edgeit->Real(xi_edge_tag) = 2.5*P*((2.0*S)/3.0)/time_step;
             }
         }
         mesh->GetMesh()->ExchangeData(xi_edge_tag, FACE, 0);
@@ -790,8 +794,7 @@ namespace SIMUG
         // zerroing current discrete level vector
         for(auto edgeit = mesh->GetMesh()->BeginFace(); edgeit != mesh->GetMesh()->EndFace(); ++edgeit)
         {
-            if ((edgeit->GetStatus() != Element::Ghost) &&
-                (edgeit->Integer(mesh->GetGridInfo(mesh::gridElemType::Edge)->is_bnd) == 0))
+            if ((edgeit->GetStatus() != Element::Ghost))
             {
                 edgeit->RealArray(disc_level_tags)[0] = 0.0;
                 edgeit->RealArray(disc_level_tags)[1] = 0.0;
@@ -809,8 +812,7 @@ namespace SIMUG
 
             for (int ed_num = 0; ed_num < 3; ++ed_num)
             {
-                if ((adj_edges[ed_num]->Integer(mesh->GetGridInfo(mesh::gridElemType::Edge)->is_bnd) == 0) &&
-                    (adj_edges[ed_num]->GetStatus() != Element::Ghost))
+                if ((adj_edges[ed_num]->GetStatus() != Element::Ghost))
                 {
                     // get gradient in current edge basis
                     std::vector<double> current_grad = mesh->VecTransition

@@ -1,10 +1,10 @@
-time_step_seconds 120.0
-total_time_seconds 144000.1
-grid_file /home/users/spetrov/SIMUG/SIMUG_v0/MESHES/pmf/square_512km_uni/square512km_2km_uni.pmf
-output_frequency 48
+time_step_seconds 60.0
+total_time_seconds 172800.1
+grid_file /home/users/spetrov/SIMUG/SIMUG_v0/MESHES/pmf/square_512km_uni/square512km_8km_uni.pmf
+output_frequency 200
 is_advection 1
 alpha_mEVP 800.0
 beta_mEVP 800.0
 Nits_mEVP 800
-output_prefix agrid_512km_2km_lkf
+output_prefix agrid_512km_8km_lkf
 output_dir /home/users/spetrov/SIMUG/gnu-build/examples/E-AgridLkfBox/

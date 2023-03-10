@@ -259,7 +259,7 @@ void run_model(double time_step,                             // time step (secon
         momentum.ComputeVelocity();
         
         // write output to file
-        if ((stepnum % output_frequency == 0) or (stepnum == (n_steps-1)))
+        if ((stepnum % output_frequency == 0) or (stepnum == (n_steps)))
         {       
             mesh_plane->SaveVTU(output_prefix, stepnum);
         }
