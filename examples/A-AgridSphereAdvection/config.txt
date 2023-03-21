@@ -1,0 +1,10 @@
+courant_number 0.5
+grid_file /home/users/spetrov/SIMUG/SIMUG_v0/MESHES/pmf/sphere_ani/Sphere_unit_ani.pmf
+output_frequency 100
+initial_scalar slotted_cylinders
+velocity_field non_div_2
+time_scheme TTG2
+space_scheme CFE
+adv_filter Zalesak
+output_prefix agrid_adv_sphere
+output_dir /home/users/spetrov/SIMUG/gnu-build/examples/A-AgridSphereAdvection/

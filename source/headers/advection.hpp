@@ -6,6 +6,9 @@
 #include "local_assembling.hpp"
 #include "tools.hpp"
 #include "fct_zalesak.hpp"
+#ifdef USE_MPI
+#include <mpi.h>
+#endif
 
 namespace SIMUG
 {

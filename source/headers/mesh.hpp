@@ -26,7 +26,7 @@ namespace fs = std::filesystem;
 #endif
 
 #ifdef USE_MPI
-#include "mpi.h"
+#include <mpi.h>
 #endif
 
 namespace SIMUG

@@ -87,6 +87,7 @@ IceMesh::IceMesh(const std::string& path_to_file_,
         mesh_log.Log("Mesh: \'" + path_to_file_+ "\' loaded successfully! (" + to_string(duration) + " ms)\n");
     }
     BARRIER
+    //std::cout << "AAAAAAAAA" << std::endl;
 
     // make mesh partition
 #ifdef USE_PARTITIONER
@@ -98,6 +99,8 @@ IceMesh::IceMesh(const std::string& path_to_file_,
     if (ice_mesh->GetProcessorRank()==0)
         mesh_log.Log("Repartition finished successfully! (" + to_string(duration)+ " ms)\n");
 #endif
+
+    //std::cout << "BBBBBBBBBB" << std::endl;
 
     // find boundary elements, setup ids and id intervals
     grid_info[mesh::gridElemType::Node] = make_shared<NodeInfo>(ice_mesh.get());
@@ -222,9 +225,10 @@ IceMesh::IceMesh(const std::string& path_to_file_,
 
 void IceMesh::Partition()
 {
+#if defined(USE_PARTITIONER)
 	if (ice_mesh->GetProcessorsNumber() > 1) // need repartition
 	{ 
-	    unique_ptr<Partitioner> p = make_unique<INMOST::Partitioner>(ice_mesh.get());
+        Partitioner* p = new Partitioner(ice_mesh.get());
 #ifdef USE_PARTITIONER_PARMETIS
         p->SetMethod(Partitioner::Parmetis, Partitioner::Partition);
 #elif USE_PARTITIONER_ZOLTAN
@@ -233,13 +237,22 @@ void IceMesh::Partition()
         p->SetMethod(Partitioner::INNER_KMEANS, Partitioner::Partition);
 #endif
         BARRIER
+        //std::cout << "0" << std::endl;
 		p->Evaluate();
-
+        delete p;
+        BARRIER
+        //std::cout << "1" << std::endl;
 		ice_mesh->Redistribute();
+        BARRIER
+        //std::cout << "2" << std::endl;
 		ice_mesh->ReorderEmpty(CELL|FACE|EDGE|NODE);
+        //std::cout << "3" << std::endl;
+        BARRIER
         ice_mesh->ExchangeGhost(1, NODE); 
+        //std::cout << "4" << std::endl;
         BARRIER
 	}
+#endif
 };
 
 void IceMesh::SelectBndEdges()

@@ -30,6 +30,10 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
   add_definitions(-DINTEL_COMPILER)
 endif()
 
+if (INTEL_COMPILER)
+  link_libraries(stdc++fs)
+endif()
+
 if (USE_MPI)
   MESSAGE(STATUS "MPI ENABLED")
   add_definitions(-DUSE_MPI)

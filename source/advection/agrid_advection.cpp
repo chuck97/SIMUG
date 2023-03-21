@@ -818,9 +818,9 @@ void AgridAdvectionSolver::Evaluate(velocity_tag vel_tag, scalar_tag scal_tag)
                                              LHS_low[nodeit->Integer(node_id_tag)][nodeit->Integer(node_id_tag)];
             }
         }
+        mesh->GetMesh()->ExchangeData(scal_low_tag, NODE, 0);
         BARRIER
     }
-    mesh->GetMesh()->ExchangeData(scal_low_tag, NODE, 0);
 
     // clear RHS_low vector
     RHS_low.Clear();

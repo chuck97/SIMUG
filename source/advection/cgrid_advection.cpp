@@ -1021,13 +1021,11 @@ void CgridAdvectionSolver::ComputeRHS(INMOST::Tag scalar_tag)
                     INMOST::Cell calc_trian = (normal_edge_velocity_component > 0.0) ? trianit->getCells()[0] : adj_trian;
 
                     // get the gradient value on calc trian
-                    /*
                     std::vector<double> grad_trian = 
                     {
                         calc_trian.RealArray(gradient_trian_tag)[0],
                         calc_trian.RealArray(gradient_trian_tag)[1]
                     };
-                    */
 
                     // find current edge index in calc trian numeration
                     int edg_index = 0;
@@ -1049,13 +1047,11 @@ void CgridAdvectionSolver::ComputeRHS(INMOST::Tag scalar_tag)
                     }
 
                     // get the distance vector between baricenter to the current edge in calc trian
-                    /*
                     std::vector<double> vec_to_edge = 
                     {
                         calc_trian.RealArray(edge_distance_vector_tags)[edg_index*2 + 0],
                         calc_trian.RealArray(edge_distance_vector_tags)[edg_index*2 + 1]
                     };
-                    */
 
                     double phi = 1.0;
 
@@ -1069,14 +1065,15 @@ void CgridAdvectionSolver::ComputeRHS(INMOST::Tag scalar_tag)
                     } 
 
                     // compute edge scalar value for current edge
-                    //double edge_scalar = calc_trian.Real(scalar_tag) + 0.5*phi*(grad_trian*vec_to_edge);
+                    double edge_scalar = calc_trian.Real(scalar_tag) + 0.5*phi*(grad_trian*vec_to_edge);
 
                     // add simple upwind flux
-                    current_trian_rhs += 0.5*normal_edge_velocity_component*edge_len*(trianit->Real(scalar_tag) + adj_trian->Real(scalar_tag)) -
-                                         0.5*std::abs(normal_edge_velocity_component)*edge_len*(adj_trian->Real(scalar_tag) - trianit->Real(scalar_tag));
+                    //current_trian_rhs += 0.5*normal_edge_velocity_component*edge_len*(trianit->Real(scalar_tag) + adj_trian->Real(scalar_tag)) -
+                    //                     0.5*std::abs(normal_edge_velocity_component)*edge_len*(adj_trian->Real(scalar_tag) - trianit->Real(scalar_tag));
                     
                     // add antidiffusive flux 
-                    current_trian_rhs += 0.5*phi*normal_edge_velocity_component*edge_len*(adj_trian->Real(scalar_tag) - trianit->Real(scalar_tag));
+                    //current_trian_rhs += 0.5*phi*normal_edge_velocity_component*edge_len*(adj_trian->Real(scalar_tag) - trianit->Real(scalar_tag));
+                    current_trian_rhs += edge_scalar*normal_edge_velocity_component*edge_len;
                 }
                 // store the value of computed rhs
                 trianit->Real(triangle_rhs_tag) = current_trian_rhs;

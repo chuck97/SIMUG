@@ -102,7 +102,7 @@ void TrianInfo::Mute()
     ice_mesh->SetFileOption("Tag:is trian bnd", "nosave");
     ice_mesh->SetFileOption("Tag:model coords trian", "nosave");
     ice_mesh->SetFileOption("Tag:cart coords trian", "nosave");
-    ice_mesh->SetFileOption("Tag:geo coords trian", "nosave");
+    //ice_mesh->SetFileOption("Tag:geo coords trian", "nosave");
 
     ice_mesh->SetFileOption("Tag:geo basis x trian", "nosave");
     ice_mesh->SetFileOption("Tag:geo basis y trian", "nosave");
