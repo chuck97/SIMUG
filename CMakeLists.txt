@@ -69,6 +69,9 @@ if (COMPILE_TESTS)
   MESSAGE(STATUS "Test compiling ENABLED")
 endif()
 
+# include proj4 directories
+set(PROJ4 "/home/users/spetrov/proj-4")
+include_directories(${PROJ4}/proj-4.9.3/src)
 
 # include headers directories
 include_directories("source/headers")
@@ -83,14 +86,28 @@ add_library(simug STATIC ${SOURCE} ${HEADER})
 # find inmost package
 find_package(inmost 0.3.0 REQUIRED)
 
-# include inmost variables
+# include inmost
 link_directories(${INMOST_LIBRARY_DIRS})
 include_directories(${INMOST_INCLUDE_DIRS})
 add_definitions(${INMOST_DEFINITIONS})
+message(STATUS ${NETCDF_LIB})
 
 # link library with inmost
-# link with external libraries
 target_link_libraries(simug PUBLIC ${INMOST_LIBRARIES})
+
+# find netcdf package (does not work on INM RAS cluster)
+#find_package(netcdf REQUIRED)
+
+# include netcdf and hdf5
+include_directories($ENV{NETCDF_INC})
+link_directories($ENV{NETCDF_LIB})
+link_directories($ENV{HDF5_LIB})
+
+# link library with netcdf and hdf5
+target_link_libraries(simug PUBLIC -lnetcdf -lhdf5)
+
+# link library with proj4
+target_link_libraries(simug PUBLIC ${PROJ4}/proj-4-gnu-build/lib/libproj.a)
 
 if(COMPILE_TESTS)
   enable_testing()

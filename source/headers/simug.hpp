@@ -15,6 +15,10 @@
 #include "timer.hpp"
 #include "tools.hpp"
 #include "vecmath.hpp"
+#include "interpolation2d.hpp"
+#include "topaz_interpolation.hpp"
+#include "coords_rotation.hpp"
+#include "ncfile_info.hpp"
 
 #include "variables/advvar.hpp"
 #include "variables/confvar.hpp"

@@ -53,6 +53,15 @@ void Forcing::SetAnalytical(const std::string& varname,
     BARRIER
 }
 
+void Forcing::SetFile(mesh::meshVar mesh_var,
+                      NcFileInfo file_info
+                      )
+{
+    file_info_map[mesh_var] = file_info;
+    BARRIER
+}
+
+
 void Forcing::UpdateVariable(INMOST::Tag var_tag,
                              mesh::gridElemType elem_type,
                              coord::coordType coord_type,
@@ -321,4 +330,73 @@ void Forcing::Update(const std::string& varname,
     UpdateVariable(var_tag, elem_type, coord_type, expr_ptr.value(), time);
     BARRIER
 }
+
+void Forcing::UpdateTOPAZ(mesh::meshVar mesh_var,
+                          int layer,
+                          const std::string& nc_variable_name,
+                          double max_abs_value,
+                          double invalid_value_fill,
+                          double no_extrapolation_fill,
+                          int index)
+{
+    // get element type
+    mesh::gridElemType elem_type = mesh->GetMeshInfo().multi_elems[mesh_var];
+
+    // check if expression assigned
+    if (file_info_map.find(mesh_var) == file_info_map.end())
+    {
+        SIMUG_ERR("file is not assigned - can not update forcing variable!");
+    }
+
+    // get variable tag
+    INMOST::Tag var_tag = mesh->GetDataMulti(elem_type, layer)->Get(mesh_var);
+    INMOST::Tag topaz_coords_tag = mesh->GetGridInfo(elem_type)->coords[coord::coordType::topaz];
+
+    // update prognostic variable
+    if (mesh::meshVarDim.at(mesh_var) == mesh::meshDim::scalar)
+    {
+        TopazScalarInterpolation(mesh,
+                                 file_info_map[mesh_var],
+                                 index,
+                                 nc_variable_name,
+                                 max_abs_value,
+                                 invalid_value_fill,
+                                 no_extrapolation_fill,
+                                 var_tag,
+                                 topaz_coords_tag);
+    }
+    else if (mesh::meshVarDim.at(mesh_var) == mesh::meshDim::vector)
+    {
+        // to do
+    }
+    else
+    {
+        SIMUG_ERR("possible to interpolate only TOPAZ scalar and vector values!");
+    }
+    BARRIER
+}
+
+/*
+void Forcing::UpdateTOPAZ(mesh::meshVar mesh_var,
+                          const std::string& nc_variable_name,
+                          int index)
+{
+    // get element type
+    mesh::gridElemType elem_type = mesh->GetMeshInfo().single_elems[mesh_var];
+
+    // check if expression assigned
+    if (file_info.find(mesh_var) == file_info.end())
+    {
+        SIMUG_ERR("file is not assigned - can not update forcing variable!");
+    }
+
+    // get variable tag
+    INMOST::Tag var_tag = mesh->GetDataSingle(elem_type)->Get(mesh_var);
+
+    // update prognostic value 
+    // interpolate TOPAZ
+    BARRIER
+}
+*/
+
 }

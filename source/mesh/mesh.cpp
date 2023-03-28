@@ -773,8 +773,11 @@ void IceMesh::AssignCoords()
             }
             else if (mesh_info.surface_type == mesh::surfType::basin)
             {
-                nodeit->RealArray(node_geo_tag)[0] = nodeit->RealArray(node_coords_tag)[0]*(M_PI/180.0);
-                nodeit->RealArray(node_geo_tag)[1] = nodeit->RealArray(node_coords_tag)[1]*(M_PI/180.0);
+                std::vector<double> geo = from_model_2_geo(nodeit->RealArray(node_coords_tag)[0],
+                                                           nodeit->RealArray(node_coords_tag)[1]);
+
+                nodeit->RealArray(node_geo_tag)[0] = geo[0]*M_PI/180.0;
+                nodeit->RealArray(node_geo_tag)[1] = geo[1]*M_PI/180.0;
                 nodeit->RealArray(node_geo_tag)[2] = 1.0;
             }
             else
@@ -832,8 +835,11 @@ void IceMesh::AssignCoords()
             }
             else if (mesh_info.surface_type == mesh::surfType::basin)
             {
-                edgeit->RealArray(edge_geo_tag)[0] = edgeit->RealArray(edge_coords_tag)[0]*M_PI/180.0;
-                edgeit->RealArray(edge_geo_tag)[1] = edgeit->RealArray(edge_coords_tag)[1]*M_PI/180.0;
+                std::vector<double> geo = from_model_2_geo(edgeit->RealArray(edge_coords_tag)[0],
+                                                           edgeit->RealArray(edge_coords_tag)[1]);
+
+                edgeit->RealArray(edge_geo_tag)[0] = geo[0]*M_PI/180.0;
+                edgeit->RealArray(edge_geo_tag)[1] = geo[1]*M_PI/180.0;
                 edgeit->RealArray(edge_geo_tag)[2] = 1.0;
             }
             else
@@ -891,8 +897,11 @@ void IceMesh::AssignCoords()
             }
             else if (mesh_info.surface_type == mesh::surfType::basin)
             {
-                trianit->RealArray(trian_geo_tag)[0] = trianit->RealArray(trian_coords_tag)[0]*M_PI/180.0;
-                trianit->RealArray(trian_geo_tag)[1] = trianit->RealArray(trian_coords_tag)[1]*M_PI/180.0;
+                std::vector<double> geo = from_model_2_geo(trianit->RealArray(trian_coords_tag)[0],
+                                                           trianit->RealArray(trian_coords_tag)[1]);
+
+                trianit->RealArray(trian_geo_tag)[0] = geo[0]*M_PI/180.0;
+                trianit->RealArray(trian_geo_tag)[1] = geo[1]*M_PI/180.0;
                 trianit->RealArray(trian_geo_tag)[2] = 1.0;
             }
             else
@@ -905,6 +914,63 @@ void IceMesh::AssignCoords()
     }
     ice_mesh->ExchangeData(trian_geo_tag, INMOST::CELL, 0);
 
+    BARRIER
+
+    // ## TOPAZ coords ##
+
+    if (mesh_info.surface_type == mesh::surfType::basin)
+    {
+        // nodes
+        INMOST::Tag node_topaz_tag = ice_mesh->CreateTag("topaz coords node", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 2);
+        grid_info[mesh::gridElemType::Node]->coords[coord::coordType::topaz] = node_topaz_tag;
+
+        for(auto nodeit = ice_mesh->BeginNode(); nodeit != ice_mesh->EndNode(); ++nodeit)
+        {
+            if (nodeit->GetStatus() != Element::Ghost)
+            {
+                std::vector<double> topaz_coords = from_geo_2_topaz(nodeit->RealArray(node_geo_tag)[0],
+                                                                    nodeit->RealArray(node_geo_tag)[1]);
+
+                nodeit->RealArray(node_topaz_tag)[0] = topaz_coords[0]/1e5;
+                nodeit->RealArray(node_topaz_tag)[1] = topaz_coords[1]/1e5;
+            }
+        }   
+        ice_mesh->ExchangeData(node_topaz_tag, INMOST::NODE, 0);
+
+        // triangles
+        INMOST::Tag trian_topaz_tag = ice_mesh->CreateTag("topaz coords trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 2);
+        grid_info[mesh::gridElemType::Trian]->coords[coord::coordType::topaz] = trian_topaz_tag;
+
+        for(auto trianit = ice_mesh->BeginCell(); trianit != ice_mesh->EndCell(); ++trianit)
+        {
+            if (trianit->GetStatus() != Element::Ghost)
+            {
+                std::vector<double> topaz_coords = from_geo_2_topaz(trianit->RealArray(trian_geo_tag)[0],
+                                                                    trianit->RealArray(trian_geo_tag)[1]);
+
+                trianit->RealArray(trian_topaz_tag)[0] = topaz_coords[0]/1e5;
+                trianit->RealArray(trian_topaz_tag)[1] = topaz_coords[1]/1e5;
+            }
+        }   
+        ice_mesh->ExchangeData(trian_topaz_tag, INMOST::CELL, 0);
+
+        // edges
+        INMOST::Tag edge_topaz_tag = ice_mesh->CreateTag("topaz coords edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 2);
+        grid_info[mesh::gridElemType::Edge]->coords[coord::coordType::topaz] = edge_topaz_tag;
+
+        for(auto edgeit = ice_mesh->BeginFace(); edgeit != ice_mesh->EndFace(); ++edgeit)
+        {
+            if (edgeit->GetStatus() != Element::Ghost)
+            {
+                std::vector<double> topaz_coords = from_geo_2_topaz(edgeit->RealArray(edge_geo_tag)[0],
+                                                                    edgeit->RealArray(edge_geo_tag)[1]);
+
+                edgeit->RealArray(edge_topaz_tag)[0] = topaz_coords[0]/1e5;
+                edgeit->RealArray(edge_topaz_tag)[1] = topaz_coords[1]/1e5;
+            }
+        }   
+        ice_mesh->ExchangeData(edge_topaz_tag, INMOST::FACE, 0);
+    }
     BARRIER
 }
 

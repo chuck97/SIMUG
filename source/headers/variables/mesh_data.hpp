@@ -74,4 +74,19 @@ namespace SIMUG::mesh
         {"vector", vector },
         {"tensor", tensor }
     };
+
+    static const std::map<meshVar, meshDim> meshVarDim =  
+    {
+        {meshVar::mi, meshDim::scalar},
+        {meshVar::hi, meshDim::scalar}, 
+        {meshVar::ai, meshDim::scalar}, 
+        {meshVar::ui, meshDim::vector}, 
+        {meshVar::sig, meshDim::tensor}, 
+        {meshVar::eps, meshDim::tensor}, 
+        {meshVar::del, meshDim::scalar}, 
+        {meshVar::P0, meshDim::scalar}, 
+        {meshVar::ua, meshDim::vector}, 
+        {meshVar::uw, meshDim::vector}, 
+        {meshVar::hw, meshDim::scalar}
+    };
 } 

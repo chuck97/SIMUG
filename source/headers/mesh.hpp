@@ -16,6 +16,7 @@
 #include "coordvar.hpp"
 #include "gridvars.hpp"
 #include "vecmath.hpp"
+#include "coords_rotation.hpp"
 
 #ifdef INTEL_COMPILER
 #include <experimental/filesystem>
@@ -80,7 +81,7 @@ namespace SIMUG
         std::vector<INMOST::Tag> geo_basis;                     // geographical basis vectors coordinates
         std::vector<INMOST::Tag> cart_basis;                    // local cartesian basis vectors coordinates
         
-        INMOST::Tag trans_matr_from_geo_to_elem;                // transition 2x2 matrix for vector/tensor coordinates while switching from geo to element basis
+        INMOST::Tag trans_matr_from_geo_to_elem;                // tranfile_infsition 2x2 matrix for vector/tensor coordinates while switching from geo to element basis
         INMOST::Tag trans_matr_from_elem_to_geo;                // transition 2x2 matrix for vector/tensor coordinates while switching from element to geo basis ( = trans_matr_from_geo_to_elem^-1)
 
         std::vector<double> VectorFromGeoToElem(const std::vector<double>& vec_geo_coords);

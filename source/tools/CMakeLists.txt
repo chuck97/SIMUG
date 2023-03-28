@@ -3,5 +3,7 @@ set(SOURCE
     ${CMAKE_CURRENT_SOURCE_DIR}/stringtrim.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/timer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/vecmath.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/topaz_coords.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/interpolation2d.cpp
     PARENT_SCOPE
     )

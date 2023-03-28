@@ -11,12 +11,13 @@ namespace SIMUG::coord
     {
         model, // model coordinates
         geo,   // geographical coordinates
-        cart   // cartesian coordinates
+        cart,  // cartesian coordinates
+        topaz  // TOPAZ coordinates 
     };
 
     constexpr static std::initializer_list<coordType> coords = 
     {
-        model, geo, cart
+        model, geo, cart, topaz
     };
 
 
@@ -25,7 +26,8 @@ namespace SIMUG::coord
     {
         {model,     "model"        },
         {geo,       "geographical" },
-        {cart,      "Cartesian"    }
+        {cart,      "Cartesian"    },
+        {topaz,     "TOPAZ"}
     };
 
     // coord name -> type
@@ -33,6 +35,7 @@ namespace SIMUG::coord
     {
         {"model",        model },
         {"geographical", geo   },
-        {"Cartesian",    cart  }
+        {"Cartesian",    cart  },
+        {"TOPAZ",        topaz }
     };
 };  

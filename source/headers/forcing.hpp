@@ -1,6 +1,13 @@
 #pragma once
 
 #include "mesh.hpp"
+#include "netcdf.h"
+#include "ncfile_info.hpp"
+#include "mesh_data.hpp"
+#include "topaz_interpolation.hpp"
+
+// Log netcdf error message 
+#define NC_ERR(e) {std::cerr << "Error:" <<  nc_strerror(e) << std::endl; exit(1);}
 
 namespace SIMUG
 {
@@ -38,6 +45,11 @@ namespace SIMUG
                            FuncPtr func_ptr
                           );
 
+        // assign file for mesh variable
+        void SetFile(mesh::meshVar mesh_var,
+                     NcFileInfo file_info
+                     );
+
         // update mesh variable according to analytical expression
         void Update(mesh::meshVar mesh_var,
                     coord::coordType coord_type,
@@ -58,8 +70,22 @@ namespace SIMUG
                     int layer,
                     coord::coordType coord_type,
                     double time);
+        
+        // update mesh variable from file interpolation
+        void UpdateTOPAZ(mesh::meshVar mesh_var,
+                         const std::string& nc_variable_name,
+                         double max_abs_value,
+                         int index);
 
-    protected:
+        void UpdateTOPAZ(mesh::meshVar mesh_var,
+                         int layer,
+                         const std::string& nc_variable_name,
+                         double max_abs_value,
+                         double invalid_value_fill,
+                         double no_extrapolation_fill,
+                         int index);
+
+    private:
         SIMUG::IceMesh* mesh;
 
         void UpdateVariable(INMOST::Tag var_tag,
@@ -67,30 +93,7 @@ namespace SIMUG
                             coord::coordType coord_type,
                             FuncPtr func_ptr,
                             double time);
-    };
-
-    class IceForcing : public Forcing
-    {
-    public:
-        inline IceForcing(IceMesh* mesh_):
-            Forcing(mesh_)
-        {};
-
-    };
-
-    class AirForcing : public Forcing
-    {
-        inline AirForcing(IceMesh* mesh_):
-            Forcing(mesh_)
-        {};
-
-    };
-
-    class WaterForcing : public Forcing
-    {
-        inline WaterForcing(IceMesh* mesh_):
-            Forcing(mesh_)
-        {};
-
+        
+        std::map<mesh::meshVar, NcFileInfo> file_info_map;
     };
 }

@@ -1,4 +1,9 @@
 #pragma once
+#include <iostream>
+
+#if defined(USE_MPI)
+#include <mpi.h>
+#endif
 
 #if defined(USE_MPI)
 #define BARRIER MPI_Barrier(MPI_COMM_WORLD);

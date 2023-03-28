@@ -11,6 +11,7 @@ void NodeInfo::Mute()
     ice_mesh->SetFileOption("Tag:model coords node", "nosave");
     //ice_mesh->SetFileOption("Tag:cart coords node", "nosave");
     //ice_mesh->SetFileOption("Tag:geo coords node", "nosave");
+    //ice_mesh->SetFileOption("Tag:topaz coords node", "nosave");
 
     ice_mesh->SetFileOption("Tag:geo basis x node", "nosave");
     ice_mesh->SetFileOption("Tag:geo basis y node", "nosave");
@@ -55,8 +56,9 @@ void EdgeInfo::Mute()
     ice_mesh->SetFileOption("Tag:id edge no bnd", "nosave");
     ice_mesh->SetFileOption("Tag:is edge bnd", "nosave");
     ice_mesh->SetFileOption("Tag:model coords edge", "nosave");
-    ice_mesh->SetFileOption("Tag:cart coords edge", "nosave");
-    ice_mesh->SetFileOption("Tag:geo coords edge", "nosave");
+    //ice_mesh->SetFileOption("Tag:cart coords edge", "nosave");
+    //ice_mesh->SetFileOption("Tag:geo coords edge", "nosave");
+    //ice_mesh->SetFileOption("Tag:topaz coords edge", "nosave");
 
     ice_mesh->SetFileOption("Tag:geo basis x edge", "nosave");
     ice_mesh->SetFileOption("Tag:geo basis y edge", "nosave");
@@ -101,8 +103,9 @@ void TrianInfo::Mute()
     ice_mesh->SetFileOption("Tag:id trian no bnd", "nosave");
     ice_mesh->SetFileOption("Tag:is trian bnd", "nosave");
     ice_mesh->SetFileOption("Tag:model coords trian", "nosave");
-    ice_mesh->SetFileOption("Tag:cart coords trian", "nosave");
+    //ice_mesh->SetFileOption("Tag:cart coords trian", "nosave");
     //ice_mesh->SetFileOption("Tag:geo coords trian", "nosave");
+    //ice_mesh->SetFileOption("Tag:topaz coords trian", "nosave");
 
     ice_mesh->SetFileOption("Tag:geo basis x trian", "nosave");
     ice_mesh->SetFileOption("Tag:geo basis y trian", "nosave");

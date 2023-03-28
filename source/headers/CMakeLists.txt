@@ -3,6 +3,10 @@ add_subdirectory(variables)
 set(HEADER 
     ${HEADER}
     ${CMAKE_CURRENT_SOURCE_DIR}/advection.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/coords_rotation.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/interpolation2d.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/topaz_interpolation.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ncfile_info.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/data.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fct_zalesak.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/forcing.hpp
