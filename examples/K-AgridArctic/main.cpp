@@ -220,23 +220,139 @@ int main(int argc, char* argv[])
 
     // forcing initialization
     Forcing topaz_forcing(mesh_arctic);
+    Forcing cams_forcing(mesh_arctic);
 
-    // prepare forcing file info
-    NcFileInfo topaz_file =
-    {
-        "/home/users/spetrov/nc_topaz/dataset-ice.nc",
-        "x",
-        "y",
-        "scale_factor",
-        "missing_value",
-        "add_offset",
-        false
-    };
+    // concentration file
+    topaz_forcing.SetFile
+    (
+        mesh::meshVar::ai,
+        {
+            "/home/users/spetrov/nc_topaz/dataset-ice.nc",
+            "x",
+            "y",
+            "longitude",
+            "latitude",
+            "scale_factor",
+            "missing_value",
+            "add_offset",
+            false
+        }
+    );
 
-    topaz_forcing.SetFile(mesh::meshVar::ai, topaz_file);
+    // thickness file
+    topaz_forcing.SetFile
+    (
+        mesh::meshVar::hi,
+        {
+            "/home/users/spetrov/nc_topaz/dataset-ice.nc",
+            "x",
+            "y",
+            "longitude",
+            "latitude",
+            "scale_factor",
+            "missing_value",
+            "add_offset",
+            false
+        }
+    );
+
+    // ssh file
+    topaz_forcing.SetFile
+    (
+        mesh::meshVar::hw, 
+        {
+            "/home/users/spetrov/nc_topaz/dataset-ice.nc",
+            "x",
+            "y",
+            "longitude",
+            "latitude",
+            "",
+            "missing_value",
+            "",
+            false
+        }
+    );
+
+    // ice velocity file
+    topaz_forcing.SetFile
+    (
+        mesh::meshVar::uw, 
+        {
+            "/home/users/spetrov/nc_topaz/dataset-ice.nc",
+            "x",
+            "y",
+            "longitude",
+            "latitude",
+            "",
+            "missing_value",
+            "",
+            false
+        }
+    );
+
+    // water velocity file
+    topaz_forcing.SetFile
+    (
+        mesh::meshVar::ui, 
+        {
+            "/home/users/spetrov/nc_topaz/dataset-ice.nc",
+            "x",
+            "y",
+            "longitude",
+            "latitude",
+            "scale_factor",
+            "missing_value",
+            "add_offset",
+            false
+        }
+    );
+
+    // air velocity file
+    cams_forcing.SetFile
+    (
+        mesh::meshVar::ua, 
+        {
+            "/home/users/spetrov/nc_topaz/atm-forcing-2019-rev.nc",
+            "",
+            "",
+            "longitude",
+            "latitude",
+            "scale_factor",
+            "missing_value",
+            "add_offset",
+            false
+        }
+    );
 
     // initialize ice concentration using topaz
-    topaz_forcing.UpdateTOPAZ(mesh::meshVar::ai, 0, "fice", 1.1, 0.0, 0.0, 1);
+    topaz_forcing.UpdateTOPAZ(mesh::meshVar::ai, 0, {"fice"}, 1.1, 0.0, 0.0, 0);
+
+    std::cout << "ai ok" << std::endl;
+
+    // initialize ice thickness using topaz
+    topaz_forcing.UpdateTOPAZ(mesh::meshVar::hi, 0, {"hice"}, 50.0, 0.0, 0.0, 0);
+
+    std::cout << "hi ok" << std::endl;
+
+    // initialize ice thickness using topaz
+    topaz_forcing.UpdateTOPAZ(mesh::meshVar::hw, {"ssh"}, 10.0, 0.0, 0.0, 0);
+
+    std::cout << "hw ok" << std::endl;
+
+    // initialize ice velocity using topaz
+    topaz_forcing.UpdateTOPAZ(mesh::meshVar::ui, {"uice", "vice"}, 10.0, 0.0, 0.0, 0);
+
+    std::cout << "ui ok" << std::endl;
+
+    // initialize ice velocity using topaz
+    topaz_forcing.UpdateTOPAZ(mesh::meshVar::uw, {"u", "v"}, 10.0, 0.0, 0.0, 0);
+
+    std::cout << "uw ok" << std::endl;
+
+    // initialize atm velocity using cams
+    cams_forcing.UpdateCAMS(mesh::meshVar::ua, {"u10", "v10"}, 100.0, 0.0, 0.0, 0);
+
+    std::cout << "ua ok" << std::endl;
 
     // save mesh
     mesh_arctic->SaveVTU("AgridArctic", 0);

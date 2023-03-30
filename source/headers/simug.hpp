@@ -17,6 +17,7 @@
 #include "vecmath.hpp"
 #include "interpolation2d.hpp"
 #include "topaz_interpolation.hpp"
+#include "cams_interpolation.hpp"
 #include "coords_rotation.hpp"
 #include "ncfile_info.hpp"
 

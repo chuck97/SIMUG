@@ -5,6 +5,7 @@
 #include "ncfile_info.hpp"
 #include "mesh_data.hpp"
 #include "topaz_interpolation.hpp"
+#include "cams_interpolation.hpp"
 
 // Log netcdf error message 
 #define NC_ERR(e) {std::cerr << "Error:" <<  nc_strerror(e) << std::endl; exit(1);}
@@ -73,17 +74,26 @@ namespace SIMUG
         
         // update mesh variable from file interpolation
         void UpdateTOPAZ(mesh::meshVar mesh_var,
-                         const std::string& nc_variable_name,
-                         double max_abs_value,
-                         int index);
-
-        void UpdateTOPAZ(mesh::meshVar mesh_var,
-                         int layer,
-                         const std::string& nc_variable_name,
+                         const std::vector<std::string>& nc_variable_name,
                          double max_abs_value,
                          double invalid_value_fill,
                          double no_extrapolation_fill,
                          int index);
+
+        void UpdateTOPAZ(mesh::meshVar mesh_var,
+                         int layer,
+                         const std::vector<std::string>& nc_variable_name,
+                         double max_abs_value,
+                         double invalid_value_fill,
+                         double no_extrapolation_fill,
+                         int index);
+        
+        void UpdateCAMS(mesh::meshVar mesh_var,
+                        const std::vector<std::string>& nc_variable_names,
+                        double max_abs_value,
+                        double invalid_value_fill,
+                        double no_extrapolation_fill,
+                        int index);
 
     private:
         SIMUG::IceMesh* mesh;

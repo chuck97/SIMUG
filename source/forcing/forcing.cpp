@@ -1,6 +1,7 @@
 #include "forcing.hpp"
 
 using namespace INMOST;
+using namespace std;
 
 namespace SIMUG
 {
@@ -333,7 +334,7 @@ void Forcing::Update(const std::string& varname,
 
 void Forcing::UpdateTOPAZ(mesh::meshVar mesh_var,
                           int layer,
-                          const std::string& nc_variable_name,
+                          const std::vector<std::string>& nc_variable_names,
                           double max_abs_value,
                           double invalid_value_fill,
                           double no_extrapolation_fill,
@@ -358,7 +359,7 @@ void Forcing::UpdateTOPAZ(mesh::meshVar mesh_var,
         TopazScalarInterpolation(mesh,
                                  file_info_map[mesh_var],
                                  index,
-                                 nc_variable_name,
+                                 nc_variable_names[0],
                                  max_abs_value,
                                  invalid_value_fill,
                                  no_extrapolation_fill,
@@ -367,7 +368,16 @@ void Forcing::UpdateTOPAZ(mesh::meshVar mesh_var,
     }
     else if (mesh::meshVarDim.at(mesh_var) == mesh::meshDim::vector)
     {
-        // to do
+        TopazVectorInterpolation(mesh,
+                                 file_info_map[mesh_var],
+                                 index,
+                                 nc_variable_names[0],
+                                 nc_variable_names[1],
+                                 max_abs_value,
+                                 invalid_value_fill,
+                                 no_extrapolation_fill,
+                                 var_tag,
+                                 topaz_coords_tag);
     }
     else
     {
@@ -376,27 +386,102 @@ void Forcing::UpdateTOPAZ(mesh::meshVar mesh_var,
     BARRIER
 }
 
-/*
 void Forcing::UpdateTOPAZ(mesh::meshVar mesh_var,
-                          const std::string& nc_variable_name,
+                          const std::vector<std::string>& nc_variable_names,
+                          double max_abs_value,
+                          double invalid_value_fill,
+                          double no_extrapolation_fill,
                           int index)
 {
     // get element type
     mesh::gridElemType elem_type = mesh->GetMeshInfo().single_elems[mesh_var];
 
     // check if expression assigned
-    if (file_info.find(mesh_var) == file_info.end())
+    if (file_info_map.find(mesh_var) == file_info_map.end())
     {
         SIMUG_ERR("file is not assigned - can not update forcing variable!");
     }
 
     // get variable tag
     INMOST::Tag var_tag = mesh->GetDataSingle(elem_type)->Get(mesh_var);
+    INMOST::Tag topaz_coords_tag = mesh->GetGridInfo(elem_type)->coords[coord::coordType::topaz];
 
-    // update prognostic value 
-    // interpolate TOPAZ
+    // update prognostic variable
+    if (mesh::meshVarDim.at(mesh_var) == mesh::meshDim::scalar)
+    {
+        TopazScalarInterpolation(mesh,
+                                 file_info_map[mesh_var],
+                                 index,
+                                 nc_variable_names[0],
+                                 max_abs_value,
+                                 invalid_value_fill,
+                                 no_extrapolation_fill,
+                                 var_tag,
+                                 topaz_coords_tag);
+    }
+    else if (mesh::meshVarDim.at(mesh_var) == mesh::meshDim::vector)
+    {
+        TopazVectorInterpolation(mesh,
+                                 file_info_map[mesh_var],
+                                 index,
+                                 nc_variable_names[0],
+                                 nc_variable_names[1],
+                                 max_abs_value,
+                                 invalid_value_fill,
+                                 no_extrapolation_fill,
+                                 var_tag,
+                                 topaz_coords_tag);
+    }
+    else
+    {
+        SIMUG_ERR("possible to interpolate only TOPAZ scalar and vector values!");
+    }
     BARRIER
 }
-*/
+
+void Forcing::UpdateCAMS(mesh::meshVar mesh_var,
+                         const std::vector<std::string>& nc_variable_names,
+                         double max_abs_value,
+                         double invalid_value_fill,
+                         double no_extrapolation_fill,
+                         int index)
+{
+    // get element type
+    mesh::gridElemType elem_type = mesh->GetMeshInfo().single_elems[mesh_var];
+
+    // check if expression assigned
+    if (file_info_map.find(mesh_var) == file_info_map.end())
+    {
+        SIMUG_ERR("file is not assigned - can not update forcing variable!");
+    }
+
+    // get variable tag
+    INMOST::Tag var_tag = mesh->GetDataSingle(elem_type)->Get(mesh_var);
+    INMOST::Tag geo_coords_tag = mesh->GetGridInfo(elem_type)->coords[coord::coordType::geo];
+
+    // update prognostic variable
+    if (mesh::meshVarDim.at(mesh_var) == mesh::meshDim::scalar)
+    {
+        SIMUG_ERR("only vector CAMS interpolation is implemented yet!");
+    }
+    else if (mesh::meshVarDim.at(mesh_var) == mesh::meshDim::vector)
+    {
+        CamsVectorInterpolation(mesh,
+                                 file_info_map[mesh_var],
+                                 index,
+                                 nc_variable_names[0],
+                                 nc_variable_names[1],
+                                 max_abs_value,
+                                 invalid_value_fill,
+                                 no_extrapolation_fill,
+                                 var_tag,
+                                 geo_coords_tag);
+    }
+    else
+    {
+        SIMUG_ERR("possible to interpolate only CAMS scalar and vector values!");
+    }
+    BARRIER
+}
 
 }
