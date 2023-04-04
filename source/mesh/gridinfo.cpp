@@ -8,7 +8,7 @@ void NodeInfo::Mute()
     ice_mesh->SetFileOption("Tag:id node", "nosave");
     ice_mesh->SetFileOption("Tag:id node no bnd", "nosave");
     ice_mesh->SetFileOption("Tag:is node bnd", "nosave");
-    ice_mesh->SetFileOption("Tag:model coords node", "nosave");
+    //ice_mesh->SetFileOption("Tag:model coords node", "nosave");
     //ice_mesh->SetFileOption("Tag:cart coords node", "nosave");
     //ice_mesh->SetFileOption("Tag:geo coords node", "nosave");
     //ice_mesh->SetFileOption("Tag:topaz coords node", "nosave");
@@ -21,8 +21,15 @@ void NodeInfo::Mute()
     ice_mesh->SetFileOption("Tag:cart basis y node", "nosave");
     ice_mesh->SetFileOption("Tag:cart basis z node", "nosave");
 
+    ice_mesh->SetFileOption("Tag:model basis x node", "nosave");
+    ice_mesh->SetFileOption("Tag:model basis y node", "nosave");
+    ice_mesh->SetFileOption("Tag:model basis z node", "nosave");
+
     ice_mesh->SetFileOption("Tag:geo to elem trans matr node", "nosave");
     ice_mesh->SetFileOption("Tag:elem to geo trans matr node", "nosave");
+
+    ice_mesh->SetFileOption("Tag:model to elem trans matr node", "nosave");
+    ice_mesh->SetFileOption("Tag:elem to model trans matr node", "nosave");
 
     BARRIER
 }
@@ -44,8 +51,15 @@ void NodeInfo::UnMute()
     ice_mesh->SetFileOption("Tag:cart basis y node", "save");
     ice_mesh->SetFileOption("Tag:cart basis z node", "save");
 
+    ice_mesh->SetFileOption("Tag:model basis x node", "save");
+    ice_mesh->SetFileOption("Tag:model basis y node", "save");
+    ice_mesh->SetFileOption("Tag:model basis z node", "save");
+
     ice_mesh->SetFileOption("Tag:geo to elem trans matr node", "save");
     ice_mesh->SetFileOption("Tag:elem to geo trans matr node", "save");
+
+    ice_mesh->SetFileOption("Tag:model to elem trans matr node", "save");
+    ice_mesh->SetFileOption("Tag:elem to model trans matr node", "save");
 
     BARRIER
 }
@@ -68,8 +82,15 @@ void EdgeInfo::Mute()
     ice_mesh->SetFileOption("Tag:cart basis y edge", "nosave");
     ice_mesh->SetFileOption("Tag:cart basis z edge", "nosave");
 
+    ice_mesh->SetFileOption("Tag:model basis x edge", "nosave");
+    ice_mesh->SetFileOption("Tag:model basis y edge", "nosave");
+    ice_mesh->SetFileOption("Tag:model basis z edge", "nosave");
+
     ice_mesh->SetFileOption("Tag:geo to elem trans matr edge", "nosave");
     ice_mesh->SetFileOption("Tag:elem to geo trans matr edge", "nosave");
+
+    ice_mesh->SetFileOption("Tag:model to elem trans matr edge", "nosave");
+    ice_mesh->SetFileOption("Tag:elem to model trans matr edge", "nosave");
 
     BARRIER
 }

@@ -230,9 +230,9 @@ namespace SIMUG
                 }
             }
         }
-
         mesh->GetMesh()->ExchangeData(conc_tag, NODE, 0);
         mesh->GetMesh()->ExchangeData(thick_tag, NODE, 0);
+
         BARRIER
     }
 
@@ -344,11 +344,9 @@ namespace SIMUG
                 double eps12 = 0.5*(du_dy + dv_dx);
 
                 // compute delta
-                double del_min = IceConsts::delmin;
-
                 double delta = std::sqrt( (eps11*eps11 + eps22*eps22)*(1.0 + 1.0/(e*e)) +
                                            eps12*eps12*(4.0/(e*e)) +
-                                           eps11*eps22*2.0*(1.0 - 1.0/(e*e)) + del_min*del_min
+                                           eps11*eps22*2.0*(1.0 - 1.0/(e*e))
                                         );
 
                 // store strain rate and delta
@@ -440,21 +438,22 @@ namespace SIMUG
     {
         double alpha = real_params[0];
         double e = IceConsts::e;
+        double del_min = IceConsts::delmin;
 
         for(auto trianit = mesh->GetMesh()->BeginCell(); trianit != mesh->GetMesh()->EndCell(); ++trianit)
         {
             if (trianit->GetStatus() != Element::Ghost)
             {
                 trianit->RealArray(new_sigma_tag)[0] = (1.0 - 1.0/alpha)*trianit->RealArray(prev_sigma_tag)[0] + 
-                                                       (1.0/alpha)*(trianit->Real(P_tag)/trianit->Real(delta_tag))*
+                                                       (1.0/alpha)*(trianit->Real(P_tag)/(trianit->Real(delta_tag) + del_min))*
                                                        (trianit->RealArray(vareps_tag)[0] - trianit->Real(delta_tag));
                 
                 trianit->RealArray(new_sigma_tag)[1] = (1.0 - 1.0/alpha)*trianit->RealArray(prev_sigma_tag)[1] + 
-                                                       (1.0/alpha)*(trianit->Real(P_tag)/(trianit->Real(delta_tag)*e*e))*
+                                                       (1.0/(alpha*e*e))*(trianit->Real(P_tag)/(trianit->Real(delta_tag) + del_min))*
                                                        trianit->RealArray(vareps_tag)[1];
                 
                 trianit->RealArray(new_sigma_tag)[2] = (1.0 - 1.0/alpha)*trianit->RealArray(prev_sigma_tag)[2] + 
-                                                       (1.0/alpha)*(trianit->Real(P_tag)/(trianit->Real(delta_tag)*e*e))*
+                                                       (1.0/(alpha*e*e))*(trianit->Real(P_tag)/(trianit->Real(delta_tag) + del_min))*
                                                        trianit->RealArray(vareps_tag)[2];
             }
         }
@@ -577,24 +576,14 @@ namespace SIMUG
 
                 
                 double lhs = (beta + 1.0)*rho_i*h/dt + a*rho_w*Cw*L2_norm_vec(u_prev - u_w);
-                
-                /*
-                double lhs = (beta + 1.0)*rho_i*h/dt + rho_w*Cw*L2_norm_vec(u_prev - u_w);
-                */
                
                 std::vector<double> rhs(2);
 
-                
-                rhs = (rho_i*h/dt)*(beta*u_prev + u_old) + (1.0/mm)*(Level - Force)
+                rhs = (rho_i*h/dt)*(beta*u_prev + u_old)  + (1.0/mm)*(Level - Force)
                       + a*rho_a*Ca*L2_norm_vec(u_a)*u_a 
                       + a*rho_w*Cw*L2_norm_vec(u_prev - u_w)*u_w
                       + rho_i*h*f*std::vector<double>{-u_prev[1], u_prev[0]};
-                /*
-                rhs = (rho_i*h/dt)*(beta*u_prev + u_old) + (1.0/mm)*(Level - Force)
-                       + rho_a*Ca*L2_norm_vec(u_a)*u_a 
-                       + rho_w*Cw*L2_norm_vec(u_prev - u_w)*u_w
-                       + rho_i*h*f*std::vector<double>{-u_prev[1], u_prev[0]};
-                */
+                
                 nodeit->RealArray(new_vel_tag)[0] = rhs[0]/lhs;
                 nodeit->RealArray(new_vel_tag)[1] = rhs[1]/lhs;               
             }
@@ -913,12 +902,16 @@ namespace SIMUG
 
         sigma_old_norm_all = (sigma_old_norm_all < REAL_MIN_ABS_VAL) ? 1e20 : sigma_old_norm_all;
 
+        double max_vel = GetMaxVelocity();
+        BARRIER
+
         // log
         if (mesh->GetMesh()->GetProcessorRank() == 0)
         {
             std::cout << "Pseudoit " << presudostep << ", vel error = " << u_diff_norm_all/u_old_norm_all 
                                                     << ", sigma error = " << sigma_diff_norm_all/sigma_old_norm_all 
                                                     << std::endl;
+            std::cout << "max vel = " <<  max_vel << std::endl;
         }
 
         BARRIER
@@ -1004,6 +997,7 @@ namespace SIMUG
             {
                 LogError(pseudostep);
             }
+            BARRIER
 
             // update velocity value
             UpdateVelocity();
@@ -1044,5 +1038,29 @@ namespace SIMUG
         force_assembling_time = 0.0;
         velocity_computation_time = 0.0;
         BARRIER
+    }
+
+    double Agrid_mEVP_Solver::GetMaxVelocity()
+    {
+
+        double max_local = -1.0;
+        for(auto nodeit = mesh->GetMesh()->BeginNode(); nodeit != mesh->GetMesh()->EndNode(); ++nodeit)
+        {
+            if (nodeit->GetStatus() != Element::Ghost)
+            {
+                double u = nodeit->RealArray(new_vel_tag)[0];
+                double v = nodeit->RealArray(new_vel_tag)[1];
+                double cur = std::sqrt(u*u + v*v);
+                if (cur > max_local)
+                {
+                    max_local = cur;
+                }
+            }
+        }
+        BARRIER
+        double max_vel_for_all = max_local;
+        MPI_Allreduce(&max_local, &max_vel_for_all, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+        BARRIER
+        return max_vel_for_all;
     }
 }

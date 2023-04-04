@@ -15,203 +15,16 @@ using namespace std;
 
 #define MESH_ARCTIC "/home/users/spetrov/SIMUG/SIMUG_v0/MESHES/pmf/Arctic.pmf"
 
-/*
+
 void run_model(double time_step,                             // time step (seconds)
-               double total_time,                            // total time (seconds)
-               const std::string& mesh_path,                 // path to mesh .pmf file
                int output_frequency,                         // output frequency
-               bool is_advection,                            // turn on the advection?
                adv::timeScheme advection_time_scheme,        // advection time scheme
                adv::spaceScheme advection_space_scheme,      // advection space scheme
                adv::advFilter advection_filter,              // advection filter type
                const std::vector<double>& advection_params,  // vector of real advection params
                const std::vector<double>& mevp_real_params,  // vector of real momentum params
-               const std::vector<int>& mevp_integer_params,  // vector of integer momentum params
-               const std::string& output_prefix,             // output prefix
-               const std::string& output_folder)             // output folder
+               const std::vector<int>& mevp_integer_params)  // vector of integer momentum params
 {
-    // initialize logger
-    SIMUG::Logger logger(std::cout);
-
-    // mesh initialization
-    IceMesh* mesh_sphere = new IceMesh(mesh_path, output_folder, mesh::surfType::sphere, mesh::gridType::Agrid); 
- 
-    // forcing initialization
-    Forcing forcing(mesh_sphere);
-    
-    // assign initial ice thickness
-    forcing.SetAnalytical
-    (
-        mesh::meshVar::hi,
-        0,
-        [](std::pair<double, double> coords, double time)->std::vector<double>
-        {
-            return init_ice_thickness(coords, time);
-        }
-    );
-    forcing.Update(mesh::meshVar::hi, 0, coord::coordType::geo, 0.0);
-
-    // assign initial ice concentration
-    forcing.SetAnalytical
-    (
-        mesh::meshVar::ai,
-        0,
-        [](std::pair<double, double> coords, double time)->std::vector<double>
-        {
-            return init_ice_concentration(coords, time);
-        }
-    );
-    forcing.Update(mesh::meshVar::ai, 0, coord::coordType::geo, 0.0);
-
-
-    // assign initial ice velocity
-    forcing.SetAnalytical
-    (
-        mesh::meshVar::ui,
-        [](std::pair<double, double> coords, double time)->std::vector<double>
-        {
-            return init_ice_velocity(coords, time);
-        }
-    );
-    forcing.Update(mesh::meshVar::ui, coord::coordType::geo, 0.0);
-
-    // set analytical air velocity
-    forcing.SetAnalytical
-    (
-        mesh::meshVar::ua,
-        [](std::pair<double, double> coords, double time)->std::vector<double>
-        {
-            return wind_velocity(coords, time);
-        }
-    );
-    forcing.Update(mesh::meshVar::ua, coord::coordType::geo, 0.0);
-
-    // set analytical ocean velocity
-    forcing.SetAnalytical
-    (
-        mesh::meshVar::uw,
-        [](std::pair<double, double> coords, double time)->std::vector<double>
-        {
-            return ocean_velocity(coords, time);
-        }
-    );
-    forcing.Update(mesh::meshVar::uw, coord::coordType::geo, 0.0);
-
-    // set analytical ocean level
-    forcing.SetAnalytical
-    (
-        mesh::meshVar::hw,
-        [](std::pair<double, double> coords, double time)->std::vector<double>
-        {
-            return ocean_level(coords, time);
-        }
-    );
-    forcing.Update(mesh::meshVar::hw, coord::coordType::geo, 0.0);
-
-
-    // get tags for ice values
-    INMOST::Tag conc_tag = mesh_sphere->GetDataMulti(mesh::gridElemType::Node, 0)->Get(mesh::meshVar::ai);
-    INMOST::Tag thick_tag = mesh_sphere->GetDataMulti(mesh::gridElemType::Node, 0)->Get(mesh::meshVar::hi);
-    INMOST::Tag vel_tag = mesh_sphere->GetDataSingle(mesh::gridElemType::Node)->Get(mesh::meshVar::ui);
-
-    // initialize SLAE solver
-    INMOST::Solver* slae_solver = new INMOST::Solver("inner_ilu2"); 
-    slae_solver->SetParameter("absolute_tolerance", "1e-9");
-
-    // initialize advection solver
-    AgridAdvectionSolver advection(mesh_sphere,
-                                   time_step,
-                                   vel_tag,
-                                   slae_solver,
-                                   advection_time_scheme,
-                                   advection_space_scheme,
-                                   advection_filter,
-                                   advection_params);
-
-    // add mass scalar for advection
-    advection.AddScalar(thick_tag);
-    advection.AddScalar(conc_tag);
-
-    // compute number of steps
-    size_t n_steps = (size_t)(total_time/time_step);
-
-    // initialize momentum solver
-    Agrid_mEVP_Solver momentum(mesh_sphere,
-                               time_step,
-                               vel_tag,
-                               conc_tag,
-                               thick_tag,
-                               SIMUG::dyn::pressParam::clas,
-                               SIMUG::dyn::bcType::noslip,
-                               mevp_real_params,
-                               mevp_integer_params
-                               );
-
-    // log Courant number, time step and number of steps
-    if (mesh_sphere->GetMesh()->GetProcessorRank() == 0)
-    {
-        logger.Log("Time step: " + std::to_string(time_step) + " s\n");
-        logger.Log("Number of steps: " + std::to_string(n_steps) + "\n");
-    }
-    BARRIER
-
-    // write initial state to file
-    mesh_sphere->SaveVTU(output_prefix, 0);
-
-    // time stepping
-    double current_time = 0.0;
-
-    for (size_t stepnum = 1; stepnum < (n_steps + 1); ++stepnum)
-    {   
-        // update time
-        current_time += time_step;
-
-        if (mesh_sphere->GetMesh()->GetProcessorRank() == 0)
-        {
-            logger.Log("\n!!! Step " + std::to_string(stepnum) + " out of " + std::to_string(n_steps) + " !!!\n");
-        }
-
-        // update air velocty
-        forcing.Update(mesh::meshVar::ua, coord::coordType::geo, current_time);
-
-        // update ocean velocty
-        forcing.Update(mesh::meshVar::uw, coord::coordType::geo, current_time);
-
-        // update ocean level
-        forcing.Update(mesh::meshVar::hw, coord::coordType::geo, current_time);
-        
-        // transport scalars
-        if (is_advection)
-        {
-            advection.TransportScalars();
-        }
-
-        // update ice velocity
-        momentum.ComputeVelocity();
-        
-        // write output to file
-        if ((stepnum % output_frequency == 0) or (stepnum == (n_steps)))
-        {       
-            mesh_sphere->SaveVTU(output_prefix, stepnum);
-        }
-        BARRIER
-    }
-    
-    //delete slae solver and mesh
-    delete mesh_sphere;
-    delete slae_solver;
-}
-*/
-
-int main(int argc, char* argv[])
-{
-    // start MPI activity
-    int rank = 0;
-#ifdef USE_MPI
-    MPI_Init(NULL, NULL);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-#endif
-
     // initialize logger
     SIMUG::Logger logger(std::cout);
 
@@ -222,12 +35,12 @@ int main(int argc, char* argv[])
     Forcing topaz_forcing(mesh_arctic);
     Forcing cams_forcing(mesh_arctic);
 
-    // concentration file
+    // prepare concentration file
     topaz_forcing.SetFile
     (
         mesh::meshVar::ai,
         {
-            "/home/users/spetrov/nc_topaz/dataset-ice.nc",
+            "/home/users/spetrov/Forcing/dataset-topaz4-arc_2020_03_01-2020_03_04_1hr.nc",
             "x",
             "y",
             "longitude",
@@ -239,12 +52,12 @@ int main(int argc, char* argv[])
         }
     );
 
-    // thickness file
+    // prepare thickness file
     topaz_forcing.SetFile
     (
         mesh::meshVar::hi,
         {
-            "/home/users/spetrov/nc_topaz/dataset-ice.nc",
+            "/home/users/spetrov/Forcing/dataset-topaz4-arc_2020_03_01-2020_03_04_1hr.nc",
             "x",
             "y",
             "longitude",
@@ -256,29 +69,12 @@ int main(int argc, char* argv[])
         }
     );
 
-    // ssh file
+    // prepare ssh file
     topaz_forcing.SetFile
     (
         mesh::meshVar::hw, 
         {
-            "/home/users/spetrov/nc_topaz/dataset-ice.nc",
-            "x",
-            "y",
-            "longitude",
-            "latitude",
-            "",
-            "missing_value",
-            "",
-            false
-        }
-    );
-
-    // ice velocity file
-    topaz_forcing.SetFile
-    (
-        mesh::meshVar::uw, 
-        {
-            "/home/users/spetrov/nc_topaz/dataset-ice.nc",
+            "/home/users/spetrov/Forcing/dataset-topaz4-arc_2020_03_01-2020_03_04_1hr.nc",
             "x",
             "y",
             "longitude",
@@ -293,26 +89,27 @@ int main(int argc, char* argv[])
     // water velocity file
     topaz_forcing.SetFile
     (
-        mesh::meshVar::ui, 
+        mesh::meshVar::uw, 
         {
-            "/home/users/spetrov/nc_topaz/dataset-ice.nc",
+            "/home/users/spetrov/Forcing/dataset-topaz4-arc_2020_03_01-2020_03_04_1hr.nc",
             "x",
             "y",
             "longitude",
             "latitude",
-            "scale_factor",
+            "",
             "missing_value",
-            "add_offset",
+            "",
             false
         }
     );
 
-    // air velocity file
+
+    // prepare air velocity file
     cams_forcing.SetFile
     (
         mesh::meshVar::ua, 
         {
-            "/home/users/spetrov/nc_topaz/atm-forcing-2019-rev.nc",
+            "/home/users/spetrov/Forcing/cams_2021_03_01-2021_03_04_3h_3hr.nc",
             "",
             "",
             "longitude",
@@ -327,40 +124,162 @@ int main(int argc, char* argv[])
     // initialize ice concentration using topaz
     topaz_forcing.UpdateTOPAZ(mesh::meshVar::ai, 0, {"fice"}, 1.1, 0.0, 0.0, 0);
 
-    std::cout << "ai ok" << std::endl;
+    // initialize ice thickness using topaz
+    topaz_forcing.UpdateTOPAZ(mesh::meshVar::hi, 0, {"hice"}, 8.0, 0.0, 0.0, 0);
 
     // initialize ice thickness using topaz
-    topaz_forcing.UpdateTOPAZ(mesh::meshVar::hi, 0, {"hice"}, 50.0, 0.0, 0.0, 0);
+    topaz_forcing.UpdateTOPAZ(mesh::meshVar::hw, {"ssh"}, 1.0, 0.0, 0.0, 0);
 
-    std::cout << "hi ok" << std::endl;
-
-    // initialize ice thickness using topaz
-    topaz_forcing.UpdateTOPAZ(mesh::meshVar::hw, {"ssh"}, 10.0, 0.0, 0.0, 0);
-
-    std::cout << "hw ok" << std::endl;
-
-    // initialize ice velocity using topaz
-    topaz_forcing.UpdateTOPAZ(mesh::meshVar::ui, {"uice", "vice"}, 10.0, 0.0, 0.0, 0);
-
-    std::cout << "ui ok" << std::endl;
-
-    // initialize ice velocity using topaz
-    topaz_forcing.UpdateTOPAZ(mesh::meshVar::uw, {"u", "v"}, 10.0, 0.0, 0.0, 0);
-
-    std::cout << "uw ok" << std::endl;
+    // initialize water velocity using topaz
+    topaz_forcing.UpdateTOPAZ(mesh::meshVar::uw, {"u", "v"}, 2.0, 0.0, 0.0, 0);
 
     // initialize atm velocity using cams
     cams_forcing.UpdateCAMS(mesh::meshVar::ua, {"u10", "v10"}, 100.0, 0.0, 0.0, 0);
 
-    std::cout << "ua ok" << std::endl;
+    if (mesh_arctic->GetMesh()->GetProcessorRank() == 0)
+    {
+        logger.Log("\n Forcing initialization done! \n");
+    }
+    BARRIER
 
-    // save mesh
+    // get tags for ice values
+    INMOST::Tag conc_tag = mesh_arctic->GetDataMulti(mesh::gridElemType::Node, 0)->Get(mesh::meshVar::ai);
+    INMOST::Tag thick_tag = mesh_arctic->GetDataMulti(mesh::gridElemType::Node, 0)->Get(mesh::meshVar::hi);
+    INMOST::Tag vel_tag = mesh_arctic->GetDataSingle(mesh::gridElemType::Node)->Get(mesh::meshVar::ui);
+
+    // initialize SLAE solver
+    INMOST::Solver* slae_solver = new INMOST::Solver("inner_ilu2"); 
+    slae_solver->SetParameter("absolute_tolerance", "1e-9");
+
+    // initialize advection solver
+    AgridAdvectionSolver advection(mesh_arctic,
+                                   time_step,
+                                   vel_tag,
+                                   slae_solver,
+                                   advection_time_scheme,
+                                   advection_space_scheme,
+                                   advection_filter,
+                                   advection_params);
+    
+    // add concentration and thickness scalar for advection
+    advection.AddScalar(conc_tag);
+    advection.AddScalar(thick_tag);
+
+    if (mesh_arctic->GetMesh()->GetProcessorRank() == 0)
+    {
+        logger.Log("\n Advection initialization done! \n");
+    }
+    BARRIER
+
+    // initialize momentum solver
+    Agrid_mEVP_Solver momentum(mesh_arctic,
+                               time_step,
+                               vel_tag,
+                               conc_tag,
+                               thick_tag,
+                               SIMUG::dyn::pressParam::clas,
+                               SIMUG::dyn::bcType::noslip,
+                               mevp_real_params,
+                               mevp_integer_params
+                               );
+    
+    if (mesh_arctic->GetMesh()->GetProcessorRank() == 0)
+    {
+        logger.Log("\n Momentum initialization done! \n");
+    }
+    BARRIER
+    
+    // compute number of steps
+    size_t n_steps = (size_t)(93.0*60.0*60.0/time_step);
+
+    // compute atm and ocn forcing frequency
+    size_t atm_freq = (size_t)(3.0*60.0*60.0/time_step);
+    size_t ocn_freq = (size_t)(1.0*60.0*60.0/time_step);
+
+    // log time step and number of steps
+    if (mesh_arctic->GetMesh()->GetProcessorRank() == 0)
+    {
+        logger.Log("Time step: " + std::to_string(time_step) + " s\n");
+        logger.Log("Number of steps: " + std::to_string(n_steps) + "\n");
+    }
+    BARRIER
+
+    // save initial state
     mesh_arctic->SaveVTU("AgridArctic", 0);
 
-    // delete mesh
-    delete mesh_arctic;
+    // time stepping
+    double current_time = 0.0;
+    size_t forcing_counter = 1;
+    size_t atm_forcing_ind = 1;
+    size_t ocn_forcing_ind = 1;
 
-    // end MPI activity
+    for (size_t stepnum = 1; stepnum < (n_steps + 1); ++stepnum)
+    {   
+        // update time
+        current_time += time_step;
+
+        // log step
+        if (mesh_arctic->GetMesh()->GetProcessorRank() == 0)
+        {
+            logger.Log("\n!!! Step " + std::to_string(stepnum) + " out of " + std::to_string(n_steps) + " !!!\n");
+        }
+
+        // update air velocty
+        if ((forcing_counter%atm_freq) == 0)
+        {
+            cams_forcing.UpdateCAMS(mesh::meshVar::ua, {"u10", "v10"}, 100.0, 0.0, 0.0, atm_forcing_ind);
+            ++atm_forcing_ind;
+        }
+
+        // update ocean velocty and ssh
+        if ((forcing_counter%ocn_freq) == 0)
+        {
+            topaz_forcing.UpdateTOPAZ(mesh::meshVar::uw, {"u", "v"}, 10.0, 0.0, 0.0, ocn_forcing_ind);
+            topaz_forcing.UpdateTOPAZ(mesh::meshVar::hw, {"ssh"}, 10.0, 0.0, 0.0, ocn_forcing_ind);
+            ++ocn_forcing_ind;
+        }
+        ++forcing_counter;
+
+        // update ice velocity
+        momentum.ComputeVelocity();
+
+        // transport scalars
+        advection.TransportScalars();
+        
+        // write output to file
+        if ((stepnum % output_frequency == 0) or (stepnum == (n_steps)))
+        {       
+            mesh_arctic->SaveVTU("AgridArctic", stepnum);
+        }
+        BARRIER
+    }
+
+    // delete mesh and slae solver
+    delete mesh_arctic;
+    delete slae_solver;
+
+    BARRIER
+}
+
+int main(int argc, char* argv[])
+{
+// start MPI activity
+    int rank = 0;
+#ifdef USE_MPI
+    MPI_Init(NULL, NULL);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+#endif
+    
+    run_model(300.0,
+              50,
+              adv::timeScheme::TTG2,
+              adv::spaceScheme::CFE,
+              adv::advFilter::Zalesak,
+              {0.5}, 
+              {500.0, 500.0},
+              {300});
+
+// end MPI activity
 #ifdef USE_MPI
     MPI_Finalize();
 #endif

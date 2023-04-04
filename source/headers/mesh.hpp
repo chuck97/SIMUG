@@ -17,6 +17,7 @@
 #include "gridvars.hpp"
 #include "vecmath.hpp"
 #include "coords_rotation.hpp"
+#include "constants.hpp"
 
 #ifdef INTEL_COMPILER
 #include <experimental/filesystem>
@@ -80,9 +81,13 @@ namespace SIMUG
         
         std::vector<INMOST::Tag> geo_basis;                     // geographical basis vectors coordinates
         std::vector<INMOST::Tag> cart_basis;                    // local cartesian basis vectors coordinates
+        std::vector<INMOST::Tag> model_basis;                   // modeel basis vectors coordinates 
         
         INMOST::Tag trans_matr_from_geo_to_elem;                // tranfile_infsition 2x2 matrix for vector/tensor coordinates while switching from geo to element basis
         INMOST::Tag trans_matr_from_elem_to_geo;                // transition 2x2 matrix for vector/tensor coordinates while switching from element to geo basis ( = trans_matr_from_geo_to_elem^-1)
+
+        INMOST::Tag trans_matr_from_model_to_elem;               // tranfile_infsition 2x2 matrix for vector/tensor coordinates while switching from model to element basis
+        INMOST::Tag trans_matr_from_elem_to_model;               // transition 2x2 matrix for vector/tensor coordinates while switching from element to model basis ( = trans_matr_from_model_to_elem^-1)
 
         std::vector<double> VectorFromGeoToElem(const std::vector<double>& vec_geo_coords);
         std::vector<double> VectorFromElemToGeo(const std::vector<double>& vec_elem_coords);
@@ -284,8 +289,10 @@ namespace SIMUG
 
         void AssembleBasisData();
         void AssembleGeoElementBasis();
+        void AssembleModelElementBasis();
         void AssembleCartesianElementBasis();
         void AssembleGeoToElementTransitionMatricies();
+        void AssembleModelToElementTransitionMatricies();
         void AssembleElementToElementTransitionMatricies();
         void ComputeNodeCoordsInTrianBasis();
         void ComputeIfXedgeBasisIsNormalToTrian();

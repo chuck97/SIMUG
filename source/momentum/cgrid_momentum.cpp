@@ -699,7 +699,7 @@ namespace SIMUG
                 double S0 = adj_trians[0]->Real(trian_area_tag);
                 double S1 = adj_trians[1]->Real(trian_area_tag);
 
-                double xi0 = 2.5*0.5*(P0 + P1)*((S0 + S1)/3.0)/(time_step);
+                //double xi0 = 3.5*0.5*(P0 + P1)*((S0 + S1)/3.0)/(time_step);
 
                 edgeit->Real(xi_edge_tag) = 2.5*0.5*(P0 + P1)*((S0 + S1)/3.0)/time_step;
             }
@@ -970,7 +970,7 @@ namespace SIMUG
     {
         if (to_local)
         {
-            // move velocity vectors to edge basis
+            // move velocity vectors to node basis
             for(auto edgeit = mesh->GetMesh()->BeginFace(); edgeit != mesh->GetMesh()->EndFace(); ++edgeit)
             {
                 if (edgeit->GetStatus() != Element::Ghost)
@@ -1249,12 +1249,17 @@ namespace SIMUG
 
         sigma_old_norm_all = (sigma_old_norm_all < REAL_MIN_ABS_VAL) ? 1e20 : sigma_old_norm_all;
 
+        double max_vel = GetMaxVelocity();
+        BARRIER
+
         // log
         if (mesh->GetMesh()->GetProcessorRank() == 0)
         {
             std::cout << "Pseudoit " << presudostep << ", vel error = " << u_diff_norm_all/u_old_norm_all 
                                                     << ", sigma error = " << sigma_diff_norm_all/sigma_old_norm_all 
                                                     << std::endl;
+            
+            std::cout << "max vel = " <<  max_vel << std::endl;
         }
 
         BARRIER
@@ -1408,5 +1413,29 @@ namespace SIMUG
         velocity_computation_time = 0.0;
         stabilization_assembling_time = 0.0;
         BARRIER
+    }
+
+    double Cgrid_mEVP_Solver::GetMaxVelocity()
+    {
+
+        double max_local = -1.0;
+        for(auto edgeit = mesh->GetMesh()->BeginFace(); edgeit != mesh->GetMesh()->EndFace(); ++edgeit)
+        {
+            if (edgeit->GetStatus() != Element::Ghost)
+            {
+                double u = edgeit->RealArray(new_vel_tag)[0];
+                double v = edgeit->RealArray(new_vel_tag)[1];
+                double cur = std::sqrt(u*u + v*v);
+                if (cur > max_local)
+                {
+                    max_local = cur;
+                }
+            }
+        }
+        BARRIER
+        double max_vel_for_all = max_local;
+        MPI_Allreduce(&max_local, &max_vel_for_all, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+        BARRIER
+        return max_vel_for_all;
     }
 }

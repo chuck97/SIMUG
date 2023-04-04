@@ -467,8 +467,6 @@ void AgridAdvectionSolver::AssembleSingleStepRHS(velocity_tag vel_tag, scalar_ta
                                                                                 Jacobi_info_vec);
 
             // assemble local RHS vector
-
-
             localRHS = (local_mass_matrix + time_step*local_first_der_matrix - (time_step*time_step*0.5)*local_second_der_matrix)*local_scal_trian;
         }
         else
@@ -688,6 +686,7 @@ void AgridAdvectionSolver::Evaluate(velocity_tag vel_tag, scalar_tag scal_tag)
     // assemble RHS vector
     (!adv::is_single_step.at(adv_time_scheme)) ? AssembleDoubleStepRHS(vel_tag, scal_tag, scal_tag, StepNumber::first)
                                                : AssembleSingleStepRHS(vel_tag, scal_tag);
+    
     BARRIER
     adv_timer.Stop();
     duration = adv_timer.GetMaxTime();
@@ -758,6 +757,7 @@ void AgridAdvectionSolver::Evaluate(velocity_tag vel_tag, scalar_tag scal_tag)
         // exchange scal high tag
         mesh->GetDataSingle(mesh::gridElemType::Node)->Exchange("scal_high_tag");
     }
+
 
     // Reset SOL vector
     SOL.Clear();
@@ -838,6 +838,7 @@ void AgridAdvectionSolver::Evaluate(velocity_tag vel_tag, scalar_tag scal_tag)
                       params[0]);
     }
     BARRIER
+
 
     // stop the timer and save limiter duration
     adv_timer.Stop();

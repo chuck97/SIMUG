@@ -187,6 +187,7 @@ namespace SIMUG
         void Finalize();
         void LogError(int presudostep);
         void ComputeShearDeformation();
+        double GetMaxVelocity();
     
     private:
         INMOST::Tag ua_tags;
@@ -253,6 +254,7 @@ namespace SIMUG
         void ComputeEdgeStabilization(double alpha);
         void ComputeLevelVector();
         void ComputeShearDeformation();
+        double GetMaxVelocity();
         
     
     private:

@@ -20,7 +20,9 @@ using namespace std;
 // function for initial ice thickness
 std::vector<double> init_ice_thickness(std::pair<double, double> coords, double time)
 {
-    return {2.0};
+    double x = coords.first;
+    return {2.0*x/BOX_LEN_SCALE};
+    //return {2.0};
 }
 
 // function for initial ice concentration

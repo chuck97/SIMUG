@@ -6,6 +6,120 @@ using namespace INMOST;
 namespace SIMUG
 {
 
+void IceMesh::AssembleModelElementBasis()
+{
+    // ## nodes ##
+    INMOST::Tag node_model_basis_x_tag = ice_mesh->CreateTag("model basis x node", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 3);
+    INMOST::Tag node_model_basis_y_tag = ice_mesh->CreateTag("model basis y node", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 3);
+    INMOST::Tag node_model_basis_z_tag = ice_mesh->CreateTag("model basis z node", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 3);
+
+    for(auto nodeit = ice_mesh->BeginNode(); nodeit != ice_mesh->EndNode(); ++nodeit)
+    {
+        if (nodeit->GetStatus() != Element::Ghost)
+        {
+            // node model coords
+            double model_lon = nodeit->RealArray(grid_info[mesh::gridElemType::Node]->coords[coord::coordType::model])[0]*M_PI/180.0;
+            double model_lat = nodeit->RealArray(grid_info[mesh::gridElemType::Node]->coords[coord::coordType::model])[1]*M_PI/180.0;
+
+            // first basis vector
+            nodeit->RealArray(node_model_basis_x_tag)[0] = -sin(model_lat);
+            nodeit->RealArray(node_model_basis_x_tag)[1] = cos(model_lon);
+            nodeit->RealArray(node_model_basis_x_tag)[2] = 0.0;
+
+            // second basis vector
+            nodeit->RealArray(node_model_basis_y_tag)[0] = -sin(model_lat)*cos(model_lon);
+            nodeit->RealArray(node_model_basis_y_tag)[1] = -sin(model_lat)*sin(model_lon);
+            nodeit->RealArray(node_model_basis_y_tag)[2] = cos(model_lat);
+
+            // third basis vector
+            nodeit->RealArray(node_model_basis_z_tag)[0] = cos(model_lat)*cos(model_lon);
+            nodeit->RealArray(node_model_basis_z_tag)[1] = cos(model_lat)*sin(model_lon);
+            nodeit->RealArray(node_model_basis_z_tag)[2] = sin(model_lat);
+        }
+    }
+
+    //exchange node basis
+    ice_mesh->ExchangeData(node_model_basis_x_tag, INMOST::NODE, 0);
+    ice_mesh->ExchangeData(node_model_basis_y_tag, INMOST::NODE, 0);
+    ice_mesh->ExchangeData(node_model_basis_z_tag, INMOST::NODE, 0);
+    grid_info[mesh::gridElemType::Node]->model_basis = {node_model_basis_x_tag, node_model_basis_y_tag, node_model_basis_z_tag};
+
+    // ## edges ##
+    INMOST::Tag edge_model_basis_x_tag = ice_mesh->CreateTag("model basis x edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 3);
+    INMOST::Tag edge_model_basis_y_tag = ice_mesh->CreateTag("model basis y edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 3);
+    INMOST::Tag edge_model_basis_z_tag = ice_mesh->CreateTag("model basis z edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 3);
+
+    for(auto edgeit = ice_mesh->BeginFace(); edgeit != ice_mesh->EndFace(); ++edgeit)
+    {
+        if (edgeit->GetStatus() != Element::Ghost)
+        {
+            // edge geo coords
+            double model_lon = edgeit->RealArray(grid_info[mesh::gridElemType::Edge]->coords[coord::coordType::model])[0]*M_PI/180.0;
+            double model_lat = edgeit->RealArray(grid_info[mesh::gridElemType::Edge]->coords[coord::coordType::model])[1]*M_PI/180.0;
+
+            // first basis vector
+            edgeit->RealArray(edge_model_basis_x_tag)[0] = -sin(model_lon);
+            edgeit->RealArray(edge_model_basis_x_tag)[1] = cos(model_lon);
+            edgeit->RealArray(edge_model_basis_x_tag)[2] = 0.0;
+
+            // second basis vector
+            edgeit->RealArray(edge_model_basis_y_tag)[0] = -sin(model_lat)*cos(model_lon);
+            edgeit->RealArray(edge_model_basis_y_tag)[1] = -sin(model_lat)*sin(model_lon);
+            edgeit->RealArray(edge_model_basis_y_tag)[2] = cos(model_lat);
+
+            // third basis vector
+            edgeit->RealArray(edge_model_basis_z_tag)[0] = cos(model_lat)*cos(model_lon);
+            edgeit->RealArray(edge_model_basis_z_tag)[1] = cos(model_lat)*sin(model_lon);
+            edgeit->RealArray(edge_model_basis_z_tag)[2] = sin(model_lat);
+        }
+    }
+
+    // exchange edge basis
+    ice_mesh->ExchangeData(edge_model_basis_x_tag, INMOST::FACE, 0);
+    ice_mesh->ExchangeData(edge_model_basis_y_tag, INMOST::FACE, 0);
+    ice_mesh->ExchangeData(edge_model_basis_z_tag, INMOST::FACE, 0);
+    grid_info[mesh::gridElemType::Edge]->model_basis = {edge_model_basis_x_tag, edge_model_basis_y_tag, edge_model_basis_z_tag};
+
+    // ## trians ##
+    INMOST::Tag trian_model_basis_x_tag = ice_mesh->CreateTag("model basis x trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
+    INMOST::Tag trian_model_basis_y_tag = ice_mesh->CreateTag("model basis y trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
+    INMOST::Tag trian_model_basis_z_tag = ice_mesh->CreateTag("model basis z trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
+
+
+    for(auto trianit = ice_mesh->BeginCell(); trianit != ice_mesh->EndCell(); ++trianit)
+    {
+        if (trianit->GetStatus() != Element::Ghost)
+        {
+            // trian geo coords
+            double model_lon = trianit->RealArray(grid_info[mesh::gridElemType::Trian]->coords[coord::coordType::model])[0]*M_PI/180.0;
+            double model_lat = trianit->RealArray(grid_info[mesh::gridElemType::Trian]->coords[coord::coordType::model])[1]*M_PI/180.0;
+
+            // first basis vector
+            trianit->RealArray(trian_model_basis_x_tag)[0] = -sin(model_lon);
+            trianit->RealArray(trian_model_basis_x_tag)[1] = cos(model_lon);
+            trianit->RealArray(trian_model_basis_x_tag)[2] = 0.0;
+
+            // second basis vector
+            trianit->RealArray(trian_model_basis_y_tag)[0] = -sin(model_lat)*cos(model_lon);
+            trianit->RealArray(trian_model_basis_y_tag)[1] = -sin(model_lat)*sin(model_lon);
+            trianit->RealArray(trian_model_basis_y_tag)[2] = cos(model_lat);
+
+            // third basis vector
+            trianit->RealArray(trian_model_basis_z_tag)[0] = cos(model_lat)*cos(model_lon);
+            trianit->RealArray(trian_model_basis_z_tag)[1] = cos(model_lat)*sin(model_lon);
+            trianit->RealArray(trian_model_basis_z_tag)[2] = sin(model_lat);
+        }
+    }
+
+    ice_mesh->ExchangeData(trian_model_basis_x_tag, INMOST::CELL, 0);
+    ice_mesh->ExchangeData(trian_model_basis_y_tag, INMOST::CELL, 0);
+    ice_mesh->ExchangeData(trian_model_basis_z_tag, INMOST::CELL, 0);
+
+    grid_info[mesh::gridElemType::Trian]->model_basis = {trian_model_basis_x_tag, trian_model_basis_y_tag, trian_model_basis_z_tag};
+
+    BARRIER
+}
+
 void IceMesh::AssembleGeoElementBasis()
 {
     // ## nodes ##
@@ -42,7 +156,6 @@ void IceMesh::AssembleGeoElementBasis()
     ice_mesh->ExchangeData(node_geo_basis_x_tag, INMOST::NODE, 0);
     ice_mesh->ExchangeData(node_geo_basis_y_tag, INMOST::NODE, 0);
     ice_mesh->ExchangeData(node_geo_basis_z_tag, INMOST::NODE, 0);
-
     grid_info[mesh::gridElemType::Node]->geo_basis = {node_geo_basis_x_tag, node_geo_basis_y_tag, node_geo_basis_z_tag};
 
     // ## edges ##
@@ -79,14 +192,12 @@ void IceMesh::AssembleGeoElementBasis()
     ice_mesh->ExchangeData(edge_geo_basis_x_tag, INMOST::FACE, 0);
     ice_mesh->ExchangeData(edge_geo_basis_y_tag, INMOST::FACE, 0);
     ice_mesh->ExchangeData(edge_geo_basis_z_tag, INMOST::FACE, 0);
-
     grid_info[mesh::gridElemType::Edge]->geo_basis = {edge_geo_basis_x_tag, edge_geo_basis_y_tag, edge_geo_basis_z_tag};
 
     // ## trians ##
     INMOST::Tag trian_geo_basis_x_tag = ice_mesh->CreateTag("geo basis x trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
     INMOST::Tag trian_geo_basis_y_tag = ice_mesh->CreateTag("geo basis y trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
     INMOST::Tag trian_geo_basis_z_tag = ice_mesh->CreateTag("geo basis z trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 3);
-
 
     for(auto trianit = ice_mesh->BeginCell(); trianit != ice_mesh->EndCell(); ++trianit)
     {
@@ -434,6 +545,176 @@ void IceMesh::AssembleCartesianElementBasis()
     ice_mesh->ExchangeData(node_cart_basis_z_tag, INMOST::NODE, 0);
 
     grid_info[mesh::gridElemType::Node]->cart_basis = {node_cart_basis_x_tag, node_cart_basis_y_tag, node_cart_basis_z_tag};
+
+    BARRIER
+}
+
+void IceMesh::AssembleModelToElementTransitionMatricies()
+{
+    // ## nodes ##
+    INMOST::Tag model_to_elem_node_tag = ice_mesh->CreateTag("model to elem trans matr node", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 4);
+    INMOST::Tag elem_to_model_node_tag = ice_mesh->CreateTag("elem to model trans matr node", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 4);
+
+    grid_info[mesh::gridElemType::Node]->trans_matr_from_model_to_elem = model_to_elem_node_tag;
+    grid_info[mesh::gridElemType::Node]->trans_matr_from_elem_to_model = elem_to_model_node_tag;
+
+    std::vector<INMOST::Tag> cart_basis_node = grid_info[mesh::gridElemType::Node]->cart_basis;
+    std::vector<INMOST::Tag> model_basis_node = grid_info[mesh::gridElemType::Node]->model_basis;
+
+    for (auto nodeit = ice_mesh->BeginNode(); nodeit != ice_mesh->EndNode(); ++nodeit)
+    {
+        if (nodeit->GetStatus() != Element::Ghost)
+        {
+            // gain model basis vectors
+            std::vector<double> basis_model_x = {nodeit->RealArray(model_basis_node[0])[0],
+                                                 nodeit->RealArray(model_basis_node[0])[1],
+                                                 nodeit->RealArray(model_basis_node[0])[2]};
+
+            std::vector<double> basis_model_y = {nodeit->RealArray(model_basis_node[1])[0],
+                                                 nodeit->RealArray(model_basis_node[1])[1],
+                                                 nodeit->RealArray(model_basis_node[1])[2]};
+
+            // gain element basis vectors
+            std::vector<double> basis_cart_x = {nodeit->RealArray(cart_basis_node[0])[0],
+                                                nodeit->RealArray(cart_basis_node[0])[1],
+                                                nodeit->RealArray(cart_basis_node[0])[2]};
+
+            std::vector<double> basis_cart_y = {nodeit->RealArray(cart_basis_node[1])[0],
+                                                nodeit->RealArray(cart_basis_node[1])[1],
+                                                nodeit->RealArray(cart_basis_node[1])[2]};
+
+            // assemble 2x2 forward and backward transition matrics
+            
+            std::vector<std::vector<double>> model_forward_matr = {{basis_model_x*basis_cart_x, basis_model_x*basis_cart_y},
+                                                                   {basis_model_y*basis_cart_x, basis_model_y*basis_cart_y}};
+
+            std::vector<std::vector<double>> model_inverse_matr = inv(model_forward_matr);
+
+            // assign results
+            nodeit->RealArray(model_to_elem_node_tag)[0] = model_inverse_matr[0][0];
+            nodeit->RealArray(model_to_elem_node_tag)[1] = model_inverse_matr[0][1];
+            nodeit->RealArray(model_to_elem_node_tag)[2] = model_inverse_matr[1][0];
+            nodeit->RealArray(model_to_elem_node_tag)[3] = model_inverse_matr[1][1];
+
+            nodeit->RealArray(elem_to_model_node_tag)[0] = model_forward_matr[0][0];
+            nodeit->RealArray(elem_to_model_node_tag)[1] = model_forward_matr[0][1];
+            nodeit->RealArray(elem_to_model_node_tag)[2] = model_forward_matr[1][0];
+            nodeit->RealArray(elem_to_model_node_tag)[3] = model_forward_matr[1][1];
+        }
+    }
+
+    // exchange node matricies
+    ice_mesh->ExchangeData(model_to_elem_node_tag, INMOST::NODE, 0);
+    ice_mesh->ExchangeData(elem_to_model_node_tag, INMOST::NODE, 0);
+
+    // ## edges ##
+    INMOST::Tag model_to_elem_edge_tag = ice_mesh->CreateTag("model to elem trans matr edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 4);
+    INMOST::Tag elem_to_model_edge_tag = ice_mesh->CreateTag("elem to model trans matr edge", INMOST::DATA_REAL, INMOST::FACE, INMOST::NONE, 4);
+    
+    grid_info[mesh::gridElemType::Edge]->trans_matr_from_model_to_elem = model_to_elem_edge_tag;
+    grid_info[mesh::gridElemType::Edge]->trans_matr_from_elem_to_model = elem_to_model_edge_tag;
+
+    std::vector<INMOST::Tag> cart_basis_edge = grid_info[mesh::gridElemType::Edge]->cart_basis;
+    std::vector<INMOST::Tag> model_basis_edge = grid_info[mesh::gridElemType::Edge]->model_basis;
+
+    for (auto edgeit = ice_mesh->BeginFace(); edgeit != ice_mesh->EndFace(); ++edgeit)
+    {
+        if (edgeit->GetStatus() != Element::Ghost)
+        {
+            // gain geo and cart basis vectors
+            std::vector<double> basis_model_x = {edgeit->RealArray(model_basis_edge[0])[0],
+                                                 edgeit->RealArray(model_basis_edge[0])[1],
+                                                 edgeit->RealArray(model_basis_edge[0])[2]};
+
+            std::vector<double> basis_model_y = {edgeit->RealArray(model_basis_edge[1])[0],
+                                                 edgeit->RealArray(model_basis_edge[1])[1],
+                                                 edgeit->RealArray(model_basis_edge[1])[2]};
+
+            std::vector<double> basis_cart_x = {edgeit->RealArray(cart_basis_edge[0])[0],
+                                                edgeit->RealArray(cart_basis_edge[0])[1],
+                                                edgeit->RealArray(cart_basis_edge[0])[2]};
+
+            std::vector<double> basis_cart_y = {edgeit->RealArray(cart_basis_edge[1])[0],
+                                                edgeit->RealArray(cart_basis_edge[1])[1],
+                                                edgeit->RealArray(cart_basis_edge[1])[2]};
+
+            // assemble 2x2 forward and backward transition matrics
+            std::vector<std::vector<double>> model_forward_matr = {{basis_model_x*basis_cart_x, basis_model_x*basis_cart_y},
+                                                                   {basis_model_y*basis_cart_x, basis_model_y*basis_cart_y}};
+
+            std::vector<std::vector<double>> model_inverse_matr = inv(model_forward_matr);
+
+            // assign results
+            edgeit->RealArray(model_to_elem_edge_tag)[0] = model_inverse_matr[0][0];
+            edgeit->RealArray(model_to_elem_edge_tag)[1] = model_inverse_matr[0][1];
+            edgeit->RealArray(model_to_elem_edge_tag)[2] = model_inverse_matr[1][0];
+            edgeit->RealArray(model_to_elem_edge_tag)[3] = model_inverse_matr[1][1];
+
+            edgeit->RealArray(elem_to_model_edge_tag)[0] = model_forward_matr[0][0];
+            edgeit->RealArray(elem_to_model_edge_tag)[1] = model_forward_matr[0][1];
+            edgeit->RealArray(elem_to_model_edge_tag)[2] = model_forward_matr[1][0];
+            edgeit->RealArray(elem_to_model_edge_tag)[3] = model_forward_matr[1][1];
+        }
+    }
+
+    // exchange edge matricies
+    ice_mesh->ExchangeData(model_to_elem_edge_tag, INMOST::FACE, 0);
+    ice_mesh->ExchangeData(elem_to_model_edge_tag, INMOST::FACE, 0);
+
+
+    // ## triangles ##
+    INMOST::Tag model_to_elem_trian_tag = ice_mesh->CreateTag("model to elem trans matr trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 4);
+    INMOST::Tag elem_to_model_trian_tag = ice_mesh->CreateTag("elem to model trans matr trian", INMOST::DATA_REAL, INMOST::CELL, INMOST::NONE, 4);
+    
+    grid_info[mesh::gridElemType::Trian]->trans_matr_from_model_to_elem = model_to_elem_trian_tag;
+    grid_info[mesh::gridElemType::Trian]->trans_matr_from_elem_to_model = elem_to_model_trian_tag;
+
+    std::vector<INMOST::Tag> cart_basis_trian = grid_info[mesh::gridElemType::Trian]->cart_basis;
+    std::vector<INMOST::Tag> model_basis_trian = grid_info[mesh::gridElemType::Trian]->model_basis;
+
+    for (auto trianit = ice_mesh->BeginCell(); trianit != ice_mesh->EndCell(); ++trianit)
+    {
+        if (trianit->GetStatus() != Element::Ghost)
+        {
+            // gain geo and cart basis vectors
+            std::vector<double> basis_model_x = {trianit->RealArray(model_basis_trian[0])[0],
+                                                 trianit->RealArray(model_basis_trian[0])[1],
+                                                 trianit->RealArray(model_basis_trian[0])[2]};
+
+            std::vector<double> basis_model_y = {trianit->RealArray(model_basis_trian[1])[0],
+                                                 trianit->RealArray(model_basis_trian[1])[1],
+                                                 trianit->RealArray(model_basis_trian[1])[2]};
+
+            std::vector<double> basis_cart_x = {trianit->RealArray(cart_basis_trian[0])[0],
+                                                trianit->RealArray(cart_basis_trian[0])[1],
+                                                trianit->RealArray(cart_basis_trian[0])[2]};
+
+            std::vector<double> basis_cart_y = {trianit->RealArray(cart_basis_trian[1])[0],
+                                                trianit->RealArray(cart_basis_trian[1])[1],
+                                                trianit->RealArray(cart_basis_trian[1])[2]};
+
+            // assemble 2x2 forward and backward transition matrics
+            std::vector<std::vector<double>> model_forward_matr = {{basis_model_x*basis_cart_x, basis_model_x*basis_cart_y},
+                                                                   {basis_model_y*basis_cart_x, basis_model_y*basis_cart_y}};
+
+            std::vector<std::vector<double>> model_inverse_matr = inv(model_forward_matr);
+
+            // assign results
+            trianit->RealArray(model_to_elem_trian_tag)[0] = model_inverse_matr[0][0];
+            trianit->RealArray(model_to_elem_trian_tag)[1] = model_inverse_matr[0][1];
+            trianit->RealArray(model_to_elem_trian_tag)[2] = model_inverse_matr[1][0];
+            trianit->RealArray(model_to_elem_trian_tag)[3] = model_inverse_matr[1][1];
+
+            trianit->RealArray(elem_to_model_trian_tag)[0] = model_forward_matr[0][0];
+            trianit->RealArray(elem_to_model_trian_tag)[1] = model_forward_matr[0][1];
+            trianit->RealArray(elem_to_model_trian_tag)[2] = model_forward_matr[1][0];
+            trianit->RealArray(elem_to_model_trian_tag)[3] = model_forward_matr[1][1];
+        }
+    }
+
+    // exchange triangle matricies
+    ice_mesh->ExchangeData(model_to_elem_trian_tag, INMOST::CELL, 0);
+    ice_mesh->ExchangeData(elem_to_model_trian_tag, INMOST::CELL, 0);
 
     BARRIER
 }
@@ -986,7 +1267,9 @@ void IceMesh::ComputeNodeCoordsInTrianBasis()
 
     // exchange computed data
     for (int i = 0; i < 3; ++i)
+    {
         ice_mesh->ExchangeData(node_coords_in_trian_basis_tags[i], INMOST::CELL, 0);
+    }
 }
 
 void IceMesh::ComputeIfXedgeBasisIsNormalToTrian()
@@ -1067,7 +1350,7 @@ void IceMesh::ComputeIfXedgeBasisIsNormalToTrian()
 
 void IceMesh::ComputeElementsCartesianSize()
 {
-    // the Cartesian size of every triangle is 0.0
+    // the Cartesian size of every node is 0.0
     grid_info[mesh::gridElemType::Node]->GetCartesianSize() = ice_mesh->CreateTag("node cart size ", INMOST::DATA_REAL, INMOST::NODE, INMOST::NONE, 1);
     ice_mesh->SetFileOption((std::string)"Tag:" + (std::string)"node cart size ", "nosave");
 
@@ -1129,6 +1412,13 @@ void IceMesh::AssembleBasisData()
     AssembleGeoElementBasis();
     AssembleCartesianElementBasis();
     AssembleGeoToElementTransitionMatricies();
+
+    if (mesh_info.surface_type == mesh::surfType::basin)
+    {
+        AssembleModelElementBasis();
+        AssembleModelToElementTransitionMatricies();
+    }
+
     AssembleElementToElementTransitionMatricies();
     ComputeNodeCoordsInTrianBasis();
     ComputeIfXedgeBasisIsNormalToTrian();
